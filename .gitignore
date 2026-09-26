@@ -8,6 +8,7 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+build/
 
 # Native
 .kotlin/
@@ -33,11 +34,37 @@ yarn-error.*
 # local env files
 .env*.local
 
+# Cursor (local IDE config)
+.cursor/mcp.json
+
 # typescript
 *.tsbuildinfo
 
-example
+app-example
 
 # generated native folders
-/ios
-/android
+#/ios
+#/android
+
+
+GoogleService-Info.plist
+google-services.json
+firebase.google-services.json
+src/config.js
+.ios
+*.keystore
+*.jks
+*.working
+.yarn
+xxx*
+*xxx
+android/keystore.properties
+.env.sentry-build-plugin
+ios/sentry.properties
+bkkleague_backend
+*.code-workspace
+*.bak
+ios/
+android/
+private_keys/
+.repowise/

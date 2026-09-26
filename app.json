@@ -1,38 +1,134 @@
 {
   "expo": {
-    "name": "bangkok_darts_league",
+    "name": "Bangkok Darts League",
     "slug": "bangkok_darts_league",
-    "version": "1.0.0",
+    "version": "1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "bangkokdartsleague",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bangkok-darts-league",
+      "buildNumber": "1",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "usesAppleSignIn": true,
+      "associatedDomains": [
+        "webcredentials:darts.bkkleague.com",
+        "applinks:darts.bkkleague.com"
+      ],
+      "entitlements": {
+        "aps-environment": "production",
+        "com.apple.developer.applesignin": ["Default"]
+      },
+      "infoPlist": {
+        "CFBundleDisplayName": "Bangkok Darts League",
+        "LSApplicationCategoryType": "public.app-category.sports",
+        "UIBackgroundModes": ["fetch", "remote-notification"],
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
+        "LSApplicationQueriesSchemes": ["lineauth2"],
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "bangkokdartsleague",
+              "com.bangkok-darts-league"
+            ]
+          }
+        ]
+      }
     },
     "android": {
+      "package": "com.bangkok_darts_league",
+      "versionCode": 1,
+      "googleServicesFile": "./firebase.google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#111111",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundImage": "./assets/images/android-icon-background.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.VIBRATE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.CAMERA",
+        "com.google.android.gms.permission.AD_ID"
+      ]
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#F5F5F5"
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#F5F5F5",
+      "barStyle": "dark-content"
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
+      "./plugins/withAndroidFirebaseNotificationManifest",
       "expo-router",
+      [
+        "expo-navigation-bar",
+        {
+          "enforceContrast": false
+        }
+      ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#111111",
+          "dark": {
+            "backgroundColor": "#111111"
+          }
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static",
+            "forceStaticLinking": ["RNFBApp", "RNFBMessaging"]
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff",
+          "defaultChannel": "General"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      "@xmartlabs/react-native-line",
+      "expo-web-browser",
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "./plugins/withIosMarketingVersion",
+      "./plugins/withIosSignEmbeddedFrameworks",
+      "./plugins/withAndroidReleaseSigning"
     ],
     "experiments": {
       "typedRoutes": true,
