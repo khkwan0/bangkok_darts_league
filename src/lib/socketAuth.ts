@@ -1,4 +1,5 @@
 import config from '@/config'
+import {configuredLeagueId} from '@/lib/leagueRequest'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {Platform} from 'react-native'
 import {io, type Socket} from 'socket.io-client'
@@ -21,7 +22,7 @@ export function leagueHostFromApiUrl(apiUrl?: string | null): string {
 export type SocketAuthOptions = {
   /** Current API base (e.g. https://darts.bkkleague.com/api) — scopes agent tools. */
   apiUrl?: string | null
-  /** Optional league id from /branding when known. */
+  /** Ignored when this build has config.leagueId. */
   leagueId?: number | null
 }
 
@@ -33,12 +34,13 @@ export type SocketAuthOptions = {
 export async function loadSocketAuth(options: SocketAuthOptions = {}) {
   const token = await AsyncStorage.getItem('jwt')
   const leagueHost = leagueHostFromApiUrl(options.apiUrl)
-  const leagueId =
+  const optionLeagueId =
     options.leagueId != null &&
     Number.isFinite(Number(options.leagueId)) &&
     Number(options.leagueId) > 0
       ? Number(options.leagueId)
       : null
+  const leagueId = configuredLeagueId() ?? optionLeagueId
 
   const leagueAuth: Record<string, string | number> = {}
   if (leagueHost) leagueAuth.leagueHost = leagueHost

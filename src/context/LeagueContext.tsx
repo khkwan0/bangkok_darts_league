@@ -6,6 +6,7 @@ import {
   parseStoredCompetition,
   type Competition,
 } from '@/types/competition'
+import {configuredLeagueId, leagueRequestHeaders} from '@/lib/leagueRequest'
 import {applyScoreUnitToI18n} from '@/lib/matchUnitI18n'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
@@ -98,7 +99,7 @@ const initialState: LeagueState = {
   competitionPickerOpen: false,
   sport: 'pool',
   scoreUnit: 'frame',
-  leagueId: null,
+  leagueId: configuredLeagueId(),
   homePanelsStored: null,
   homePanels: null,
 }
@@ -438,14 +439,19 @@ export const LeagueProvider = ({children}: any) => {
     async function loadBranding() {
       try {
         const base = apiUrl.replace(/\/$/, '')
-        const res = await fetch(`${base}/branding`)
+        const res = await fetch(`${base}/branding`, {
+          headers: leagueRequestHeaders(),
+        })
         if (!res.ok) return
         const json = await res.json()
         const sportRaw = json?.data?.sport
         const unitRaw = json?.data?.score_unit
+        const configuredId = configuredLeagueId()
         const leagueIdRaw = Number(json?.data?.id)
         if (cancelled) return
-        if (Number.isFinite(leagueIdRaw) && leagueIdRaw > 0) {
+        if (configuredId != null) {
+          dispatch({type: 'SET_LEAGUE_ID', payload: configuredId})
+        } else if (Number.isFinite(leagueIdRaw) && leagueIdRaw > 0) {
           dispatch({type: 'SET_LEAGUE_ID', payload: leagueIdRaw})
         }
         const sport =

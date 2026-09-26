@@ -1,4 +1,5 @@
 import config from '@/config'
+import {leagueRequestHeaders} from '@/lib/leagueRequest'
 import {useLeagueContext} from '@/context/LeagueContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 // import {socket} from '~/socket'
@@ -28,6 +29,7 @@ export const useNetwork = () => {
       const token = await AsyncStorage.getItem('jwt')
       const res = await fetch(apiDomain + '/' + _endpoint, {
         headers: {
+          ...leagueRequestHeaders(),
           Authorization: 'Bearer ' + token,
         },
       })
@@ -59,6 +61,7 @@ export const useNetwork = () => {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: {
+          ...leagueRequestHeaders(),
           'Content-Type': 'application/json',
           Authorization: 'Bearer ' + token,
         },
@@ -83,6 +86,7 @@ export const useNetwork = () => {
         method: 'PATCH',
         body: JSON.stringify(payload),
         headers: {
+          ...leagueRequestHeaders(),
           'Content-Type': 'application/json',
           Authorization: 'Bearer ' + token,
         },
@@ -106,6 +110,7 @@ export const useNetwork = () => {
         method: 'PUT',
         body: JSON.stringify(payload),
         headers: {
+          ...leagueRequestHeaders(),
           'Content-Type': 'application/json',
           Authorization: 'Bearer ' + token,
         },
@@ -129,6 +134,7 @@ export const useNetwork = () => {
         method: 'DELETE',
         body: payload ? JSON.stringify(payload) : undefined,
         headers: {
+          ...leagueRequestHeaders(),
           'Content-Type': 'application/json',
           Authorization: 'Bearer ' + token,
         },

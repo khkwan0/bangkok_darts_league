@@ -1,6 +1,7 @@
 import {useNetwork} from '@/hooks/useNetwork'
 import {useLeagueContext} from '@/context/LeagueContext'
 import config from '@/config'
+import {leagueRequestHeaders} from '@/lib/leagueRequest'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {File} from 'expo-file-system'
 import {manipulateAsync, SaveFormat} from 'expo-image-manipulator'
@@ -306,6 +307,7 @@ export function useForums() {
         method: 'POST',
         body: data,
         headers: {
+          ...leagueRequestHeaders(),
           Authorization: 'Bearer ' + token,
         },
       })

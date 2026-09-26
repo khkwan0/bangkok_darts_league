@@ -1,4 +1,5 @@
 import config from '@/config'
+import {leagueRequestHeaders} from '@/lib/leagueRequest'
 import {File} from 'expo-file-system'
 import {manipulateAsync, SaveFormat} from 'expo-image-manipulator'
 import {useNetwork} from '@/hooks/useNetwork'
@@ -227,6 +228,7 @@ export function useAnnouncements() {
             method: 'POST',
             body: data,
             headers: {
+              ...leagueRequestHeaders(),
               Authorization: 'Bearer ' + token,
             },
           },

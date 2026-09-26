@@ -1,5 +1,6 @@
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import config from '@/config'
+import {leagueRequestHeaders} from '@/lib/leagueRequest'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useNetwork} from '@/hooks/useNetwork'
 import {ensureUserChannels} from '@/lib/notifications'
@@ -289,6 +290,7 @@ export const useAccount = () => {
         method: 'POST',
         body: data,
         headers: {
+          ...leagueRequestHeaders(),
           Authorization: 'Bearer ' + token,
         },
       })

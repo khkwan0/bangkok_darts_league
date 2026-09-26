@@ -34,6 +34,7 @@ import {
 } from '@/lib/cueChatSession'
 import {createSocketClient, loadSocketAuth} from '@/lib/socketAuth'
 import config from '@/config'
+import {leagueRequestHeaders} from '@/lib/leagueRequest'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {Ionicons} from '@expo/vector-icons'
 import {File} from 'expo-file-system'
@@ -241,6 +242,7 @@ export default function CueChat({agentScope = 'member'}: CueChatProps) {
         method: 'POST',
         body: data,
         headers: {
+          ...leagueRequestHeaders(),
           Authorization: 'Bearer ' + token,
         },
       })
