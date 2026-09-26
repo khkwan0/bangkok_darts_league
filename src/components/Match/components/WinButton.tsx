@@ -1,11 +1,11 @@
-import {Pressable, useColorScheme, View} from 'react-native'
-import {ThemedText as Text} from '@/components/ThemedText'
-import {useMatchContext} from '@/context/MatchContext'
-import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import ConfirmDialog from '@/components/ConfirmDialog'
+import MCI from '@expo/vector-icons/MaterialCommunityIcons'
+import * as Haptics from 'expo-haptics'
 import * as React from 'react'
 import {useTranslation} from 'react-i18next'
-import * as Haptics from 'expo-haptics'
+import {Pressable, Text} from 'react-native'
+import {useScoresheetTheme} from './scoresheetTheme'
+
 interface WinButtonProps {
   winner: number
   HandleWin: Function
@@ -13,8 +13,10 @@ interface WinButtonProps {
   teamId?: number | string
   side: string
   goldenBreak: boolean
-  gameType: string
+  accent: string
+  onAccent: string
 }
+
 export default function WinButton({
   winner,
   HandleWin,
@@ -22,18 +24,29 @@ export default function WinButton({
   teamId,
   side,
   goldenBreak,
+  accent,
+  onAccent,
 }: WinButtonProps) {
-  const theme = useColorScheme()
-  const borderColor = theme === 'dark' ? '#aaa' : '#222'
   const [showConfirm, setShowConfirm] = React.useState(false)
   const [showConfirmUndo, setShowConfirmUndo] = React.useState(false)
   const {t} = useTranslation()
-  const colorScheme = useColorScheme()
+  const theme = useScoresheetTheme()
   const [isPressed, setIsPressed] = React.useState(false)
+  const [trackedWinner, setTrackedWinner] = React.useState(winner)
 
-  React.useEffect(() => {
+  if (winner !== trackedWinner) {
+    setTrackedWinner(winner)
     setIsPressed(false)
-  }, [winner])
+  }
+
+  const bar = {
+    minHeight: 40,
+    borderRadius: 10,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    alignSelf: 'stretch' as const,
+    marginTop: 10,
+  }
 
   return (
     <>
@@ -62,42 +75,50 @@ export default function WinButton({
         />
       )}
       {winner === teamId && (
-        <Pressable className="p-2" onPress={() => setShowConfirmUndo(true)}>
-          {colorScheme === 'light' && goldenBreak && (
-            <View className="bg-blue-900 rounded-full p-2">
-              <MCI name="check" color="yellow" size={30} />
-            </View>
-          )}
-          {colorScheme === 'light' && !goldenBreak && (
-            <MCI name="check" color="green" size={30} />
-          )}
-          {colorScheme === 'dark' && (
-            <MCI
-              name="check"
-              color={goldenBreak ? 'yellow' : 'green'}
-              size={30}
-            />
-          )}
+        <Pressable
+          onPress={() => setShowConfirmUndo(true)}
+          style={{
+            ...bar,
+            backgroundColor: goldenBreak ? theme.gold : theme.win,
+          }}>
+          <MCI
+            name={goldenBreak ? 'star' : 'check'}
+            color={goldenBreak ? theme.goldInk : '#FFFFFF'}
+            size={20}
+          />
         </Pressable>
       )}
       {winner !== teamId && !winner && (
         <Pressable
-          className={`p-2 border rounded-xl ${isPressed ? 'bg-blue-500' : ''}`}
-          style={{borderColor: borderColor}}
+          style={{
+            ...bar,
+            borderWidth: 1.5,
+            borderColor: accent,
+            backgroundColor: isPressed ? accent : 'transparent',
+          }}
           onPressIn={() => setIsPressed(true)}
           onPressOut={() => setIsPressed(false)}
           onLongPress={() => HandleWin(side, true)}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
             HandleWin(side)
-          }}
-        >
-          <Text type="subtitle">{t('win').toUpperCase()}</Text>
+          }}>
+          <Text
+            style={{
+              color: isPressed ? onAccent : accent,
+              fontSize: 14,
+              fontWeight: '800',
+              letterSpacing: 0.8,
+            }}>
+            {t('win').toUpperCase()}
+          </Text>
         </Pressable>
       )}
       {winner !== teamId && winner !== 0 && (
-        <Pressable className="p-2" onPress={() => setShowConfirm(true)}>
-          <MCI name="close-circle-outline" color="red" size={30} />
+        <Pressable
+          onPress={() => setShowConfirm(true)}
+          style={{...bar, backgroundColor: theme.faint}}>
+          <MCI name="close" color={theme.muted} size={18} />
         </Pressable>
       )}
     </>

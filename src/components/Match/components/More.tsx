@@ -1,24 +1,40 @@
-import {ThemedText as Text} from '@/components/ThemedText'
-import Row from '@/components/Row'
-import {Pressable} from 'react-native'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import {router} from 'expo-router'
-import {useMatchContext} from '@/context/MatchContext'
+import {useTranslation} from 'react-i18next'
+import {Pressable, Text} from 'react-native'
+import {useScoresheetTheme} from './scoresheetTheme'
 
 export default function More({matchId}: {matchId: number}) {
+  const {t} = useTranslation()
+  const theme = useScoresheetTheme()
+
   return (
     <Pressable
-      className="items-center justify-center p-4 my-2 mx-4 bg-violet-300 dark:bg-violet-500 rounded-lg"
       onPress={() =>
         router.push({
           pathname: '/Match/History',
           params: {params: JSON.stringify({match_id: matchId})},
         })
-      }>
-      <Row className="items-center" style={{gap: 10}}>
-        <MCI name="dots-triangle" size={20} />
-        <Text type="subtitle">more</Text>
-      </Row>
+      }
+      style={{
+        marginHorizontal: 12,
+        marginTop: 10,
+        marginBottom: 8,
+        paddingVertical: 14,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: theme.cardBorder,
+        backgroundColor: theme.card,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+      }}>
+      <MCI name="history" size={18} color={theme.muted} />
+      <Text style={{color: theme.text, fontSize: 15, fontWeight: '700'}}>
+        {t('more')}
+      </Text>
+      <MCI name="chevron-right" size={18} color={theme.muted} />
     </Pressable>
   )
 }

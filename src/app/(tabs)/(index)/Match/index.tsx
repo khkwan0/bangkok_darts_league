@@ -1,5 +1,4 @@
 import CompletedMatchDetails from '@/components/Completed/CompletedMatchDetails'
-import Divider from '@/components/Divider'
 import {
   Finalizer,
   FirstBreak,
@@ -8,8 +7,8 @@ import {
   Score,
   VSHeader,
 } from '@/components/Match/components'
+import {useScoresheetTheme} from '@/components/Match/components/scoresheetTheme'
 import { FrameType } from '@/components/Match/types'
-import { ThemedView as View } from '@/components/ThemedView'
 import { useMatchContext } from '@/context/MatchContext'
 import { useMatch } from '@/hooks/useMatch'
 import { useTabListContentContainerStyle } from '@/hooks/useTabListContentContainerStyle'
@@ -17,7 +16,7 @@ import { resolveFormatSubsections } from '@/lib/matchFormat'
 import { useNavigation } from "expo-router/react-navigation"
 import { router, useLocalSearchParams } from 'expo-router'
 import React from 'react'
-import { AppState, FlatList } from 'react-native'
+import { AppState, FlatList, View } from 'react-native'
 
 export default function ScoreSheet() {
   const {state, dispatch, SocketConnect, SocketDisconnect, UpdateTeams}: any =
@@ -26,6 +25,7 @@ export default function ScoreSheet() {
   const {params} = useLocalSearchParams()
   const [isMounted, setIsMounted] = React.useState(false)
   const navigation = useNavigation()
+  const theme = useScoresheetTheme()
   const listContentStyle = useTabListContentContainerStyle({paddingBottom: 16})
   /*
   const matchInfo = React.useMemo(
@@ -222,33 +222,48 @@ export default function ScoreSheet() {
   } else {
     return (
       <FlatList
+        style={{flex: 1, backgroundColor: theme.canvas}}
         contentContainerStyle={listContentStyle}
         refreshing={refreshing}
         onRefresh={() => GetFrames()}
         ListHeaderComponent={
-          <>
-            <View className="pb-1 pt-4">
-              <VSHeader matchInfo={matchInfo} />
+          <View
+            style={[
+              {
+                marginHorizontal: 12,
+                marginTop: 12,
+                marginBottom: 8,
+                borderRadius: 18,
+              },
+              theme.shadow,
+            ]}>
+            <View
+              style={{
+                borderRadius: 18,
+                overflow: 'hidden',
+                backgroundColor: theme.card,
+                borderWidth: 1,
+                borderColor: theme.cardBorder,
+                paddingBottom: 16,
+              }}>
+            <View style={{flexDirection: 'row', height: 4}}>
+              <View style={{flex: 1, backgroundColor: theme.home.accent}} />
+              <View style={{flex: 1, backgroundColor: theme.away.accent}} />
             </View>
-            <View className="py-1">
-              <FirstBreak matchInfo={matchInfo} />
+            <View style={{paddingTop: 16}}>
+              <VSHeader />
             </View>
-            <View className="py-1">
-              <Score />
+            <Score />
+            <FirstBreak />
             </View>
-          </>
+          </View>
         }
         ListFooterComponent={
           <>
-            <View>
-              <Finalizer matchInfo={matchInfo} />
-            </View>
-            <View>
-              <More matchId={matchInfo.match_id} />
-            </View>
+            <Finalizer matchInfo={matchInfo} />
+            <More matchId={matchInfo.match_id} />
           </>
         }
-        ItemSeparatorComponent={() => <Divider />}
         data={state.frameData}
         renderItem={({item, index}) => (
           <Frame item={item} index={index} refreshing={refreshing} />

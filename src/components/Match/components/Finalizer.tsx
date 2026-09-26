@@ -1,27 +1,87 @@
-import Row from '@/components/Row'
-import {
-  ActivityIndicator,
-  Pressable,
-  useColorScheme,
-  Alert,
-  Text,
-  View,
-} from 'react-native'
-import {useTranslation} from 'react-i18next'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useMatchContext} from '@/context/MatchContext'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
-import React from 'react'
-import {LinearGradient} from 'expo-linear-gradient'
-import * as Haptics from 'expo-haptics'
 import {
   frameHasRequiredPlayers,
   isMatchCompleteByMode,
   parseMatchFormat,
 } from '@/lib/matchFormat'
+import * as Haptics from 'expo-haptics'
+import React from 'react'
+import {useTranslation} from 'react-i18next'
+import {ActivityIndicator, Alert, Pressable, Text, View} from 'react-native'
+import {useScoresheetTheme} from './scoresheetTheme'
+
+function FinalizeButton({
+  label,
+  loading,
+  finalized,
+  color,
+  gold,
+  goldText,
+  spinner,
+  onFinalize,
+  onUnfinalize,
+}: {
+  label: string
+  loading: boolean
+  finalized: boolean
+  color: string
+  gold: string
+  goldText: string
+  spinner: string
+  onFinalize: () => void
+  onUnfinalize: () => void
+}) {
+  if (loading) {
+    return (
+      <View style={{flex: 1, paddingVertical: 16, alignItems: 'center'}}>
+        <ActivityIndicator size="small" color={spinner} />
+      </View>
+    )
+  }
+
+  if (finalized) {
+    return (
+      <Pressable
+        onPress={onUnfinalize}
+        style={{
+          flex: 1,
+          marginHorizontal: 4,
+          borderRadius: 14,
+          borderWidth: 1.5,
+          borderColor: gold,
+          backgroundColor: 'rgba(245, 197, 66, 0.16)',
+          paddingVertical: 14,
+          alignItems: 'center',
+        }}>
+        <Text style={{color: goldText, fontWeight: '800', fontSize: 15}}>
+          {label}
+        </Text>
+      </Pressable>
+    )
+  }
+
+  return (
+    <Pressable
+      onPress={onFinalize}
+      style={{
+        flex: 1,
+        marginHorizontal: 4,
+        borderRadius: 14,
+        backgroundColor: color,
+        paddingVertical: 14,
+        alignItems: 'center',
+      }}>
+      <Text style={{color: '#FFFFFF', fontWeight: '800', fontSize: 15}}>
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
 
 export default function Finalizer({matchInfo}: {matchInfo: any}) {
-  const colorScheme = useColorScheme()
+  const theme = useScoresheetTheme()
   const {
     state: matchState,
     FinalizeMatch,
@@ -30,9 +90,19 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
   const {state} = useLeagueContext()
   const [homeLoading, setHomeLoading] = React.useState(false)
   const [awayLoading, setAwayLoading] = React.useState(false)
+  const [seenHome, setSeenHome] = React.useState(matchState.finalizedHome)
+  const [seenAway, setSeenAway] = React.useState(matchState.finalizedAway)
   const {t} = useTranslation()
-  const homeStyle = `bg-red-400 dark:bg-red-600 mx-4 p-4 items-center rounded-lg`
-  const awayStyle = `bg-blue-400 dark:bg-blue-600 mx-4 p-4 item-center rounded-lg`
+
+  if (matchState.finalizedHome !== seenHome) {
+    setSeenHome(matchState.finalizedHome)
+    setHomeLoading(false)
+  }
+
+  if (matchState.finalizedAway !== seenAway) {
+    setSeenAway(matchState.finalizedAway)
+    setAwayLoading(false)
+  }
 
   function canActForTeam(teamId: number): boolean {
     const userId = state.user?.id
@@ -130,86 +200,38 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
     }
   }
 
-  React.useEffect(() => {
-    setHomeLoading(false)
-  }, [matchState.finalizedHome])
-
-  React.useEffect(() => {
-    setAwayLoading(false)
-  }, [matchState.finalizedAway])
-
   return (
-    <View>
-      <Row>
-        <View className="flex-1">
-          {homeLoading ? (
-            <ActivityIndicator
-              className="mx-4 p-4"
-              size="small"
-              color={colorScheme === 'dark' ? 'white' : 'black'}
-            />
-          ) : matchState.finalizedHome ? (
-            <Pressable
-              onPress={() => Unfinalize('home')}
-              className="rounded-lg mx-4 items-center rounded-lg">
-              <LinearGradient
-                colors={['gold', 'white', 'gold']}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}
-                style={{padding: 14, width: '100%', borderRadius: 8}}>
-                <Text className="text-center text-black font-bold text-lg">
-                  {t('unfinalize')}
-                  &nbsp;{t('home')}
-                </Text>
-              </LinearGradient>
-            </Pressable>
-          ) : (
-            <Pressable
-              disabled={homeLoading}
-              className={homeStyle}
-              onPress={() => HandleFinalize('home')}>
-              <Text className="text-center text-white font-bold text-lg">
-                {t('finalize')}
-                &nbsp;{t('home')}
-              </Text>
-            </Pressable>
-          )}
-        </View>
-        <View className="flex-1">
-          {awayLoading ? (
-            <ActivityIndicator
-              className="mx-4 p-4"
-              size="small"
-              color={colorScheme === 'dark' ? 'white' : 'black'}
-            />
-          ) : matchState.finalizedAway ? (
-            <Pressable
-              onPress={() => Unfinalize('away')}
-              className="rounded-lg mx-4 items-center rounded-lg">
-              <LinearGradient
-                colors={['gold', 'white', 'gold']}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}
-                style={{padding: 14, width: '100%', borderRadius: 8}}>
-                <Text className="text-center text-black font-bold text-lg">
-                  {t('unfinalize')}
-                  &nbsp;{t('away')}
-                </Text>
-              </LinearGradient>
-            </Pressable>
-          ) : (
-            <Pressable
-              disabled={awayLoading}
-              className={awayStyle}
-              onPress={() => HandleFinalize('away')}>
-              <Text className="text-center text-white font-bold text-lg">
-                {t('finalize')}
-                &nbsp;{t('away')}
-              </Text>
-            </Pressable>
-          )}
-        </View>
-      </Row>
+    <View style={{flexDirection: 'row', paddingHorizontal: 8, marginTop: 14}}>
+      <FinalizeButton
+        label={
+          matchState.finalizedHome
+            ? `${t('unfinalize')} ${t('home')}`
+            : `${t('finalize')} ${t('home')}`
+        }
+        loading={homeLoading}
+        finalized={matchState.finalizedHome}
+        color={theme.home.button}
+        gold={theme.gold}
+        goldText={theme.isDark ? theme.gold : '#92400E'}
+        spinner={theme.isDark ? '#FFFFFF' : '#0F172A'}
+        onFinalize={() => HandleFinalize('home')}
+        onUnfinalize={() => Unfinalize('home')}
+      />
+      <FinalizeButton
+        label={
+          matchState.finalizedAway
+            ? `${t('unfinalize')} ${t('away')}`
+            : `${t('finalize')} ${t('away')}`
+        }
+        loading={awayLoading}
+        finalized={matchState.finalizedAway}
+        color={theme.away.button}
+        gold={theme.gold}
+        goldText={theme.isDark ? theme.gold : '#92400E'}
+        spinner={theme.isDark ? '#FFFFFF' : '#0F172A'}
+        onFinalize={() => HandleFinalize('away')}
+        onUnfinalize={() => Unfinalize('away')}
+      />
     </View>
   )
 }
