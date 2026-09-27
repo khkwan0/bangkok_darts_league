@@ -101,17 +101,20 @@ export default function PlayerCard({
         ) {
           Object.keys(state.stats[key]).forEach(frameKey => {
             played++
-            const frameType = state.stats[key][frameKey].type.slice(-1)
-            if (frameType === 's') {
+            const entry = state.stats[key][frameKey]
+            const noPlayers = Number(entry.noPlayers)
+            const isSingles = noPlayers === 1
+            const isDoubles = noPlayers === 2
+            if (isSingles) {
               s_played++
-            } else if (frameType === 'd') {
+            } else if (isDoubles) {
               d_played++
             }
-            if (state.stats[key][frameKey].win) {
+            if (entry.win) {
               wins++
-              if (frameType === 's') {
+              if (isSingles) {
                 s_wins++
-              } else if (frameType === 'd') {
+              } else if (isDoubles) {
                 d_wins++
               }
             }

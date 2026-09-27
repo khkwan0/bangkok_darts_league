@@ -8,24 +8,12 @@ import {useScoresheetTheme} from './scoresheetTheme'
 import WinButton from './WinButton'
 
 function frameKindLabel(
-  type: string | undefined,
   noPlayers: number | undefined,
   t: (key: string) => string,
 ) {
-  if (!type) return ''
-  const game = type.startsWith('8') ? '8' : type.startsWith('9') ? '9' : ''
-  const kind =
-    noPlayers === 2
-      ? t('doubles')
-      : noPlayers === 1
-        ? t('singles')
-        : type.endsWith('d')
-          ? t('doubles')
-          : type.endsWith('s')
-            ? t('singles')
-            : ''
-  if (game && kind) return `${game} · ${kind}`
-  return kind
+  if (noPlayers === 2) return t('doubles')
+  if (noPlayers === 1) return t('singles')
+  return ''
 }
 
 export default function Frame({item, index, refreshing}: FrameProps) {
@@ -111,7 +99,7 @@ export default function Frame({item, index, refreshing}: FrameProps) {
   const winner = state.frameData[index].winner
   const homeWon = winner === homeTeamId
   const awayWon = winner === awayTeamId
-  const kind = frameKindLabel(frameType, noPlayers, t)
+  const kind = frameKindLabel(item.noPlayers ?? noPlayers, t)
 
   function panel(side: 'home' | 'away') {
     const palette = side === 'home' ? theme.home : theme.away

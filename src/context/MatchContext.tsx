@@ -13,6 +13,7 @@ type StatsType = {
     [key: string]: {
       win: boolean
       type: string
+      noPlayers: number
     }
   }
 }
@@ -308,6 +309,11 @@ export const MatchProvider = (props: any) => {
     ) {
       const stats: StatsType = {}
       state.frameData.forEach((frame: FrameType, index: number) => {
+        const initial = state.matchInfo.initialFrames![index]
+        const meta = {
+          type: initial?.type || frame.type || '',
+          noPlayers: frame.noPlayers ?? initial?.noPlayers ?? 1,
+        }
         if (typeof frame.winner !== 'undefined' && frame.winner) {
           if (frame.winner === state.matchInfo.home_team_id) {
             frame.homePlayerIds.forEach((playerId: number) => {
@@ -317,7 +323,7 @@ export const MatchProvider = (props: any) => {
               }
               stats[key][`frame${index}`] = {
                 win: true,
-                type: state.matchInfo.initialFrames![index]?.type || '',
+                ...meta,
               }
             })
             frame.awayPlayerIds.forEach((playerId: number) => {
@@ -327,7 +333,7 @@ export const MatchProvider = (props: any) => {
               }
               stats[key][`frame${index}`] = {
                 win: false,
-                type: state.matchInfo.initialFrames![index]?.type || '',
+                ...meta,
               }
             })
           } else {
@@ -338,7 +344,7 @@ export const MatchProvider = (props: any) => {
               }
               stats[key][`frame${index}`] = {
                 win: false,
-                type: state.matchInfo.initialFrames![index]?.type || '',
+                ...meta,
               }
             })
             frame.awayPlayerIds.forEach((playerId: number) => {
@@ -348,7 +354,7 @@ export const MatchProvider = (props: any) => {
               }
               stats[key][`frame${index}`] = {
                 win: true,
-                type: state.matchInfo.initialFrames![index]?.type || '',
+                ...meta,
               }
             })
           }
@@ -365,8 +371,8 @@ export const MatchProvider = (props: any) => {
     playerId: number,
     nickname: string,
     newPlayer = false,
-    frameType = '9d',
-    frameNumber: number,
+    frameType?: string,
+    frameNumber?: number,
   ) {
     /*
     dispatch({
@@ -380,8 +386,9 @@ export const MatchProvider = (props: any) => {
     })
       */
 
+    const initial = state.matchInfo.initialFrames?.[frameIdx]
     const data = {
-      frameNumber: frameNumber,
+      frameNumber: frameNumber ?? initial?.frameNumber ?? 0,
       frameIdx: frameIdx,
       matchId: state.matchInfo.match_id,
       side: side,
@@ -389,8 +396,8 @@ export const MatchProvider = (props: any) => {
       nickname: nickname,
       playerIdx: slot,
       newPlayer: newPlayer,
-      frameType: frameType,
-      mfpp: state.matchInfo.initialFrames?.[frameIdx]?.mfpp || 0,
+      frameType: frameType || initial?.type || '',
+      mfpp: initial?.mfpp || 0,
     }
     SocketSend('players', data)
   }
