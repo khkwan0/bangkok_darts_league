@@ -7,14 +7,23 @@ import Player from './Player'
 import {useScoresheetTheme} from './scoresheetTheme'
 import WinButton from './WinButton'
 
-function frameKindLabel(type: string | undefined, t: (key: string) => string) {
+function frameKindLabel(
+  type: string | undefined,
+  noPlayers: number | undefined,
+  t: (key: string) => string,
+) {
   if (!type) return ''
   const game = type.startsWith('8') ? '8' : type.startsWith('9') ? '9' : ''
-  const kind = type.endsWith('d')
-    ? t('doubles')
-    : type.endsWith('s')
-      ? t('singles')
-      : ''
+  const kind =
+    noPlayers === 2
+      ? t('doubles')
+      : noPlayers === 1
+        ? t('singles')
+        : type.endsWith('d')
+          ? t('doubles')
+          : type.endsWith('s')
+            ? t('singles')
+            : ''
   if (game && kind) return `${game} · ${kind}`
   return kind
 }
@@ -24,6 +33,7 @@ export default function Frame({item, index, refreshing}: FrameProps) {
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
   const frameType = state.matchInfo.initialFrames[index].type
+  const noPlayers = state.matchInfo.initialFrames[index].noPlayers
   const {home_team_id: homeTeamId, away_team_id: awayTeamId} = state.matchInfo
 
   function HandleWin(side: string, goldenBreak: boolean = false): void {
@@ -101,7 +111,7 @@ export default function Frame({item, index, refreshing}: FrameProps) {
   const winner = state.frameData[index].winner
   const homeWon = winner === homeTeamId
   const awayWon = winner === awayTeamId
-  const kind = frameKindLabel(frameType, t)
+  const kind = frameKindLabel(frameType, noPlayers, t)
 
   function panel(side: 'home' | 'away') {
     const palette = side === 'home' ? theme.home : theme.away
@@ -165,6 +175,7 @@ export default function Frame({item, index, refreshing}: FrameProps) {
             frameIndex={index}
             frameNumber={item.frameNumber}
             frameType={frameType}
+            noPlayers={item.noPlayers ?? noPlayers}
             playerIds={item.homePlayerIds}
             refreshing={refreshing}
             ink={theme.home.ink}
@@ -188,6 +199,7 @@ export default function Frame({item, index, refreshing}: FrameProps) {
             frameIndex={index}
             frameNumber={item.frameNumber}
             frameType={frameType}
+            noPlayers={item.noPlayers ?? noPlayers}
             playerIds={item.awayPlayerIds}
             refreshing={refreshing}
             ink={theme.away.ink}

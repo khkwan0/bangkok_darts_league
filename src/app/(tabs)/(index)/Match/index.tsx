@@ -12,7 +12,11 @@ import { FrameType } from '@/components/Match/types'
 import { useMatchContext } from '@/context/MatchContext'
 import { useMatch } from '@/hooks/useMatch'
 import { useTabListContentContainerStyle } from '@/hooks/useTabListContentContainerStyle'
-import { resolveFormatSubsections } from '@/lib/matchFormat'
+import {
+  buildNoPlayersByType,
+  resolveFormatSubsections,
+  resolveNoPlayers,
+} from '@/lib/matchFormat'
 import { useNavigation } from "expo-router/react-navigation"
 import { router, useLocalSearchParams } from 'expo-router'
 import React from 'react'
@@ -69,73 +73,83 @@ export default function ScoreSheet() {
   }, [])
 
   React.useEffect(() => {
-    const subsections = resolveFormatSubsections(matchInfo.format)
-    let frameNumber = 1
-    let sectionCount = 1
-    const _frames: FrameType[] = []
-    subsections.forEach((section: any, idx: number) => {
-      for (let i = 0; i < section.frames; i++) {
-        const _frame: FrameType = {
-          frameNumber: frameNumber,
-          section: sectionCount,
-          mfpp: section.mfpp,
-          type: section.type,
-          winner: 0,
-          homePlayerIds: [],
-          awayPlayerIds: [],
-          homeScore: 0,
-          awayScore: 0,
+    let cancelled = false
+
+    async function initScoresheet() {
+      const frameTypes = await match.GetFrameTypes()
+      if (cancelled) return
+
+      const noPlayersByType = buildNoPlayersByType(frameTypes)
+      const subsections = resolveFormatSubsections(matchInfo.format)
+      let frameNumber = 1
+      let sectionCount = 1
+      const _frames: FrameType[] = []
+      subsections.forEach((section, idx: number) => {
+        const noPlayers = resolveNoPlayers(
+          section.type,
+          noPlayersByType,
+          section.noPlayers,
+        )
+        for (let i = 0; i < section.frames; i++) {
+          const _frame: FrameType = {
+            frameNumber: frameNumber,
+            section: sectionCount,
+            mfpp: section.mfpp,
+            type: section.type,
+            noPlayers,
+            winner: 0,
+            homePlayerIds: [],
+            awayPlayerIds: [],
+            homeScore: 0,
+            awayScore: 0,
+          }
+          _frames.push(_frame)
+          frameNumber++
         }
-        _frames.push(_frame)
-        frameNumber++
-      }
-      if (idx < subsections.length - 1) {
-        const _frame: FrameType = {
-          frameNumber: -1,
-          section: sectionCount,
-          mfpp: 0,
-          type: 'section',
-          winner: 0,
-          homePlayerIds: [],
-          awayPlayerIds: [],
-          homeScore: 0,
-          awayScore: 0,
+        if (idx < subsections.length - 1) {
+          const _frame: FrameType = {
+            frameNumber: -1,
+            section: sectionCount,
+            mfpp: 0,
+            type: 'section',
+            noPlayers: 0,
+            winner: 0,
+            homePlayerIds: [],
+            awayPlayerIds: [],
+            homeScore: 0,
+            awayScore: 0,
+          }
+          _frames.push(_frame)
         }
-        _frames.push(_frame)
-      }
-      sectionCount++
-    })
-    _frames.push({
-      frameNumber: -1,
-      section: sectionCount - 1,
-      mfpp: 0,
-      type: 'section',
-      winner: 0,
-      homePlayerIds: [],
-      awayPlayerIds: [],
-      homeScore: 0,
-      awayScore: 0,
-    })
-    frames.current = [..._frames]
-    return () => dispatch({type: 'CLEAR_MATCHSTATE', payload: null})
-  }, [])
+        sectionCount++
+      })
+      _frames.push({
+        frameNumber: -1,
+        section: sectionCount - 1,
+        mfpp: 0,
+        type: 'section',
+        noPlayers: 0,
+        winner: 0,
+        homePlayerIds: [],
+        awayPlayerIds: [],
+        homeScore: 0,
+        awayScore: 0,
+      })
+      frames.current = [..._frames]
+      matchInfo.initialFrames = [...frames.current]
+      dispatch({type: 'SET_MATCHINFO', payload: matchInfo})
+      SocketConnect('match_' + matchInfo.match_id)
+      await GetFirstBreak()
+      await GetFrames()
+    }
 
-  React.useEffect(() => {
-    matchInfo.initialFrames = [...frames.current]
-    matchInfo.home_team_id = matchInfo.home_team_id
-    matchInfo.away_team_id = matchInfo.away_team_id
-    dispatch({type: 'SET_MATCHINFO', payload: matchInfo})
-    SocketConnect('match_' + matchInfo.match_id)
-    return () => SocketDisconnect()
-  }, [])
+    initScoresheet()
 
-  React.useEffect(() => {
-    GetFirstBreak()
-  }, [])
-
-  React.useEffect(() => {
-    GetFrames()
-    return () => setIsMounted(false)
+    return () => {
+      cancelled = true
+      SocketDisconnect()
+      dispatch({type: 'CLEAR_MATCHSTATE', payload: null})
+    }
   }, [])
 
   async function GetFrames() {
@@ -147,7 +161,14 @@ export default function ScoreSheet() {
         const _frames = res.data.frames
         _frames.forEach((frame: FrameType) => {
           if (typeof frame.frameIndex === 'number') {
-            __frames[frame.frameIndex] = frame
+            const template = __frames[frame.frameIndex]
+            __frames[frame.frameIndex] = {
+              ...template,
+              ...frame,
+              type: frame.type ?? template?.type,
+              mfpp: frame.mfpp ?? template?.mfpp,
+              noPlayers: frame.noPlayers ?? template?.noPlayers,
+            }
           }
         })
       }

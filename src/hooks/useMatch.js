@@ -12,6 +12,16 @@ export const useMatch = () => {
     }
   }
 
+  const GetFrameTypes = async () => {
+    try {
+      const res = await Get('/game/types')
+      return Array.isArray(res) ? res : []
+    } catch (e) {
+      console.log(e)
+      return []
+    }
+  }
+
   const GetMatchDetails = async matchId => {
     try {
       const res = await Get('/match/details/' + matchId)
@@ -147,6 +157,7 @@ export const useMatch = () => {
     ConfirmMatch,
     FinalizeMatch,
     GetFrames,
+    GetFrameTypes,
     GetMatchInfo,
     GetMatchDetails,
     GetMatchMetadata,

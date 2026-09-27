@@ -2,6 +2,7 @@ import Row from '@/components/Row'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useMatchContext} from '@/context/MatchContext'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
+import {resolveNoPlayers} from '@/lib/matchFormat'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import * as Haptics from 'expo-haptics'
 import {router} from 'expo-router'
@@ -15,6 +16,7 @@ interface PlayerProps {
   frameIndex: number
   frameNumber: number
   frameType?: string
+  noPlayers?: number
   playerIds: number[]
   refreshing?: boolean
   ink: string
@@ -92,6 +94,7 @@ export default function Player({
   frameIndex,
   frameNumber,
   frameType,
+  noPlayers,
   playerIds,
   refreshing = false,
   ink,
@@ -99,11 +102,15 @@ export default function Player({
 }: PlayerProps) {
   const {state}: any = useMatchContext()
   const {t} = useTranslation()
-  const [isPressed, setIsPressed] = useState(false)
-  const [isDoublePressed, setIsDoublePressed] = useState(false)
+  const [pressedSlot, setPressedSlot] = useState<number | null>(null)
   const {state: playerState}: any = useLeagueContext()
   const user = playerState.user
   const {home_team_id: homeTeamId, away_team_id: awayTeamId} = state.matchInfo
+  const slotCount = resolveNoPlayers(
+    frameType,
+    null,
+    noPlayers ?? state.matchInfo.initialFrames?.[frameIndex]?.noPlayers,
+  )
 
   const isPlayerOnTeam = () => {
     try {
@@ -159,7 +166,7 @@ export default function Player({
       state.firstBreak === homeTeamId &&
       state.frameData[frameIndex].frameNumber % 2 === 0)
 
-  function slotProps(slot: number, pressed: boolean, onPressIn: () => void, onPressOut: () => void) {
+  function slotProps(slot: number) {
     const playerId = playerIds[slot]
     const nickname = state?.teams?.[teamId]?.[playerId]?.nickname
     return {
@@ -167,18 +174,19 @@ export default function Player({
       nickname,
       ink,
       label: t('player'),
-      pressed,
+      pressed: pressedSlot === slot,
       onPress: () => handlePlayerSlotPress(slot),
-      onPressIn,
-      onPressOut,
+      onPressIn: () => setPressedSlot(slot),
+      onPressOut: () => setPressedSlot(null),
     }
   }
 
   if (refreshing) {
     return (
       <View style={{alignItems: 'center', gap: 10}}>
-        <PlayerSkeleton ink={ink} />
-        {(frameType === '8d' || frameType === '9d') && <PlayerSkeleton ink={ink} />}
+        {Array.from({length: slotCount}, (_, slot) => (
+          <PlayerSkeleton key={slot} ink={ink} />
+        ))}
         {hasBreak && (
           <View
             style={{
@@ -196,21 +204,11 @@ export default function Player({
 
   return (
     <View style={{alignItems: 'center'}}>
-      <PlayerSlot
-        {...slotProps(0, isPressed, () => setIsPressed(true), () => setIsPressed(false))}
-      />
-      {(frameType === '8d' || frameType === '9d') && (
-        <View style={{marginTop: 8}}>
-          <PlayerSlot
-            {...slotProps(
-              1,
-              isDoublePressed,
-              () => setIsDoublePressed(true),
-              () => setIsDoublePressed(false),
-            )}
-          />
+      {Array.from({length: slotCount}, (_, slot) => (
+        <View key={slot} style={slot > 0 ? {marginTop: 8} : undefined}>
+          <PlayerSlot {...slotProps(slot)} />
         </View>
-      )}
+      ))}
       {hasBreak && (
         <View
           style={{

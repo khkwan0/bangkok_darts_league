@@ -1,21 +1,20 @@
-import { useLocalSearchParams, Link, router } from 'expo-router';
-import {useMatchContext} from '@/context/MatchContext'
-import {FlatList, Pressable} from 'react-native'
 import PlayerCard from '@/components/PlayerCard'
-import React from 'react'
-import {useNavigation} from "expo-router/react-navigation"
-import {t} from 'i18next'
-import {ThemedView as View} from '@/components/ThemedView'
 import {ThemedText as Text} from '@/components/ThemedText'
+import {ThemedView as View} from '@/components/ThemedView'
+import {useMatchContext} from '@/context/MatchContext'
 import {useThemeColor} from '@/hooks/useThemeColor'
+import {router, useLocalSearchParams} from 'expo-router'
+import {useNavigation} from 'expo-router/react-navigation'
+import {t} from 'i18next'
+import React from 'react'
+import {FlatList, Pressable} from 'react-native'
 
 export default function ChoosePlayer(props: any) {
   const {params} = useLocalSearchParams()
   const {state}: any = useMatchContext()
   const navigation = useNavigation()
-  const {teamId, side, frameIndex, frameNumber, frameType, slot, mfpp} = JSON.parse(
-    params as string,
-  )
+  const {teamId, side, frameIndex, frameNumber, frameType, slot, mfpp} =
+    JSON.parse(params as string)
 
   React.useEffect(() => {
     navigation.setOptions({title: t('roster')})

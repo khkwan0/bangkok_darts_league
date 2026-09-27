@@ -45,6 +45,37 @@ export type FormatSubsection = {
   frames: number
   type: string
   mfpp: number
+  noPlayers?: number
+}
+
+/** Map frame_types.short_name → no_players for scoresheet slot counts. */
+export function buildNoPlayersByType(
+  frameTypes: Array<{short_name?: string; no_players?: number | string}> | null | undefined,
+): Record<string, number> {
+  const map: Record<string, number> = {}
+  if (!Array.isArray(frameTypes)) return map
+  for (const ft of frameTypes) {
+    const key = String(ft?.short_name ?? '').trim()
+    const n = Number(ft?.no_players)
+    if (key && Number.isFinite(n) && n > 0) {
+      map[key] = Math.trunc(n)
+    }
+  }
+  return map
+}
+
+export function resolveNoPlayers(
+  type: string | undefined,
+  noPlayersByType?: Record<string, number> | null,
+  explicit?: number | null,
+): number {
+  if (explicit != null && Number.isFinite(Number(explicit)) && Number(explicit) > 0) {
+    return Math.trunc(Number(explicit))
+  }
+  const key = String(type ?? '').trim()
+  const fromMap = key && noPlayersByType ? noPlayersByType[key] : undefined
+  if (fromMap != null && fromMap > 0) return fromMap
+  return 1
 }
 
 /**
@@ -67,10 +98,16 @@ export function resolveFormatSubsections(raw: unknown): FormatSubsection[] {
       .filter(item => item && typeof item === 'object')
       .map(item => {
         const section = item as Record<string, unknown>
+        const noPlayersRaw = section.no_players ?? section.noPlayers
+        const noPlayers = Number(noPlayersRaw)
         return {
           frames: Number(section.frames) || 0,
           type: String(section.type ?? ''),
           mfpp: Number(section.mfpp) || 1,
+          noPlayers:
+            Number.isFinite(noPlayers) && noPlayers > 0
+              ? Math.trunc(noPlayers)
+              : undefined,
         }
       })
       .filter(section => section.frames > 0)
@@ -101,20 +138,14 @@ export function isMatchCompleteByMode(
 
 export function frameHasRequiredPlayers(frame: {
   type?: string
+  noPlayers?: number
   winner?: number
   homePlayerIds?: number[]
   awayPlayerIds?: number[]
 }): boolean {
   if (!frame.winner || frame.winner <= 0) return false
-  const type = typeof frame.type === 'string' ? frame.type : ''
+  const needed = resolveNoPlayers(frame.type, null, frame.noPlayers)
   const home = Array.isArray(frame.homePlayerIds) ? frame.homePlayerIds : []
   const away = Array.isArray(frame.awayPlayerIds) ? frame.awayPlayerIds : []
-  if (type.endsWith('s')) {
-    return home.length === 1 && away.length === 1
-  }
-  if (type.endsWith('d')) {
-    return home.length === 2 && away.length === 2
-  }
-  // Unknown frame type: require a winner and at least one player per side
-  return home.length >= 1 && away.length >= 1
+  return home.length === needed && away.length === needed
 }

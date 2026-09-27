@@ -1,8 +1,8 @@
-import { FrameType, MatchInfoDataType } from '@/components/Match/types'
-import { useMatch, useTeams } from '@/hooks'
-import React, { createContext, useContext, useReducer } from 'react'
-import { io } from 'socket.io-client'
-import { useLeagueContext } from './LeagueContext'
+import {FrameType, MatchInfoDataType} from '@/components/Match/types'
+import {useMatch, useTeams} from '@/hooks'
+import React, {createContext, useContext, useReducer} from 'react'
+import {io} from 'socket.io-client'
+import {useLeagueContext} from './LeagueContext'
 
 type JoinStatusType = {
   status: string
@@ -408,13 +408,16 @@ export const MatchProvider = (props: any) => {
     winnerTeamId: string,
     goldenBreak: boolean,
   ) {
-    const mfpp = state.matchInfo.initialFrames?.[parseInt(frameIdx)]?.mfpp || 0
     const frame = state.frameData[parseInt(frameIdx)]
+    const needed =
+      frame?.noPlayers ??
+      state.matchInfo.initialFrames?.[parseInt(frameIdx)]?.noPlayers ??
+      1
     const awayPlayerCount = frame.awayPlayerIds.length
     const homePlayerCount = frame.homePlayerIds.length
     const playerIds =
       side === 'home' ? frame.homePlayerIds : frame.awayPlayerIds
-    if (awayPlayerCount === mfpp && homePlayerCount === mfpp) {
+    if (awayPlayerCount === needed && homePlayerCount === needed) {
       const data = {
         side: side,
         matchId: state.matchInfo.match_id,
@@ -449,7 +452,7 @@ export const MatchProvider = (props: any) => {
     const data = {
       teamId: teamId,
       side: side,
-      matchId: state.matchInfo.match_id
+      matchId: state.matchInfo.match_id,
     }
     SocketSend('unfinalize', data)
   }
@@ -461,16 +464,8 @@ export const MatchProvider = (props: any) => {
       if (home_team_id && away_team_id) {
         const _teams: TeamsType = {}
         const matchId = match_id != null ? Number(match_id) : null
-        const _homePlayers = await teams.GetPlayers(
-          home_team_id,
-          true,
-          matchId,
-        )
-        const _awayPlayers = await teams.GetPlayers(
-          away_team_id,
-          true,
-          matchId,
-        )
+        const _homePlayers = await teams.GetPlayers(home_team_id, true, matchId)
+        const _awayPlayers = await teams.GetPlayers(away_team_id, true, matchId)
         const homePlayers: TeamsType[string] = {}
         const awayPlayers: TeamsType[string] = {}
         _homePlayers.data.forEach(

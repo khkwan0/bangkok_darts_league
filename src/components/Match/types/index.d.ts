@@ -66,6 +66,8 @@ export type FrameType = {
   homeScore: number
   awayScore: number
   type?: string
+  /** Players required per side from frame_types.no_players */
+  noPlayers?: number
   frameIdx?: number
   frameIndex?: number
   goldenBreak?: boolean

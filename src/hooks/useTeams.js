@@ -1,4 +1,4 @@
-import { useNetwork } from '@/hooks/useNetwork'
+import {useNetwork} from '@/hooks/useNetwork'
 
 export const useTeams = () => {
   const {Get, Post} = useNetwork()
@@ -11,10 +11,7 @@ export const useTeams = () => {
     try {
       if (teamid && Number.isInteger(teamid) && teamid >= 0) {
         let url =
-          '/playersteam/players?teamid=' +
-          teamid +
-          '&active_only=' +
-          activeOnly
+          '/playersteam/players?teamid=' + teamid + '&active_only=' + activeOnly
         if (matchId != null && Number(matchId) > 0) {
           url += '&matchid=' + Number(matchId)
         }
