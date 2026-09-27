@@ -183,7 +183,9 @@ export default function PlayerCard({
             onPress={HandlePress}
             disabled={disabled}
             className={`p-4 rounded-md ${isPressed ? 'bg-red-500' : disabled ? 'bg-blue-400' : 'bg-blue-800'}`}>
-            <Text>select</Text>
+            <Text className="font-semibold" style={{color: '#FFFFFF'}}>
+              select
+            </Text>
           </Pressable>
         </View>
       </Row>

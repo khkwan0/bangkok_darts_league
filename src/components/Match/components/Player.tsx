@@ -9,6 +9,7 @@ import {router} from 'expo-router'
 import {useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {Alert, Pressable, Text, View} from 'react-native'
+import {useScoresheetTheme} from './scoresheetTheme'
 
 interface PlayerProps {
   teamId: number | string
@@ -41,6 +42,7 @@ function PlayerSlot({
   filled,
   nickname,
   ink,
+  pressColor,
   label,
   pressed,
   onPress,
@@ -50,24 +52,26 @@ function PlayerSlot({
   filled: boolean
   nickname?: string
   ink: string
+  pressColor: string
   label: string
   pressed: boolean
   onPress: () => void
   onPressIn: () => void
   onPressOut: () => void
 }) {
+  const color = pressed ? pressColor : ink
   return (
     <Pressable
       onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
-      style={{opacity: pressed ? 0.55 : 1, paddingVertical: 2}}>
+      style={{paddingVertical: 2}}>
       <Row alignItems="center" justifyContent="center" style={{gap: 6}}>
         {filled ? (
           <Text
             numberOfLines={2}
             style={{
-              color: ink,
+              color,
               fontSize: 16,
               lineHeight: 20,
               fontWeight: '800',
@@ -77,8 +81,8 @@ function PlayerSlot({
           </Text>
         ) : (
           <>
-            <MCI name="plus" size={16} color={ink} />
-            <Text style={{color: ink, fontSize: 15, fontWeight: '700'}}>
+            <MCI name="plus" size={16} color={color} />
+            <Text style={{color, fontSize: 15, fontWeight: '700'}}>
               {label}
             </Text>
           </>
@@ -102,6 +106,7 @@ export default function Player({
 }: PlayerProps) {
   const {state}: any = useMatchContext()
   const {t} = useTranslation()
+  const theme = useScoresheetTheme()
   const [pressedSlot, setPressedSlot] = useState<number | null>(null)
   const {state: playerState}: any = useLeagueContext()
   const user = playerState.user
@@ -173,6 +178,7 @@ export default function Player({
       filled: typeof playerId !== 'undefined' && !!nickname,
       nickname,
       ink,
+      pressColor: theme.win,
       label: t('player'),
       pressed: pressedSlot === slot,
       onPress: () => handlePlayerSlotPress(slot),

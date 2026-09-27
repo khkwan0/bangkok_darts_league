@@ -107,6 +107,8 @@ export default function Frame({item, index, refreshing}: FrameProps) {
     const lost = !!winner && !won
     return {
       flex: 1,
+      flexDirection: 'column' as const,
+      justifyContent: 'space-between' as const,
       borderRadius: 14,
       paddingVertical: 12,
       paddingHorizontal: 8,
@@ -155,7 +157,14 @@ export default function Frame({item, index, refreshing}: FrameProps) {
           </Text>
         ) : null}
       </View>
-      <View style={{flexDirection: 'row', gap: 8, paddingHorizontal: 10, paddingBottom: 10}}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'stretch',
+          gap: 8,
+          paddingHorizontal: 10,
+          paddingBottom: 10,
+        }}>
         <View style={panel('home')}>
           <Player
             teamId={state.matchInfo.home_team_id ?? 0}

@@ -1,11 +1,9 @@
 import CompletedMatchDetails from '@/components/Completed/CompletedMatchDetails'
 import {
   Finalizer,
-  FirstBreak,
   Frame,
   More,
-  Score,
-  VSHeader,
+  ScoresheetHeader,
 } from '@/components/Match/components'
 import {useScoresheetTheme} from '@/components/Match/components/scoresheetTheme'
 import { FrameType } from '@/components/Match/types'
@@ -28,6 +26,7 @@ export default function ScoreSheet() {
   const match = useMatch()
   const {params} = useLocalSearchParams()
   const [isMounted, setIsMounted] = React.useState(false)
+  const [headerSticky, setHeaderSticky] = React.useState(true)
   const navigation = useNavigation()
   const theme = useScoresheetTheme()
   const listContentStyle = useTabListContentContainerStyle({paddingBottom: 16})
@@ -240,45 +239,24 @@ export default function ScoreSheet() {
     return null
   } else if (state.finalizedHome && state.finalizedAway) {
     return <CompletedMatchDetails matchId={matchInfo.match_id} />
-  } else {
-    return (
+  }
+
+  const header = (
+    <ScoresheetHeader
+      sticky={headerSticky}
+      onToggleSticky={() => setHeaderSticky(value => !value)}
+    />
+  )
+
+  return (
+    <View style={{flex: 1, backgroundColor: theme.canvas}}>
+      {headerSticky ? header : null}
       <FlatList
-        style={{flex: 1, backgroundColor: theme.canvas}}
+        style={{flex: 1}}
         contentContainerStyle={listContentStyle}
         refreshing={refreshing}
         onRefresh={() => GetFrames()}
-        ListHeaderComponent={
-          <View
-            style={[
-              {
-                marginHorizontal: 12,
-                marginTop: 12,
-                marginBottom: 8,
-                borderRadius: 18,
-              },
-              theme.shadow,
-            ]}>
-            <View
-              style={{
-                borderRadius: 18,
-                overflow: 'hidden',
-                backgroundColor: theme.card,
-                borderWidth: 1,
-                borderColor: theme.cardBorder,
-                paddingBottom: 16,
-              }}>
-            <View style={{flexDirection: 'row', height: 4}}>
-              <View style={{flex: 1, backgroundColor: theme.home.accent}} />
-              <View style={{flex: 1, backgroundColor: theme.away.accent}} />
-            </View>
-            <View style={{paddingTop: 16}}>
-              <VSHeader />
-            </View>
-            <Score />
-            <FirstBreak />
-            </View>
-          </View>
-        }
+        ListHeaderComponent={headerSticky ? null : header}
         ListFooterComponent={
           <>
             <Finalizer matchInfo={matchInfo} />
@@ -290,6 +268,6 @@ export default function ScoreSheet() {
           <Frame item={item} index={index} refreshing={refreshing} />
         )}
       />
-    )
-  }
+    </View>
+  )
 }
