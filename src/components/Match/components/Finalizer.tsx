@@ -1,11 +1,7 @@
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useMatchContext} from '@/context/MatchContext'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
-import {
-  frameHasRequiredPlayers,
-  isMatchCompleteByMode,
-  parseMatchFormat,
-} from '@/lib/matchFormat'
+import {getFinalizeBlockReason} from '@/lib/matchFormat'
 import * as Haptics from 'expo-haptics'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
@@ -117,44 +113,27 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
   }
 
   function CanFinalize(_side: string) {
-    const homeId = Number(matchState.matchInfo?.home_team_id ?? 0)
-    const awayId = Number(matchState.matchInfo?.away_team_id ?? 0)
-    const format = parseMatchFormat(
-      matchState.matchInfo?.format ?? matchInfo?.format,
+    return (
+      getFinalizeBlockReason(
+        matchState.frameData ?? [],
+        matchState.matchInfo?.format ?? matchInfo?.format,
+        Number(matchState.matchInfo?.home_team_id ?? 0),
+        Number(matchState.matchInfo?.away_team_id ?? 0),
+        matchState.firstBreak,
+      ) == null
     )
-    const mode = format?.mode ?? 'full_play'
+  }
 
-    let homeWins = 0
-    let awayWins = 0
-    let frameCount = 0
-    let validCount = 0
-    let decidedValid = 0
-    let decidedCount = 0
-
-    matchState.frameData.forEach((frame: any) => {
-      if (frame.frameNumber === -1 || frame.type === 'section') return
-      frameCount++
-      const winner = Number(frame.winner ?? 0)
-      if (winner > 0) {
-        decidedCount++
-        if (frameHasRequiredPlayers(frame)) {
-          decidedValid++
-          if (winner === homeId) homeWins++
-          else if (winner === awayId) awayWins++
-        }
-      }
-      if (frameHasRequiredPlayers(frame)) {
-        validCount++
-      }
-    })
-
-    if (mode === 'race_to' || mode === 'best_of') {
-      if (homeWins === awayWins) return false
-      if (!isMatchCompleteByMode(format, homeWins, awayWins)) return false
-      return decidedCount > 0 && decidedValid === decidedCount
-    }
-
-    return frameCount > 0 && validCount === frameCount
+  function finalizeBlockMessage(): string {
+    const reason = getFinalizeBlockReason(
+      matchState.frameData ?? [],
+      matchState.matchInfo?.format ?? matchInfo?.format,
+      Number(matchState.matchInfo?.home_team_id ?? 0),
+      Number(matchState.matchInfo?.away_team_id ?? 0),
+      matchState.firstBreak,
+    )
+    if (!reason) return t('match_not_finalizable')
+    return t(reason.key, reason.params)
   }
 
   async function HandleFinalize(side: string) {
@@ -173,7 +152,7 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
           Alert.alert(t('error'), t('not_on_team') + ' ' + side)
         }
       } else {
-        Alert.alert(t('error'), t('match_not_finalizable'))
+        Alert.alert(t('error'), finalizeBlockMessage())
         setHomeLoading(false)
         setAwayLoading(false)
       }

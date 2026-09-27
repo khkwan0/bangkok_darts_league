@@ -190,6 +190,8 @@ export default function ScoreSheet() {
       if (typeof res.status !== 'undefined' && res.status === 'ok') {
         if (typeof res.data.firstBreak !== 'undefined' && res.data.firstBreak) {
           dispatch({type: 'SET_FIRSTBREAK', payload: res.data.firstBreak})
+        } else {
+          dispatch({type: 'SET_FIRSTBREAK', payload: null})
         }
         if (
           typeof res.data.finalize_home !== 'undefined' &&

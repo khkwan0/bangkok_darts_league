@@ -201,9 +201,10 @@ export const MatchProvider = (props: any) => {
     const handleMatchUpdate = (data: any) => {
       if (typeof data.type !== 'undefined') {
         if (data.type === 'firstbreak') {
+          const breakId = Number(data?.data?.firstBreak ?? 0)
           dispatch({
             type: 'SET_FIRSTBREAK',
-            payload: data.data.firstBreak,
+            payload: breakId > 0 ? breakId : null,
           })
         } else if (data.type === 'finalize') {
           if (
@@ -402,11 +403,15 @@ export const MatchProvider = (props: any) => {
     SocketSend('players', data)
   }
 
-  function UpdateFirstBreak(teamId: string) {
-    const data = {
-      firstBreak: parseInt(teamId),
-    }
-    SocketSend('firstbreak', data)
+  function UpdateFirstBreak(teamId: number | string | null) {
+    const breakId =
+      teamId == null || teamId === '' ? 0 : parseInt(String(teamId), 10)
+    const normalized = Number.isFinite(breakId) && breakId > 0 ? breakId : 0
+    dispatch({
+      type: 'SET_FIRSTBREAK',
+      payload: normalized > 0 ? normalized : null,
+    })
+    SocketSend('firstbreak', {firstBreak: normalized})
   }
 
   function UpdateFrameWin(

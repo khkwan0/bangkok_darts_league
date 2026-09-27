@@ -144,8 +144,174 @@ export function frameHasRequiredPlayers(frame: {
   awayPlayerIds?: number[]
 }): boolean {
   if (!frame.winner || frame.winner <= 0) return false
-  const needed = resolveNoPlayers(frame.type, null, frame.noPlayers)
-  const home = Array.isArray(frame.homePlayerIds) ? frame.homePlayerIds : []
-  const away = Array.isArray(frame.awayPlayerIds) ? frame.awayPlayerIds : []
-  return home.length === needed && away.length === needed
+  return frameHasCompleteRosters(frame)
 }
+
+function countAssignedPlayers(ids?: number[]): number {
+  if (!Array.isArray(ids)) return 0
+  return ids.filter(id => id != null && Number(id) > 0).length
+}
+
+/** True when each side has the required number of players for the frame type. */
+export function frameHasCompleteRosters(frame: {
+  type?: string
+  noPlayers?: number
+  homePlayerIds?: number[]
+  awayPlayerIds?: number[]
+}): boolean {
+  const needed = resolveNoPlayers(frame.type, null, frame.noPlayers)
+  return (
+    countAssignedPlayers(frame.homePlayerIds) === needed &&
+    countAssignedPlayers(frame.awayPlayerIds) === needed
+  )
+}
+
+export type FinalizeBlockReason = {
+  key: string
+  params?: Record<string, string | number>
+}
+
+type FinalizeFrame = {
+  frameNumber?: number
+  type?: string
+  noPlayers?: number
+  winner?: number
+  homePlayerIds?: number[]
+  awayPlayerIds?: number[]
+}
+
+/**
+ * Returns why a match cannot be finalized, or null when it can.
+ * Message keys are i18n lookup strings with optional interpolation params.
+ */
+export function getFinalizeBlockReason(
+  frames: FinalizeFrame[],
+  formatRaw: unknown,
+  homeTeamId: number,
+  awayTeamId: number,
+  firstBreak?: number | null,
+): FinalizeBlockReason | null {
+  const format = parseMatchFormat(formatRaw)
+  const mode = format?.mode ?? 'full_play'
+  const playable = frames.filter(
+    frame =>
+      Number(frame.frameNumber) > 0 &&
+      frame.type !== 'section' &&
+      Number(frame.frameNumber) !== -1,
+  )
+
+  if (playable.length === 0) {
+    return {key: 'finalize_no_frames'}
+  }
+
+  const breakTeamId = Number(firstBreak ?? 0)
+  if (
+    !breakTeamId ||
+    (breakTeamId !== homeTeamId && breakTeamId !== awayTeamId)
+  ) {
+    return {key: 'finalize_missing_first_break'}
+  }
+
+  const missingWinner: number[] = []
+  const missingPlayers: number[] = []
+  let homeWins = 0
+  let awayWins = 0
+  let decidedCount = 0
+  let decidedValid = 0
+
+  for (const frame of playable) {
+    const frameNumber = Number(frame.frameNumber)
+    const winner = Number(frame.winner ?? 0)
+    const rostersOk = frameHasCompleteRosters(frame)
+
+    if (winner <= 0) {
+      missingWinner.push(frameNumber)
+      continue
+    }
+
+    decidedCount++
+    if (!rostersOk) {
+      missingPlayers.push(frameNumber)
+      continue
+    }
+
+    decidedValid++
+    if (winner === homeTeamId) homeWins++
+    else if (winner === awayTeamId) awayWins++
+  }
+
+  if (mode === 'race_to' || mode === 'best_of') {
+    if (decidedCount === 0) {
+      return {key: 'finalize_no_frames_decided'}
+    }
+    if (missingPlayers.length > 0) {
+      return {
+        key: 'finalize_missing_players',
+        params: {
+          frames: missingPlayers.join(', '),
+          count: resolveNoPlayers(
+            playable.find(f => Number(f.frameNumber) === missingPlayers[0])
+              ?.type,
+            null,
+            playable.find(f => Number(f.frameNumber) === missingPlayers[0])
+              ?.noPlayers,
+          ),
+        },
+      }
+    }
+    if (homeWins === awayWins) {
+      return {
+        key: 'finalize_score_tied',
+        params: {home: homeWins, away: awayWins},
+      }
+    }
+    if (!isMatchCompleteByMode(format, homeWins, awayWins)) {
+      if (mode === 'race_to') {
+        return {
+          key: 'finalize_race_incomplete',
+          params: {
+            home: homeWins,
+            away: awayWins,
+            target: format?.target ?? 0,
+          },
+        }
+      }
+      const bestOf = format?.target ?? format?.frames ?? 0
+      return {
+        key: 'finalize_best_of_incomplete',
+        params: {
+          home: homeWins,
+          away: awayWins,
+          need: Math.ceil(bestOf / 2),
+          bestOf,
+        },
+      }
+    }
+    if (decidedValid !== decidedCount) {
+      return {key: 'match_not_finalizable'}
+    }
+    return null
+  }
+
+  // full_play: every frame needs a winner and complete rosters
+  if (missingWinner.length > 0) {
+    return {
+      key: 'finalize_missing_winner',
+      params: {frames: missingWinner.join(', ')},
+    }
+  }
+  if (missingPlayers.length > 0) {
+    const sample = playable.find(
+      f => Number(f.frameNumber) === missingPlayers[0],
+    )
+    return {
+      key: 'finalize_missing_players',
+      params: {
+        frames: missingPlayers.join(', '),
+        count: resolveNoPlayers(sample?.type, null, sample?.noPlayers),
+      },
+    }
+  }
+  return null
+}
+

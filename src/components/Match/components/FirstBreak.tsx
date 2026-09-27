@@ -1,5 +1,6 @@
 import {useMatchContext} from '@/context/MatchContext'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
+import * as Haptics from 'expo-haptics'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {Pressable, Text, View} from 'react-native'
@@ -11,19 +12,36 @@ function BreakChip({
   border,
   muted,
   label,
-  onPress,
+  onSelect,
+  onClear,
 }: {
   selected: boolean
   accent: string
   border: string
   muted: string
   label: string
-  onPress: () => void
+  onSelect: () => void
+  onClear: () => void
 }) {
+  // Long-press clear flips `selected` mid-gesture; ignore the release press
+  // that would otherwise immediately re-select the same team.
+  const ignoreNextPressRef = React.useRef(false)
+
   return (
     <Pressable
-      disabled={selected}
-      onPress={onPress}
+      onPress={() => {
+        if (ignoreNextPressRef.current) {
+          ignoreNextPressRef.current = false
+          return
+        }
+        if (!selected) onSelect()
+      }}
+      onLongPress={() => {
+        if (!selected) return
+        ignoreNextPressRef.current = true
+        onClear()
+      }}
+      delayLongPress={350}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -70,6 +88,12 @@ export default function FirstBreak() {
     UpdateFirstBreak(teamId)
   }
 
+  function HandleClearFirstBreak() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    setLoading(true)
+    UpdateFirstBreak(0)
+  }
+
   return (
     <View
       style={{
@@ -90,7 +114,8 @@ export default function FirstBreak() {
               ? t('updating')
               : t('first_break')
           }
-          onPress={() => HandleFirstBreak(state.matchInfo.home_team_id)}
+          onSelect={() => HandleFirstBreak(state.matchInfo.home_team_id)}
+          onClear={HandleClearFirstBreak}
         />
       </View>
       <View style={{width: 28}} />
@@ -105,7 +130,8 @@ export default function FirstBreak() {
               ? t('updating')
               : t('first_break')
           }
-          onPress={() => HandleFirstBreak(state.matchInfo.away_team_id)}
+          onSelect={() => HandleFirstBreak(state.matchInfo.away_team_id)}
+          onClear={HandleClearFirstBreak}
         />
       </View>
     </View>
