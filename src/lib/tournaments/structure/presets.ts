@@ -363,6 +363,94 @@ const PRESETS: PresetDefinition[] = [
     }),
   },
   {
+    key: 'gold_silver_bronze',
+    label: 'Gold / Silver / Bronze',
+    description:
+      'CPBA redraw cups with byes: Gold losers drop to Silver, Silver losers to Bronze.',
+    explanation:
+      'Everyone starts in Gold. Early-round losers drop into the next cup (Gold R1–R3 → Silver, Silver R1–R3 → Bronze). Each round is a random redraw draft — accept to save. First drawn is home. Venue table limits are enforced; byes can relieve pressure. Admin sets bye count per draw and max byes per team for the whole cup (default 1). Late rounds include a 3rd-place match per cup.',
+    configFields: [
+      {
+        key: 'r1_byes',
+        label: 'Default Gold R1 byes',
+        type: 'number',
+        default: 7,
+        min: 0,
+        max: 32,
+      },
+      {
+        key: 'max_byes_per_team',
+        label: 'Max byes per team',
+        type: 'number',
+        default: 1,
+        min: 0,
+        max: 5,
+      },
+    ],
+    build: cfg => {
+      const r1Byes = Math.max(0, num(cfg, 'r1_byes', 7))
+      const maxByesPerTeam = Math.max(0, num(cfg, 'max_byes_per_team', 1))
+      const cupRules = {
+        final_round: 6,
+        semis_round: 5,
+        ko_from_round: 4,
+        third_place: true,
+        field_size: 0,
+        r1_byes: r1Byes,
+        max_byes_per_team: maxByesPerTeam,
+      }
+      return {
+        version: 1 as const,
+        stages: [
+          {
+            stage_key: 'gold',
+            label: 'Gold Cup',
+            stage_order: 0,
+            kind: 'redraw_elimination' as const,
+            config: {
+              ...cupRules,
+              entry_round: 1,
+              drops: [
+                {from_round: 1, to_stage: 'silver', to_round: 1},
+                {from_round: 2, to_stage: 'silver', to_round: 2},
+                {from_round: 3, to_stage: 'silver', to_round: 3},
+              ],
+            },
+          },
+          {
+            stage_key: 'silver',
+            label: 'Silver Cup',
+            stage_order: 1,
+            kind: 'redraw_elimination' as const,
+            config: {
+              ...cupRules,
+              entry_round: 1,
+              drops: [
+                {from_round: 1, to_stage: 'bronze', to_round: 1},
+                {from_round: 2, to_stage: 'bronze', to_round: 2},
+                {from_round: 3, to_stage: 'bronze', to_round: 3},
+              ],
+            },
+          },
+          {
+            stage_key: 'bronze',
+            label: 'Bronze Cup',
+            stage_order: 2,
+            kind: 'redraw_elimination' as const,
+            config: {
+              ...cupRules,
+              entry_round: 1,
+              // Bronze losers are KO'd from R1 onward (no further drop)
+              ko_from_round: 1,
+              drops: [],
+            },
+          },
+        ],
+        edges: [],
+      }
+    },
+  },
+  {
     key: 'groups_knockout',
     label: 'Groups → Knockout',
     description:

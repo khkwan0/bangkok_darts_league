@@ -1,7 +1,24 @@
 import {useMatchContext} from '@/context/MatchContext'
 import {router} from 'expo-router'
-import {Pressable, Text, View} from 'react-native'
+import {Image, Pressable, Text, View} from 'react-native'
 import {useScoresheetTheme} from './scoresheetTheme'
+
+const LOGO_SIZE = 26
+
+function TeamLogo({uri}: {uri?: string}) {
+  if (!uri) return null
+  return (
+    <Image
+      source={{uri}}
+      resizeMode="contain"
+      style={{
+        width: LOGO_SIZE,
+        height: LOGO_SIZE,
+        marginBottom: 6,
+      }}
+    />
+  )
+}
 
 export default function VSHeader() {
   const {state}: any = useMatchContext()
@@ -21,6 +38,7 @@ export default function VSHeader() {
       <Pressable
         style={{flex: 1, alignItems: 'center'}}
         onPress={() => openTeam(state.matchInfo.home_team_id)}>
+        <TeamLogo uri={state.matchInfo.home_logo} />
         <Text
           style={{
             textAlign: 'center',
@@ -64,6 +82,7 @@ export default function VSHeader() {
       <Pressable
         style={{flex: 1, alignItems: 'center'}}
         onPress={() => openTeam(state.matchInfo.away_team_id)}>
+        <TeamLogo uri={state.matchInfo.away_logo} />
         <Text
           style={{
             textAlign: 'center',

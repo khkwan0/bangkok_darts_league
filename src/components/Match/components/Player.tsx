@@ -133,6 +133,10 @@ export default function Player({
 
   const handlePlayerSlotPress = (slot: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    if (state.finalizedHome && state.finalizedAway) {
+      Alert.alert(t('match_completed'))
+      return
+    }
     if (typeof user?.id !== 'undefined') {
       if (isPlayerOnTeam()) {
         router.push({

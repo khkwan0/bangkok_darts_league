@@ -207,10 +207,46 @@ export const useLeague = () => {
     }
   }
 
-  const GetTeamsBySeason = async season => {
+  const GetTeamsBySeason = async (season, options = {}) => {
     try {
-      const res = await Get('/teams/' + season)
-      return res
+      if (!season) {
+        return await GetTeams()
+      }
+      const params = new URLSearchParams()
+      params.set('season', String(season))
+      if (options.includeInactive) params.set('inactive', '1')
+      if (options.includeNoDivision) params.set('noDivision', '1')
+      const res = await Get(`/teams?${params.toString()}`)
+      return Array.isArray(res) ? res : []
+    } catch (e) {
+      return []
+    }
+  }
+
+  const GetPlayerTeamsForSeason = async (playerId, season) => {
+    try {
+      if (!playerId) return []
+      const qs =
+        season != null && season !== ''
+          ? `?season=${encodeURIComponent(String(season))}`
+          : ''
+      const res = await Get(`/player/${playerId}/teams${qs}`)
+      if (res?.status === 'ok' && Array.isArray(res.data)) {
+        return res.data
+      }
+      return []
+    } catch (e) {
+      return []
+    }
+  }
+
+  const GetTeamSeasonLineage = async teamId => {
+    try {
+      const res = await Get(`/team/${teamId}/seasons`)
+      if (res?.status === 'ok' && Array.isArray(res.data)) {
+        return res.data
+      }
+      return []
     } catch (e) {
       return []
     }
@@ -608,6 +644,8 @@ export const useLeague = () => {
     GetSeasons,
     GetTeams,
     GetTeamsBySeason,
+    GetPlayerTeamsForSeason,
+    GetTeamSeasonLineage,
     GetTeamDivisionsBySeason,
     GetTeamInfo,
     GetTeamStats,

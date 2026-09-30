@@ -6,6 +6,7 @@ export type StageKind =
   | 'double_elimination'
   | 'consolation'
   | 'final'
+  | 'redraw_elimination'
 
 export type AdvancementSourceKind =
   | 'winners'
@@ -54,6 +55,7 @@ export type TournamentPresetKey =
   | 'regional_final_four'
   | 'cup_plate'
   | 'cup_plate_spoon'
+  | 'gold_silver_bronze'
   | 'groups_knockout'
   | 'blank'
 

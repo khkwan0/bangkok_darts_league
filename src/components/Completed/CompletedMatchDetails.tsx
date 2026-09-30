@@ -8,7 +8,7 @@ import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import {useNavigation, useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
-import {FlatList, Pressable, Text, View} from 'react-native'
+import {FlatList, Image, Pressable, Text, View} from 'react-native'
 
 type Frame = {
   frameId: number
@@ -20,14 +20,20 @@ type Frame = {
 type MatchDetails = Frame[]
 
 type MatchMetadata = {
-  matchDate: string
+  matchDate?: string
+  date?: string
   home_team_id: number
   away_team_id: number
   home_team_name: string
   away_team_name: string
+  home_team_short_name?: string
+  away_team_short_name?: string
   home_frames: number
   away_frames: number
-  first_break_home_team: number
+  first_break_home_team?: number
+  home_logo?: string | null
+  away_logo?: string | null
+  status_id?: number
 }
 
 function CompletedSide({
@@ -197,21 +203,51 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
   const {t} = useTranslation()
 
   React.useEffect(() => {
-    async function getMatchDetails(matchId: number) {
+    let cancelled = false
+
+    async function sleep(ms: number) {
+      await new Promise(resolve => setTimeout(resolve, ms))
+    }
+
+    async function getMatchDetails(id: number) {
       try {
-        const res = await matchHook.GetMatchDetails(matchId)
-        setMatchDetails(res.data)
-        const res2 = await matchHook.GetMatchMetadata(matchId)
-        setMatchMetadata(res2.data)
+        let details: MatchDetails | null = null
+        let meta: MatchMetadata | null = null
+
+        // Finalize writes frames then updates match scores; retry briefly so
+        // opening a just-completed match does not flash empty 0–0 data.
+        for (let attempt = 0; attempt < 8; attempt++) {
+          const res = await matchHook.GetMatchDetails(id)
+          const res2 = await matchHook.GetMatchMetadata(id)
+          details = Array.isArray(res?.data) ? res.data : null
+          meta = res2?.data ?? null
+          const framesReady = Array.isArray(details) && details.length > 0
+          const scoreReady =
+            Number(meta?.home_frames ?? 0) + Number(meta?.away_frames ?? 0) > 0
+          const statusReady = Number(meta?.status_id ?? 0) === 3
+          if (framesReady && (scoreReady || statusReady || attempt === 7)) {
+            break
+          }
+          await sleep(400 + attempt * 200)
+          if (cancelled) return
+        }
+
+        if (cancelled) return
+        setMatchDetails(details)
+        setMatchMetadata(meta)
       } catch (error) {
         console.error('Failed to fetch match details:', error)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     if (matchId) {
       getMatchDetails(matchId)
+    }
+
+    return () => {
+      cancelled = true
     }
   }, [matchId])
 
@@ -253,6 +289,12 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
   const awayFrames = matchMetadata?.away_frames ?? 0
   const tied = homeFrames === awayFrames
   const total = homeFrames + awayFrames
+  const matchDate =
+    matchMetadata?.matchDate || matchMetadata?.date || undefined
+  const homeName =
+    matchMetadata?.home_team_short_name || matchMetadata?.home_team_name
+  const awayName =
+    matchMetadata?.away_team_short_name || matchMetadata?.away_team_name
 
   return (
     <View style={{flex: 1, backgroundColor: theme.canvas}}>
@@ -289,9 +331,9 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
           <Text style={{color: theme.muted, fontSize: 13, fontWeight: '700'}}>
             Match #{matchId}
           </Text>
-          {typeof matchMetadata?.matchDate === 'string' && (
+          {typeof matchDate === 'string' && (
             <Text style={{color: theme.muted, fontSize: 13, fontWeight: '600'}}>
-              {formatBangkokDateMed(matchMetadata.matchDate)}
+              {formatBangkokDateMed(matchDate)}
             </Text>
           )}
         </View>
@@ -314,6 +356,13 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
                 },
               })
             }}>
+            {matchMetadata?.home_logo ? (
+              <Image
+                source={{uri: matchMetadata.home_logo}}
+                resizeMode="contain"
+                style={{width: 26, height: 26, marginBottom: 6}}
+              />
+            ) : null}
             <Text
               numberOfLines={2}
               style={{
@@ -322,7 +371,7 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
                 fontSize: 18,
                 fontWeight: '800',
               }}>
-              {matchMetadata?.home_team_name}
+              {homeName}
             </Text>
             <View
               style={{
@@ -365,6 +414,13 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
                 },
               })
             }}>
+            {matchMetadata?.away_logo ? (
+              <Image
+                source={{uri: matchMetadata.away_logo}}
+                resizeMode="contain"
+                style={{width: 26, height: 26, marginBottom: 6}}
+              />
+            ) : null}
             <Text
               numberOfLines={2}
               style={{
@@ -373,7 +429,7 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
                 fontSize: 18,
                 fontWeight: '800',
               }}>
-              {matchMetadata?.away_team_name}
+              {awayName}
             </Text>
             <View
               style={{
@@ -463,9 +519,7 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
               fontWeight: '700',
             }}>
             {t('first_break')}:{' '}
-            {matchMetadata?.first_break_home_team === 1
-              ? matchMetadata?.home_team_name
-              : matchMetadata?.away_team_name}
+            {matchMetadata?.first_break_home_team === 1 ? homeName : awayName}
           </Text>
         )}
         </View>

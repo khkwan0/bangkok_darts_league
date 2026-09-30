@@ -37,6 +37,7 @@ type StateType = {
   history: any[]
   finalizedHome: boolean
   finalizedAway: boolean
+  finalizeBusy: boolean
 }
 
 const MatchContext = createContext({})
@@ -50,6 +51,7 @@ const initialState: StateType = {
   history: [],
   finalizedHome: false,
   finalizedAway: false,
+  finalizeBusy: false,
 }
 
 const MatchReducer = (state: StateType, action: any) => {
@@ -61,8 +63,10 @@ const MatchReducer = (state: StateType, action: any) => {
         teams: {},
         matchInfo: {} as MatchInfoDataType,
         stats: {},
+        history: [],
         finalizedHome: false,
         finalizedAway: false,
+        finalizeBusy: false,
       }
     }
     case 'SET_MATCHINFO': {
@@ -155,6 +159,12 @@ const MatchReducer = (state: StateType, action: any) => {
         finalizedAway: action.payload,
       }
     }
+    case 'SET_FINALIZE_BUSY': {
+      return {
+        ...state,
+        finalizeBusy: !!action.payload,
+      }
+    }
     default:
       return state
   }
@@ -219,17 +229,20 @@ export const MatchProvider = (props: any) => {
             dispatch({type: 'SET_FINALIZED_AWAY', payload: true})
           }
         } else if (data.type === 'unfinalize') {
-          if (
-            typeof data?.data?.side !== 'undefined' &&
-            data.data.side === 'home'
-          ) {
+          const side = data?.data?.side
+          if (side === 'both' || side === 'all') {
             dispatch({type: 'SET_FINALIZED_HOME', payload: false})
-          } else if (
-            typeof data?.data?.side !== 'undefined' &&
-            data.data.side === 'away'
-          ) {
+            dispatch({type: 'SET_FINALIZED_AWAY', payload: false})
+          } else if (side === 'home') {
+            dispatch({type: 'SET_FINALIZED_HOME', payload: false})
+          } else if (side === 'away') {
             dispatch({type: 'SET_FINALIZED_AWAY', payload: false})
           }
+        } else if (data.type === 'finalize_busy') {
+          dispatch({
+            type: 'SET_FINALIZE_BUSY',
+            payload: !!data?.data?.busy,
+          })
         }
       }
     }

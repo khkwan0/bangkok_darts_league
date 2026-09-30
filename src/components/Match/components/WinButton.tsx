@@ -1,9 +1,12 @@
 import ConfirmDialog from '@/components/ConfirmDialog'
+import {useLeagueContext} from '@/context/LeagueContext'
+import {useMatchContext} from '@/context/MatchContext'
+import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import * as Haptics from 'expo-haptics'
 import * as React from 'react'
 import {useTranslation} from 'react-i18next'
-import {Pressable, Text} from 'react-native'
+import {Alert, Pressable, Text} from 'react-native'
 import {useScoresheetTheme} from './scoresheetTheme'
 
 interface WinButtonProps {
@@ -31,12 +34,51 @@ export default function WinButton({
   const [showConfirmUndo, setShowConfirmUndo] = React.useState(false)
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
+  const {state}: any = useMatchContext()
+  const {state: leagueState}: any = useLeagueContext()
+  const user = leagueState.user
   const [isPressed, setIsPressed] = React.useState(false)
   const [trackedWinner, setTrackedWinner] = React.useState(winner)
 
   if (winner !== trackedWinner) {
     setTrackedWinner(winner)
     setIsPressed(false)
+  }
+
+  function canRecord(): boolean {
+    if (state.finalizedHome && state.finalizedAway) {
+      Alert.alert(t('match_completed'))
+      return false
+    }
+    if (typeof user?.id === 'undefined') {
+      Alert.alert(t('user_not_logged_in'))
+      return false
+    }
+    try {
+      const {home_team_id: homeTeamId, away_team_id: awayTeamId} =
+        state.matchInfo
+      const playerList = [
+        ...Object.keys(state.teams?.[awayTeamId] ?? {}),
+        ...Object.keys(state.teams?.[homeTeamId] ?? {}),
+      ]
+      if (playerList.includes(user.id.toString()) || isLeagueAdmin(user)) {
+        return true
+      }
+    } catch (e) {
+      console.error(e)
+    }
+    Alert.alert(t('user_not_on_team'))
+    return false
+  }
+
+  function tryWin(withGoldenBreak = false) {
+    if (!canRecord()) return
+    HandleWin(side, withGoldenBreak)
+  }
+
+  function tryClear() {
+    if (!canRecord()) return
+    ClearWinner()
   }
 
   const bar = {
@@ -53,7 +95,7 @@ export default function WinButton({
       {showConfirm && (
         <ConfirmDialog
           onConfirm={() => {
-            HandleWin(side)
+            tryWin()
             setShowConfirm(false)
           }}
           onCancel={() => setShowConfirm(false)}
@@ -65,7 +107,7 @@ export default function WinButton({
       {showConfirmUndo && (
         <ConfirmDialog
           onConfirm={() => {
-            ClearWinner()
+            tryClear()
             setShowConfirmUndo(false)
           }}
           onCancel={() => setShowConfirmUndo(false)}
@@ -76,7 +118,10 @@ export default function WinButton({
       )}
       {winner === teamId && (
         <Pressable
-          onPress={() => setShowConfirmUndo(true)}
+          onPress={() => {
+            if (!canRecord()) return
+            setShowConfirmUndo(true)
+          }}
           style={{
             ...bar,
             backgroundColor: goldenBreak ? theme.gold : theme.win,
@@ -98,10 +143,10 @@ export default function WinButton({
           }}
           onPressIn={() => setIsPressed(true)}
           onPressOut={() => setIsPressed(false)}
-          onLongPress={() => HandleWin(side, true)}
+          onLongPress={() => tryWin(true)}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-            HandleWin(side)
+            tryWin()
           }}>
           <Text
             style={{
@@ -116,7 +161,10 @@ export default function WinButton({
       )}
       {winner !== teamId && winner !== 0 && (
         <Pressable
-          onPress={() => setShowConfirm(true)}
+          onPress={() => {
+            if (!canRecord()) return
+            setShowConfirm(true)
+          }}
           style={{...bar, backgroundColor: theme.faint}}>
           <MCI name="close" color={theme.muted} size={18} />
         </Pressable>

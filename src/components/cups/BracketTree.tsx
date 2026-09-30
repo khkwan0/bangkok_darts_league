@@ -1,5 +1,6 @@
 import {ThemedText as Text} from '@/components/ThemedText'
 import React from 'react'
+import {useTranslation} from 'react-i18next'
 import {
   Dimensions,
   Modal,
@@ -468,11 +469,30 @@ function MatchBox({
             letterSpacing: 0.4,
           }}
           numberOfLines={1}>
-          {editable
-            ? `R${match.round} · drag to swap`
-            : `R${match.round} · ${match.bracket_side}`}
-          {!editable && match.venue_name ? ` · ${match.venue_name}` : ''}
-          {!editable && match.date ? ` · ${String(match.date).slice(0, 10)}` : ''}
+          {(() => {
+            // bracket_side is winners/losers/… (bracket half), not match result.
+            // Omit default "winners" — it reads like someone already won.
+            if (editable) return `R${match.round} · drag to swap`
+            const side = String(match.bracket_side || '')
+            const sideLabel =
+              side === 'losers'
+                ? 'Losers'
+                : side === 'third_place'
+                  ? '3rd'
+                  : side === 'grand_final'
+                    ? 'Grand final'
+                    : side && side !== 'winners'
+                      ? side.replace(/_/g, ' ')
+                      : null
+            return [
+              `R${match.round}`,
+              sideLabel,
+              match.venue_name || null,
+              match.date ? String(match.date).slice(0, 10) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          })()}
         </Text>
         {tableLabel ? (
           <Pressable
@@ -707,6 +727,7 @@ export default function BracketTree({
   verticalScrollRef,
   verticalScrollOffsetRef,
 }: Props) {
+  const {t} = useTranslation()
   const isDark = useColorScheme() === 'dark'
   const slotsRef = React.useRef<Map<string, SlotEntry>>(new Map())
   const hScrollsRef = React.useRef<Map<string, HScrollEntry>>(new Map())
@@ -956,7 +977,13 @@ export default function BracketTree({
         return (
           <View key={stage.stage_key} style={{marginTop: 24}}>
             <Text style={{fontSize: 17, fontWeight: '700', marginBottom: 10}}>
-              {stage.label}
+              {stage.stage_key === 'gold'
+                ? t('cups_gold')
+                : stage.stage_key === 'silver'
+                  ? t('cups_silver')
+                  : stage.stage_key === 'bronze'
+                    ? t('cups_bronze')
+                    : stage.label}
             </Text>
             {hasDe ? (
               <View>

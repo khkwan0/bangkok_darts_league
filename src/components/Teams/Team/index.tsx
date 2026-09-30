@@ -1,5 +1,7 @@
 import Row from '@/components/Row'
 import {ThemedText as Text} from '@/components/ThemedText'
+import TeamNameEdit from '@/components/Teams/TeamNameEdit'
+import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import config from '@/config'
 import {LeagueContextType, useLeagueContext} from '@/context/LeagueContext'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
@@ -35,10 +37,24 @@ type TeamType = {
   players: PlayerType[]
   venue_logo?: string
   name: string
+  short_name?: string
+  very_short_name?: string
   id: number
+  season_id?: number
+  is_current_season?: boolean
 }
+
+type LineageEntry = {
+  season_id: number
+  team_id: number
+  season_name: string
+  short_name?: string
+  is_active: boolean
+}
+
 interface TeamMembersProps {
   teamId: number
+  seasonId?: number | null
 }
 
 const MemberSection = ({
@@ -50,6 +66,7 @@ const MemberSection = ({
   isCaptainOtherTeam,
   isAssistantOtherTeam,
   isAdmin,
+  canEdit,
   onRefresh,
   onProfilePicturePress,
 }: {
@@ -61,6 +78,7 @@ const MemberSection = ({
   isAdmin: boolean
   isCaptainOtherTeam: boolean
   isAssistantOtherTeam: boolean
+  canEdit: boolean
   onRefresh: () => void
   onProfilePicturePress: (url: string) => void
 }) => {
@@ -96,10 +114,11 @@ const MemberSection = ({
   }
 
   const showControls =
-    isAdmin ||
-    ((isCaptain || isAssistant) &&
-      (title.toLowerCase() === 'players' ||
-        (title.toLowerCase() === 'assistants' && isCaptain)))
+    canEdit &&
+    (isAdmin ||
+      ((isCaptain || isAssistant) &&
+        (title.toLowerCase() === 'players' ||
+          (title.toLowerCase() === 'assistants' && isCaptain))))
 
   return (
     <View className="mb-4">
@@ -222,7 +241,7 @@ const MemberSection = ({
   )
 }
 
-export default function TeamMembers({teamId}: TeamMembersProps) {
+export default function TeamMembers({teamId, seasonId}: TeamMembersProps) {
   const [teamData, setTeamData] = React.useState<TeamType>({
     captains: [],
     assistants: [],
@@ -237,6 +256,10 @@ export default function TeamMembers({teamId}: TeamMembersProps) {
   } | null>(null)
   const [isAddingPlayer, setIsAddingPlayer] = React.useState(false)
   const [_teamId, setTeamId] = React.useState<number>(teamId)
+  const [lineage, setLineage] = React.useState<LineageEntry[]>([])
+  const [selectedSeasonId, setSelectedSeasonId] = React.useState<number | null>(
+    seasonId ?? null,
+  )
   const [selectedProfilePicture, setSelectedProfilePicture] = React.useState<
     string | null
   >(null)
@@ -250,17 +273,59 @@ export default function TeamMembers({teamId}: TeamMembersProps) {
   const router = useRouter()
   const isFocused = useIsFocused()
 
+  React.useEffect(() => {
+    setTeamId(teamId)
+  }, [teamId])
+
   const refreshTeamInfo = React.useCallback(async () => {
     try {
       const response = await teams.GetTeamInfo(_teamId)
       if (response?.status === 'ok' && response.data) {
         setTeamData(response.data)
+        if (response.data.season_id != null) {
+          setSelectedSeasonId(Number(response.data.season_id))
+        }
       }
     } catch (error) {
       console.error('Error fetching team info:', error)
     } finally {
       setLoading(false)
     }
+    // useTeams returns fresh fns each render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [_teamId])
+
+  React.useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const rows = await league.GetTeamSeasonLineage(_teamId)
+      if (cancelled) return
+      const bySeason = new Map<number, LineageEntry>()
+      for (const r of rows || []) {
+        const seasonId = Number(r.season_id)
+        if (!Number.isFinite(seasonId) || seasonId <= 0) continue
+        // Prefer the active season entry if duplicates exist.
+        const prev = bySeason.get(seasonId)
+        if (!prev || r.is_active) {
+          bySeason.set(seasonId, {
+            season_id: seasonId,
+            team_id: Number(r.team_id),
+            season_name: String(r.season_name || r.short_name || seasonId),
+            short_name: r.short_name ? String(r.short_name) : undefined,
+            is_active: !!r.is_active,
+          })
+        }
+      }
+      setLineage(
+        Array.from(bySeason.values()).sort(
+          (a, b) => a.season_id - b.season_id,
+        ),
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_teamId])
 
   React.useEffect(() => {
@@ -268,6 +333,8 @@ export default function TeamMembers({teamId}: TeamMembersProps) {
       refreshTeamInfo()
     }
   }, [isFocused, refreshTeamInfo])
+
+  const isCurrentSeason = teamData.is_current_season === true
 
   const isCaptain = React.useMemo(() => {
     return teamData.captains.some(
@@ -287,7 +354,7 @@ export default function TeamMembers({teamId}: TeamMembersProps) {
         (captain: PlayerType) => captain.id === state.user?.id,
       )
     )
-  }, [teamData.players, state.user?.id])
+  }, [teamData.players, teamData.assistants, teamData.captains, state.user?.id])
 
   const isCaptainOtherTeam = React.useMemo(() => {
     if (state.user?.role_id && state.user.role_id > 0) {
@@ -296,7 +363,7 @@ export default function TeamMembers({teamId}: TeamMembersProps) {
       )
     }
     return false
-  }, [state.user?.role_id, state.user?.teams, teamId])
+  }, [state.user?.role_id, state.user?.id, teamData.captains])
 
   const isAssistantOtherTeam = React.useMemo(() => {
     if (state.user?.role_id && state.user.role_id > 0) {
@@ -305,7 +372,7 @@ export default function TeamMembers({teamId}: TeamMembersProps) {
       )
     }
     return false
-  }, [state.user?.role_id, state.user?.teams, teamId])
+  }, [state.user?.role_id, state.user?.id, teamData.assistants])
 
   const isAssistant = React.useMemo(() => {
     return teamData.assistants.some(
@@ -316,8 +383,23 @@ export default function TeamMembers({teamId}: TeamMembersProps) {
     return isLeagueAdmin(state.user)
   }, [state.user])
   const canManageRoles = React.useMemo(() => {
-    return isAdmin || isCaptain || isAssistant
-  }, [isAdmin, isCaptain, isAssistant])
+    return isCurrentSeason && (isAdmin || isCaptain || isAssistant)
+  }, [isCurrentSeason, isAdmin, isCaptain, isAssistant])
+
+  const handleSelectSeason = (nextSeasonId: number) => {
+    const entry = lineage.find(l => Number(l.season_id) === Number(nextSeasonId))
+    if (!entry) return
+    setSelectedSeasonId(nextSeasonId)
+    if (Number(entry.team_id) === Number(_teamId)) return
+    setLoading(true)
+    setTeamId(Number(entry.team_id))
+    router.setParams({
+      params: JSON.stringify({
+        teamId: entry.team_id,
+        seasonId: entry.season_id,
+      }),
+    })
+  }
 
   React.useEffect(() => {
     refreshTeamInfo()
@@ -412,6 +494,20 @@ export default function TeamMembers({teamId}: TeamMembersProps) {
         )}
         ListHeaderComponent={
           <>
+            {lineage.length > 1 ? (
+              <View className="mb-3">
+                <MiniSeasonChips
+                  seasons={lineage.map(l => ({
+                    id: l.season_id,
+                    name: l.season_name,
+                    short_name: l.short_name || l.season_name,
+                    is_active: l.is_active,
+                  }))}
+                  seasonId={selectedSeasonId}
+                  onSelect={handleSelectSeason}
+                />
+              </View>
+            ) : null}
             <View className="items-center mb-6">
               {teamData.venue_logo ? (
                 <Image
@@ -483,7 +579,23 @@ export default function TeamMembers({teamId}: TeamMembersProps) {
                 </View>
               </Pressable>
             </View>
-            {(isOnTeam || isAdmin) && (
+            {isCurrentSeason && (isCaptain || isAdmin) && (
+              <TeamNameEdit
+                teamId={_teamId}
+                initialName={teamData.name || ''}
+                initialShortName={teamData.short_name || ''}
+                initialVeryShortName={teamData.very_short_name || ''}
+                onSaved={names => {
+                  setTeamData(prev => ({
+                    ...prev,
+                    name: names.name,
+                    short_name: names.short_name,
+                    very_short_name: names.very_short_name,
+                  }))
+                }}
+              />
+            )}
+            {isCurrentSeason && (isOnTeam || isAdmin) && (
               <Pressable
                 onPressIn={() => setIsAddingPlayer(true)}
                 onPressOut={() => setIsAddingPlayer(false)}
@@ -504,24 +616,26 @@ export default function TeamMembers({teamId}: TeamMembersProps) {
             <MemberSection
               title="captains"
               players={teamData.captains}
-              teamId={teamId}
+              teamId={_teamId}
               isCaptain={isCaptain}
               isAssistant={isAssistant}
               isAdmin={isAdmin}
               isCaptainOtherTeam={isCaptainOtherTeam}
               isAssistantOtherTeam={isAssistantOtherTeam}
+              canEdit={isCurrentSeason}
               onRefresh={refreshTeamInfo}
               onProfilePicturePress={setSelectedProfilePicture}
             />
             <MemberSection
               title="assistants"
               players={teamData.assistants}
-              teamId={teamId}
+              teamId={_teamId}
               isCaptain={isCaptain}
               isAssistant={isAssistant}
               isAdmin={isAdmin}
               isCaptainOtherTeam={isCaptainOtherTeam}
               isAssistantOtherTeam={isAssistantOtherTeam}
+              canEdit={isCurrentSeason}
               onRefresh={refreshTeamInfo}
               onProfilePicturePress={setSelectedProfilePicture}
             />
@@ -578,7 +692,7 @@ export default function TeamMembers({teamId}: TeamMembersProps) {
                       try {
                         const response = await league.GrantPrivilege(
                           item.id,
-                          teamId,
+                          _teamId,
                           1,
                         )
                         if (response?.status === 'ok') {

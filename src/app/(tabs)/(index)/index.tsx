@@ -48,12 +48,15 @@ export default function UpcomingMatches(props: any) {
   const [fixtures, setFixtures] = React.useState([])
   const user = state.user
   const [refreshing, setRefreshing] = React.useState(false)
+  const [initialLoading, setInitialLoading] = React.useState(true)
   const [isMounted, setIsMounted] = React.useState(false)
   const [showMineOnly, setShowMineOnly] = React.useState(true)
   const [showPostponed, setShowPostponed] = React.useState(false)
   const [seasonNumber, setSeasonNumber] = React.useState('')
   const [showFilters, setShowFilters] = React.useState(false)
   const filterHeight = React.useRef(new Animated.Value(0)).current
+  const fetchIdRef = React.useRef(0)
+  const hasLoadedOnce = React.useRef(false)
   const season = useSeason()
   const league = useLeague()
   const account = useAccount()
@@ -74,7 +77,7 @@ export default function UpcomingMatches(props: any) {
 
   React.useEffect(() => {
     if (state.refreshUpcoming) {
-      GetMatches(true, showPostponed)
+      GetMatches(true, showPostponed, 'silent')
       StopRefreshUpcoming()
     }
   }, [state.refreshUpcoming])
@@ -106,9 +109,18 @@ export default function UpcomingMatches(props: any) {
     router.push({pathname: '/Match', params: fixtures[idx]})
   }
 
-  async function GetMatches(filtered = false, postponed = false) {
+  async function GetMatches(
+    filtered = false,
+    postponed = false,
+    mode: 'initial' | 'pull' | 'silent' = 'silent',
+  ) {
+    const fetchId = ++fetchIdRef.current
     try {
-      setRefreshing(true)
+      if (mode === 'pull') {
+        setRefreshing(true)
+      } else if (mode === 'initial' || !hasLoadedOnce.current) {
+        setInitialLoading(true)
+      }
       const query = []
       if (filtered) {
         query.push('noteam=false')
@@ -121,16 +133,26 @@ export default function UpcomingMatches(props: any) {
         query.push('newonly=true')
       }
       const res = await season.GetMatches(query)
-      const _fixtures = await AddAdSpots(res)
+      if (fetchId !== fetchIdRef.current) return
+      const list = Array.isArray(res) ? res : []
+      const _fixtures = await AddAdSpots(list)
+      if (fetchId !== fetchIdRef.current) return
       setFixtures(_fixtures)
+      hasLoadedOnce.current = true
     } catch (e) {
       console.log(e)
+      if (fetchId === fetchIdRef.current) {
+        hasLoadedOnce.current = true
+      }
     } finally {
-      setRefreshing(false)
+      if (fetchId === fetchIdRef.current) {
+        setRefreshing(false)
+        setInitialLoading(false)
+      }
     }
   }
 
-  async function AddAdSpots(_fixtures: any) {
+  async function AddAdSpots(_fixtures: any[]) {
     const originalFixtures = [..._fixtures]
     try {
       if (_fixtures.length === 0) {
@@ -144,25 +166,27 @@ export default function UpcomingMatches(props: any) {
       ) {
         frequency = res.frequency
       }
-      if (frequency > 0) {
-        let i = 0
-        while (i < _fixtures.length) {
-          if ((i % frequency === 0 && i !== 0) || i === 1) {
-            _fixtures.splice(i, 0, {
-              index: i,
-              key: 'ad_spot_' + i,
-              ad_spot: true,
-            })
-          }
-          i++
-        }
-        _fixtures.push({
-          index: _fixtures.length,
-          key: 'ad_spot_' + _fixtures.length,
-          ad_spot: true,
-        })
+      if (frequency <= 0) {
+        return _fixtures
       }
-      return _fixtures
+      // Build a new list — never splice while iterating (frequency=1 infinite-looped).
+      const withAds: any[] = []
+      for (let i = 0; i < _fixtures.length; i++) {
+        if ((i !== 0 && i % frequency === 0) || i === 1) {
+          withAds.push({
+            index: withAds.length,
+            key: 'ad_spot_' + withAds.length,
+            ad_spot: true,
+          })
+        }
+        withAds.push(_fixtures[i])
+      }
+      withAds.push({
+        index: withAds.length,
+        key: 'ad_spot_' + withAds.length,
+        ad_spot: true,
+      })
+      return withAds
     } catch (e) {
       console.error(e)
       return originalFixtures
@@ -191,26 +215,26 @@ export default function UpcomingMatches(props: any) {
     CheckVersion()
   }, [])
 
-  function RefreshMatches() {
+  function RefreshMatches(mode: 'initial' | 'pull' | 'silent' = 'silent') {
     if (typeof user?.teams !== 'undefined' && user.teams.length > 0) {
       if (showMineOnly) {
         if (showPostponed) {
-          GetMatches(true, true)
+          GetMatches(true, true, mode)
         } else {
-          GetMatches(true, false)
+          GetMatches(true, false, mode)
         }
       } else {
         if (showPostponed) {
-          GetMatches(false, true)
+          GetMatches(false, true, mode)
         } else {
-          GetMatches(false, false)
+          GetMatches(false, false, mode)
         }
       }
     } else {
       if (showPostponed) {
-        GetMatches(false, true)
+        GetMatches(false, true, mode)
       } else {
-        GetMatches(false, false)
+        GetMatches(false, false, mode)
       }
     }
   }
@@ -220,7 +244,7 @@ export default function UpcomingMatches(props: any) {
       return
     }
     if (isMounted) {
-      RefreshMatches()
+      RefreshMatches(hasLoadedOnce.current ? 'silent' : 'initial')
     }
   }, [showMineOnly, showPostponed, user, isMounted])
   /*
@@ -362,12 +386,12 @@ export default function UpcomingMatches(props: any) {
           flex: 1,
           backgroundColor: screenBg,
         }}>
-        {refreshing && (
+        {initialLoading && (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         )}
-        {!refreshing && (
+        {!initialLoading && (
           <View className="flex-1">
             <View>
               {!user.id && (
@@ -535,7 +559,7 @@ export default function UpcomingMatches(props: any) {
                   refreshControl={
                     <RefreshControl
                       refreshing={refreshing}
-                      onRefresh={() => RefreshMatches()}
+                      onRefresh={() => RefreshMatches('pull')}
                     />
                   }
                   bounces={true}
@@ -554,15 +578,13 @@ export default function UpcomingMatches(props: any) {
                   data={fixtures}
                   renderItem={renderItem}
                   ListEmptyComponent={
-                    refreshing ? null : (
-                      <View className="items-center px-6 py-10">
-                        <Text
-                          className="text-center text-base opacity-70"
-                          style={{maxWidth: 280}}>
-                          {t('no_matches_pass_filter')}
-                        </Text>
-                      </View>
-                    )
+                    <View className="items-center px-6 py-10">
+                      <Text
+                        className="text-center text-base opacity-70"
+                        style={{maxWidth: 280}}>
+                        {t('no_matches_pass_filter')}
+                      </Text>
+                    </View>
                   }
                 />
               )}

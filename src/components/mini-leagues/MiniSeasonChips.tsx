@@ -56,16 +56,33 @@ export function MiniSeasonChips({
   onSelect: (id: number) => void
 }) {
   const {colors} = useTheme()
-  if (seasons.length <= 1) return null
+  const uniqueSeasons = React.useMemo(() => {
+    const seen = new Set<number>()
+    const out: SeasonRow[] = []
+    for (const s of seasons) {
+      const id = Number(s.id)
+      if (!Number.isFinite(id) || id <= 0 || seen.has(id)) continue
+      seen.add(id)
+      out.push({
+        ...s,
+        id,
+        name: String(s.name ?? s.short_name ?? id),
+        short_name: s.short_name ? String(s.short_name) : undefined,
+      })
+    }
+    return out
+  }, [seasons])
+
+  if (uniqueSeasons.length <= 1) return null
 
   return (
     <View className="mb-3">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {seasons.map(s => {
+        {uniqueSeasons.map(s => {
           const active = Number(s.id) === Number(seasonId)
           return (
             <Pressable
-              key={s.id}
+              key={`season-chip-${s.id}`}
               onPress={() => onSelect(Number(s.id))}
               style={{
                 paddingHorizontal: 12,

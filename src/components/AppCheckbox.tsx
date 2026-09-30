@@ -1,5 +1,6 @@
 import {Checkbox, Host} from '@expo/ui'
 import React from 'react'
+import {useColorScheme} from 'react-native'
 
 type AppCheckboxProps = {
   value: boolean
@@ -16,8 +17,10 @@ export default function AppCheckbox({
   disabled,
   testID,
 }: AppCheckboxProps) {
+  const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light'
+
   return (
-    <Host matchContents>
+    <Host matchContents colorScheme={colorScheme}>
       <Checkbox
         value={value}
         onValueChange={onValueChange}

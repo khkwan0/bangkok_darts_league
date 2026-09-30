@@ -7,6 +7,7 @@ import {
 } from '@/components/Match/components'
 import {useScoresheetTheme} from '@/components/Match/components/scoresheetTheme'
 import { FrameType } from '@/components/Match/types'
+import { useLeagueContext } from '@/context/LeagueContext'
 import { useMatchContext } from '@/context/MatchContext'
 import { useMatch } from '@/hooks/useMatch'
 import { useTabListContentContainerStyle } from '@/hooks/useTabListContentContainerStyle'
@@ -23,6 +24,7 @@ import { AppState, FlatList, View } from 'react-native'
 export default function ScoreSheet() {
   const {state, dispatch, SocketConnect, SocketDisconnect, UpdateTeams}: any =
     useMatchContext()
+  const {RefreshUpcoming}: any = useLeagueContext()
   const match = useMatch()
   const {params} = useLocalSearchParams()
   const [isMounted, setIsMounted] = React.useState(false)
@@ -237,9 +239,19 @@ export default function ScoreSheet() {
   */
 
   // console.log(state.finalizedHome, state.finalizedAway)
+  const matchCompleted = !!(state.finalizedHome && state.finalizedAway)
+
+  React.useEffect(() => {
+    if (matchCompleted) {
+      RefreshUpcoming()
+    }
+  }, [matchCompleted])
+
   if (!isMounted) {
     return null
-  } else if (state.finalizedHome && state.finalizedAway) {
+  }
+
+  if (matchCompleted) {
     return <CompletedMatchDetails matchId={matchInfo.match_id} />
   }
 

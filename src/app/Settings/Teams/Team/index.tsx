@@ -3,6 +3,9 @@ import {useLocalSearchParams} from 'expo-router'
 
 export default function Team() {
   const {params} = useLocalSearchParams()
-  const teamId = JSON.parse(params as string).teamId
-  return <TeamMembers teamId={teamId} />
+  const parsed = JSON.parse(params as string)
+  const teamId = parsed.teamId
+  const seasonId =
+    parsed.seasonId != null ? Number(parsed.seasonId) : undefined
+  return <TeamMembers teamId={teamId} seasonId={seasonId} />
 }

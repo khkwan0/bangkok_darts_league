@@ -18,6 +18,7 @@ import {
 import {isMiniCompetition} from '@/types/competition'
 import {useLocalSearchParams, useRouter} from 'expo-router'
 import React from 'react'
+import {useTranslation} from 'react-i18next'
 import {
   ActivityIndicator,
   Alert,
@@ -124,6 +125,16 @@ export default function CupsCreateScreen() {
   const miniApi = useMiniLeagues()
   const router = useRouter()
   const isDark = useColorScheme() === 'dark'
+  const {t} = useTranslation()
+
+  const formatLabel = React.useCallback(
+    (key: string, fallback: string) => {
+      const i18nKey = `format_${key}`
+      const translated = t(i18nKey)
+      return translated !== i18nKey ? translated : fallback
+    },
+    [t],
+  )
 
   const competition = state.competition
   const routeMiniId =
@@ -271,9 +282,11 @@ export default function CupsCreateScreen() {
           setPresets(
             list.map((p: any) => {
               const local = getTournamentPreset(String(p.key))
+              const key = String(p.key)
+              const fallback = String(p.label || local?.label || key)
               return {
-                key: String(p.key),
-                label: String(p.label || local?.label || p.key),
+                key,
+                label: formatLabel(key, fallback),
                 description: p.description || local?.description,
                 explanation: p.explanation || local?.explanation,
               }
@@ -655,7 +668,7 @@ export default function CupsCreateScreen() {
             onPress={() => applyPreset(p.key)}
             style={chip(preset === p.key)}>
             <Text style={{color: preset === p.key ? '#fff' : undefined}}>
-              {p.label}
+              {formatLabel(p.key, p.label)}
             </Text>
           </Pressable>
         ))}
@@ -663,7 +676,7 @@ export default function CupsCreateScreen() {
       {selectedPresetMeta ? (
         <RNView style={helpBox}>
           <Text style={{fontWeight: '600', marginBottom: 2}}>
-            {selectedPresetMeta.label}
+            {formatLabel(selectedPresetMeta.key, selectedPresetMeta.label)}
           </Text>
           {selectedPresetMeta.description ? (
             <Text style={{fontSize: 13, opacity: 0.7}}>

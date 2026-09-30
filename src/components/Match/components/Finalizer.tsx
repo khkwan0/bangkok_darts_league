@@ -12,6 +12,7 @@ function FinalizeButton({
   label,
   loading,
   finalized,
+  locked,
   color,
   gold,
   goldText,
@@ -22,6 +23,7 @@ function FinalizeButton({
   label: string
   loading: boolean
   finalized: boolean
+  locked: boolean
   color: string
   gold: string
   goldText: string
@@ -33,6 +35,27 @@ function FinalizeButton({
     return (
       <View style={{flex: 1, paddingVertical: 16, alignItems: 'center'}}>
         <ActivityIndicator size="small" color={spinner} />
+      </View>
+    )
+  }
+
+  if (locked) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          marginHorizontal: 4,
+          borderRadius: 14,
+          borderWidth: 1.5,
+          borderColor: gold,
+          backgroundColor: 'rgba(245, 197, 66, 0.16)',
+          paddingVertical: 14,
+          alignItems: 'center',
+          opacity: 0.7,
+        }}>
+        <Text style={{color: goldText, fontWeight: '800', fontSize: 15}}>
+          {label}
+        </Text>
       </View>
     )
   }
@@ -84,21 +107,37 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
     UnfinalizeMatch,
   }: any = useMatchContext()
   const {state} = useLeagueContext()
-  const [homeLoading, setHomeLoading] = React.useState(false)
-  const [awayLoading, setAwayLoading] = React.useState(false)
+  const [localBusy, setLocalBusy] = React.useState(false)
   const [seenHome, setSeenHome] = React.useState(matchState.finalizedHome)
   const [seenAway, setSeenAway] = React.useState(matchState.finalizedAway)
+  const [seenBusy, setSeenBusy] = React.useState(!!matchState.finalizeBusy)
   const {t} = useTranslation()
+  const matchCompleted = !!(
+    matchState.finalizedHome && matchState.finalizedAway
+  )
+  const busy = !!(matchState.finalizeBusy || localBusy)
 
   if (matchState.finalizedHome !== seenHome) {
     setSeenHome(matchState.finalizedHome)
-    setHomeLoading(false)
+    setLocalBusy(false)
   }
 
   if (matchState.finalizedAway !== seenAway) {
     setSeenAway(matchState.finalizedAway)
-    setAwayLoading(false)
+    setLocalBusy(false)
   }
+
+  if (!!matchState.finalizeBusy !== seenBusy) {
+    setSeenBusy(!!matchState.finalizeBusy)
+    // Remote lock released (or never acquired) — clear optimistic local lock.
+    if (!matchState.finalizeBusy) setLocalBusy(false)
+  }
+
+  React.useEffect(() => {
+    if (!localBusy) return
+    const timer = setTimeout(() => setLocalBusy(false), 45000)
+    return () => clearTimeout(timer)
+  }, [localBusy])
 
   function canActForTeam(teamId: number): boolean {
     const userId = state.user?.id
@@ -138,6 +177,10 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
 
   async function HandleFinalize(side: string) {
     try {
+      if (busy || matchCompleted) {
+        if (matchCompleted) Alert.alert(t('match_completed'))
+        return
+      }
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
       if (CanFinalize(side)) {
         const sideTeamId =
@@ -145,37 +188,36 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
             ? matchState.matchInfo.home_team_id
             : matchState.matchInfo.away_team_id
         if (canActForTeam(sideTeamId) && (side === 'home' || side === 'away')) {
-          if (side === 'home') setHomeLoading(true)
-          else setAwayLoading(true)
+          setLocalBusy(true)
           FinalizeMatch(side, sideTeamId)
         } else {
           Alert.alert(t('error'), t('not_on_team') + ' ' + side)
         }
       } else {
         Alert.alert(t('error'), finalizeBlockMessage())
-        setHomeLoading(false)
-        setAwayLoading(false)
+        setLocalBusy(false)
       }
     } catch (e) {
       console.log(e)
-      setHomeLoading(false)
-      setAwayLoading(false)
+      setLocalBusy(false)
     }
   }
 
   function Unfinalize(side: string) {
     try {
+      if (busy || matchCompleted) {
+        if (matchCompleted) Alert.alert(t('match_completed'))
+        return
+      }
       const sideTeamId =
         side === 'home' ? matchInfo.home_team_id : matchInfo.away_team_id
       if (canActForTeam(sideTeamId) && (side === 'home' || side === 'away')) {
-        if (side === 'home') setHomeLoading(true)
-        else setAwayLoading(true)
+        setLocalBusy(true)
         UnfinalizeMatch(side, sideTeamId)
       }
     } catch (e) {
       console.log(e)
-      setHomeLoading(false)
-      setAwayLoading(false)
+      setLocalBusy(false)
     }
   }
 
@@ -187,8 +229,9 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
             ? `${t('unfinalize')} ${t('home')}`
             : `${t('finalize')} ${t('home')}`
         }
-        loading={homeLoading}
+        loading={busy}
         finalized={matchState.finalizedHome}
+        locked={matchCompleted}
         color={theme.home.button}
         gold={theme.gold}
         goldText={theme.isDark ? theme.gold : '#92400E'}
@@ -202,8 +245,9 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
             ? `${t('unfinalize')} ${t('away')}`
             : `${t('finalize')} ${t('away')}`
         }
-        loading={awayLoading}
+        loading={busy}
         finalized={matchState.finalizedAway}
+        locked={matchCompleted}
         color={theme.away.button}
         gold={theme.gold}
         goldText={theme.isDark ? theme.gold : '#92400E'}

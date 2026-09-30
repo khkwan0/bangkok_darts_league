@@ -20,12 +20,23 @@ export default function AddExistingPlayer() {
   const {teamIdParams, returnPath} = useLocalSearchParams()
   const teamId = JSON.parse(teamIdParams as string).teamId
 
-  const trie = React.useRef(new TrieSearch('nickname', {splitOnRegEx: false}))
+  const trie = React.useRef(
+    new TrieSearch(['nickname', 'firstname', 'lastname', 'id_str'], {
+      splitOnRegEx: false,
+    }),
+  )
 
   async function fetchPlayers() {
     try {
       const players = await league.GetUniquePlayers()
-      trie.current.addAll(players.data)
+      // Index id as a string so numeric ID lookups work with TrieSearch.
+      const indexed = (players.data || []).map(
+        (player: {id: number; nickname: string}) => ({
+          ...player,
+          id_str: String(player.id),
+        }),
+      )
+      trie.current.addAll(indexed)
     } catch (error) {
       console.error(error)
       setErr(t('error_fetching_players'))

@@ -67,6 +67,8 @@ export default function RegisterTeam() {
     setStatus('')
     if (!newTeamName) {
       setErr('team_name_required')
+    } else if (!newTeamShortName.trim()) {
+      setErr('team_short_name_required')
     } else if (!newTeamVenueId) {
       setErr('venue_required')
     } else {
@@ -139,10 +141,7 @@ export default function RegisterTeam() {
 
             <View className="mb-6">
               <Text className="mb-2 font-medium text-gray-700">
-                {t('team_short_name')}{' '}
-                <Text className="text-gray-500 italic">
-                  ({t('recommended')})
-                </Text>
+                {t('team_short_name')}
               </Text>
               <TextInput
                 className="border border-gray-300 rounded-lg p-3 mb-1 bg-gray-50 dark:bg-gray-800"
@@ -161,7 +160,7 @@ export default function RegisterTeam() {
                 className="border border-gray-300 rounded-lg p-3 mb-1 bg-gray-50 dark:bg-gray-800"
                 value={newTeamVeryShortName}
                 onChangeText={setNewTeamVeryShortName}
-                placeholder={t('enter_team_very_short_name')}
+                placeholder={t('team_very_short_name_hint')}
               />
             </View>
 

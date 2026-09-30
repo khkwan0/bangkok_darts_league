@@ -1,10 +1,12 @@
 import AppCheckbox from '@/components/AppCheckbox'
 import {useStatColors} from '@/components/PlayerStatistics/statUi'
 import {MiniLeagueTeamsPanel} from '@/components/mini-leagues/MiniLeagueTeamsPanel'
+import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import config from '@/config'
 import {Colors} from '@/constants/Colors'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useLeague} from '@/hooks'
+import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
 import {isMiniCompetition} from '@/types/competition'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -67,7 +69,13 @@ function TeamMark({team}: {team: TeamType}) {
   )
 }
 
-function TeamCard({team}: {team: TeamType}) {
+function TeamCard({
+  team,
+  seasonId,
+}: {
+  team: TeamType
+  seasonId: number | null
+}) {
   const colors = useStatColors()
   const {t} = useTranslation()
   const division = team.division_name || team.division_short_name
@@ -78,7 +86,12 @@ function TeamCard({team}: {team: TeamType}) {
     router.push(
       {
         pathname: './Team',
-        params: {params: JSON.stringify({teamId: team.id})},
+        params: {
+          params: JSON.stringify({
+            teamId: team.id,
+            seasonId: seasonId ?? undefined,
+          }),
+        },
       },
       {
         relativeToDirectory: true,
@@ -116,7 +129,13 @@ function TeamCard({team}: {team: TeamType}) {
                 {division}
               </Text>
             ) : null}
-            <Text style={{marginTop: 6, fontSize: 13, fontWeight: '600', color: colors.accent}}>
+            <Text
+              style={{
+                marginTop: 6,
+                fontSize: 13,
+                fontWeight: '600',
+                color: colors.accent,
+              }}>
               {playersLabel}
             </Text>
           </View>
@@ -126,6 +145,8 @@ function TeamCard({team}: {team: TeamType}) {
     </View>
   )
 }
+
+const TeamCardMemo = React.memo(TeamCard)
 
 function TeamsHeader() {
   const colors = useStatColors()
@@ -188,22 +209,32 @@ export default function TeamList() {
   const listContentStyle = useTabListContentContainerStyle({
     backgroundColor: pageBg,
   })
-
-  const userTeams = React.useMemo(() => {
-    return user.teams?.map((team: {id: number}) => team.id) || []
-  }, [user.teams])
+  const {seasons, seasonId, setSeasonId, selectedSeason} =
+    useLeagueSeasonSelection()
 
   async function getTeams() {
     try {
       setRefreshing(true)
-      const response = await league.GetTeams()
-      const sortedTeams = response.sort((a: TeamType, b: TeamType) =>
-        a.name.localeCompare(b.name),
+      if (seasonId == null) {
+        setTeams([])
+        return
+      }
+      // Past seasons often have status_id != 1 after rollover; include
+      // inactive + no-division rows so historical browse works.
+      const isPastSeason = selectedSeason ? !selectedSeason.is_active : false
+      const response = await league.GetTeamsBySeason(seasonId, {
+        includeInactive: isPastSeason,
+        includeNoDivision: isPastSeason,
+      })
+      const sortedTeams = (Array.isArray(response) ? response : []).sort(
+        (a: TeamType, b: TeamType) => a.name.localeCompare(b.name),
       )
-      if (showMineOnly) {
-        setTeams(
-          sortedTeams.filter((team: TeamType) => userTeams.includes(team.id)),
+      if (showMineOnly && user?.id) {
+        const mine = await league.GetPlayerTeamsForSeason(user.id, seasonId)
+        const mineIds = new Set(
+          (mine || []).map((team: {id: number}) => Number(team.id)),
         )
+        setTeams(sortedTeams.filter((team: TeamType) => mineIds.has(team.id)))
       } else {
         setTeams(sortedTeams)
       }
@@ -244,10 +275,11 @@ export default function TeamList() {
 
   React.useEffect(() => {
     if (isMiniCompetition(state.competition)) return
+    if (seasonId == null) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     getTeams()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showMineOnly, state.competition])
+  }, [showMineOnly, state.competition, seasonId])
 
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -255,46 +287,78 @@ export default function TeamList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const signedIn = typeof user.id !== 'undefined'
+
+  const renderItem = React.useCallback(
+    ({item}: {item: TeamType}) => (
+      <TeamCardMemo team={item} seasonId={seasonId} />
+    ),
+    [seasonId],
+  )
+
+  const listHeader = React.useMemo(
+    () => (
+      <View>
+        {signedIn ? <TeamsHeader /> : null}
+        <View style={{paddingHorizontal: 16, paddingBottom: 8}}>
+          <MiniSeasonChips
+            seasons={seasons}
+            seasonId={seasonId}
+            onSelect={setSeasonId}
+          />
+        </View>
+        {signedIn ? (
+          <View style={{paddingHorizontal: 16, paddingBottom: 12}}>
+            <View
+              style={{
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderWidth: 1,
+                borderRadius: 16,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+              }}>
+              <AppCheckbox
+                label={t('show_my_teams')}
+                value={showMineOnly}
+                onValueChange={handleSetShowMineOnly}
+              />
+            </View>
+          </View>
+        ) : null}
+      </View>
+    ),
+    [
+      signedIn,
+      seasons,
+      seasonId,
+      setSeasonId,
+      colors.card,
+      colors.border,
+      t,
+      showMineOnly,
+    ],
+  )
+
   if (isMiniCompetition(state.competition)) {
     return <MiniLeagueTeamsPanel miniLeagueId={state.competition.id} />
   }
-
-  const signedIn = typeof user.id !== 'undefined'
 
   return (
     <View style={{flex: 1, backgroundColor: pageBg}}>
       <FlatList
         style={{backgroundColor: pageBg}}
         contentContainerStyle={listContentStyle}
-        ListHeaderComponent={
-          signedIn ? (
-            <View>
-              <TeamsHeader />
-              <View style={{paddingHorizontal: 16, paddingBottom: 12}}>
-                <View
-                  style={{
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    borderWidth: 1,
-                    borderRadius: 16,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                  }}>
-                  <AppCheckbox
-                    label={t('show_my_teams')}
-                    value={showMineOnly}
-                    onValueChange={handleSetShowMineOnly}
-                  />
-                </View>
-              </View>
-            </View>
-          ) : null
-        }
+        ListHeaderComponent={listHeader}
         data={teams}
-        renderItem={({item}) => <TeamCard team={item} />}
+        renderItem={renderItem}
         keyExtractor={item => item.id.toString()}
         refreshing={refreshing}
         onRefresh={getTeams}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={7}
+        removeClippedSubviews
       />
     </View>
   )

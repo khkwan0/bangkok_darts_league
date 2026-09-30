@@ -16,7 +16,10 @@ import {useTranslation} from 'react-i18next'
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   TextInput,
@@ -162,9 +165,17 @@ export function CompetitionPickerModal() {
   const [name, setName] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
   const [othersError, setOthersError] = React.useState<string | null>(null)
+  const [keyboardHeight, setKeyboardHeight] = React.useState(0)
+  const scrollRef = React.useRef<ScrollView>(null)
   const userId = state.user?.id ?? null
   const userIdRef = React.useRef(userId)
   userIdRef.current = userId
+
+  const scrollCreateIntoView = React.useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({animated: true})
+    })
+  }, [])
 
   const competitionRef = React.useRef(state.competition)
   competitionRef.current = state.competition
@@ -278,9 +289,33 @@ export function CompetitionPickerModal() {
       setShowCreate(false)
       setName('')
       setShowOthers(false)
+      setKeyboardHeight(0)
       load()
     }
   }, [visible, load, apiUrl])
+
+  React.useEffect(() => {
+    if (!visible) return
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const showSub = Keyboard.addListener(showEvent, e => {
+      setKeyboardHeight(e.endCoordinates.height)
+      if (showCreate) scrollCreateIntoView()
+    })
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0)
+    })
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [visible, showCreate, scrollCreateIntoView])
+
+  React.useEffect(() => {
+    if (showCreate) scrollCreateIntoView()
+  }, [showCreate, scrollCreateIntoView])
 
   async function select(competition: Competition) {
     await setCompetition(competition)
@@ -405,7 +440,9 @@ export function CompetitionPickerModal() {
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={closeCompetitionPicker}>
-      <View style={{flex: 1, backgroundColor: screenBg}}>
+      <KeyboardAvoidingView
+        style={{flex: 1, backgroundColor: screenBg}}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View
           style={{
             flexDirection: 'row',
@@ -437,13 +474,19 @@ export function CompetitionPickerModal() {
         </View>
 
         <ScrollView
+          ref={scrollRef}
           style={{flex: 1}}
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingTop: 8,
-            paddingBottom: Math.max(insets.bottom, 20) + 16,
+            paddingBottom:
+              Math.max(insets.bottom, 20) +
+              16 +
+              // Android Modal dialogs don't resize with the keyboard; pad instead.
+              (Platform.OS === 'android' ? keyboardHeight : 0),
           }}
-          keyboardShouldPersistTaps="handled">
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive">
           <Text
             style={{
               fontSize: 14,
@@ -669,6 +712,7 @@ export function CompetitionPickerModal() {
                   value={name}
                   onChangeText={setName}
                   autoFocus
+                  onFocus={scrollCreateIntoView}
                   placeholder={t('name')}
                   placeholderTextColor={muted}
                   style={{
@@ -718,7 +762,7 @@ export function CompetitionPickerModal() {
             ) : null}
           </View>
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
