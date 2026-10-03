@@ -27,10 +27,98 @@ import {
   useColorScheme,
   View as RNView,
 } from 'react-native'
+import {Swipeable} from 'react-native-gesture-handler'
 
 type TabKey = 'new' | 'tickets'
 
 const MAX_ATTACHMENTS = 5
+
+function ClosedTicketRow({
+  item,
+  borderColor,
+  muted,
+  isDark,
+  statusColors,
+  onOpen,
+  onDelete,
+}: {
+  item: MemberSupportTicketListItem
+  borderColor: string
+  muted: string
+  isDark: boolean
+  statusColors: {bg: string; fg: string}
+  onOpen: () => void
+  onDelete: () => void
+}) {
+  const {t} = useTranslation()
+  const swipeRef = React.useRef<Swipeable>(null)
+  const unread = item.unread_staff_replies > 0
+
+  const renderRightActions = () => (
+    <Pressable
+      onPress={() => {
+        swipeRef.current?.close()
+        onDelete()
+      }}
+      className="mb-3 ml-2 items-center justify-center rounded-xl px-5"
+      style={{backgroundColor: '#ef4444', minWidth: 88}}>
+      <MCI name="delete-outline" size={22} color="#fff" />
+      <Text className="mt-1 text-xs font-bold text-white">
+        {t('support_delete')}
+      </Text>
+    </Pressable>
+  )
+
+  return (
+    <Swipeable
+      ref={swipeRef}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      friction={2}>
+      <Pressable
+        onPress={onOpen}
+        className="mb-3 rounded-xl border p-4"
+        style={{
+          borderColor: unread ? '#38bdf8' : borderColor,
+          backgroundColor: unread
+            ? isDark
+              ? 'rgba(14, 165, 233, 0.12)'
+              : 'rgba(14, 165, 233, 0.06)'
+            : isDark
+              ? '#0f172a'
+              : '#fff',
+        }}>
+        <RNView className="mb-2 flex-row items-center justify-between">
+          <Text className="flex-1 pr-3 font-bold" numberOfLines={1}>
+            {item.title?.trim() || t('support_request_default_title')}
+          </Text>
+          <RNView
+            className="rounded-full px-2 py-0.5"
+            style={{backgroundColor: statusColors.bg}}>
+            <Text className="text-xs font-bold" style={{color: statusColors.fg}}>
+              {t(supportStatusLabelKey(item.status))}
+            </Text>
+          </RNView>
+        </RNView>
+        <Text className="text-sm" style={{color: muted}} numberOfLines={2}>
+          {messagePreview(item.message)}
+        </Text>
+        <RNView className="mt-2 flex-row items-center justify-between">
+          <Text className="text-xs" style={{color: muted}}>
+            {t('support_reply_count', {count: item.reply_count})}
+          </Text>
+          {unread ? (
+            <RNView className="rounded-full bg-sky-500 px-2 py-0.5">
+              <Text className="text-[10px] font-bold uppercase text-white">
+                {t('support_unread_badge')}
+              </Text>
+            </RNView>
+          ) : null}
+        </RNView>
+      </Pressable>
+    </Swipeable>
+  )
+}
 
 export default function SupportScreen() {
   const {t} = useTranslation()
@@ -39,7 +127,8 @@ export default function SupportScreen() {
   const colorScheme = useColorScheme() ?? 'light'
   const isDark = colorScheme === 'dark'
   const {state} = useLeagueContext()
-  const {listTickets, createTicket, getUnreadCount} = useSupportTickets()
+  const {listTickets, createTicket, getUnreadCount, deleteTicket} =
+    useSupportTickets()
 
   const [tab, setTab] = React.useState<TabKey>('new')
   const [title, setTitle] = React.useState('')
@@ -54,6 +143,7 @@ export default function SupportScreen() {
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
   const [listError, setListError] = React.useState<string | null>(null)
+  const [deletingId, setDeletingId] = React.useState<number | null>(null)
 
   React.useEffect(() => {
     navigation.setOptions({title: t('support')})
@@ -102,7 +192,10 @@ export default function SupportScreen() {
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
-      Alert.alert(t('support_image_permission_title'), t('support_image_permission_body'))
+      Alert.alert(
+        t('support_image_permission_title'),
+        t('support_image_permission_body'),
+      )
       return
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -175,6 +268,37 @@ export default function SupportScreen() {
     }
   }
 
+  function confirmDeleteTicket(item: MemberSupportTicketListItem) {
+    Alert.alert(
+      t('support_delete_confirm_title'),
+      t('support_delete_confirm_body'),
+      [
+        {text: t('cancel'), style: 'cancel'},
+        {
+          text: t('support_delete'),
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              if (deletingId) return
+              setDeletingId(item.id)
+              try {
+                const result = await deleteTicket(item.id)
+                if (result.error) {
+                  Alert.alert(t('support_delete_failed'))
+                  return
+                }
+                setItems(prev => prev.filter(row => row.id !== item.id))
+                await refreshSupportUnread(getUnreadCount)
+              } finally {
+                setDeletingId(null)
+              }
+            })()
+          },
+        },
+      ],
+    )
+  }
+
   function statusColor(status: string) {
     switch (status) {
       case 'open':
@@ -209,7 +333,9 @@ export default function SupportScreen() {
           />
         ) : undefined
       }>
-      <View className="mb-4 flex-row overflow-hidden rounded-xl border" style={{borderColor}}>
+      <View
+        className="mb-4 flex-row overflow-hidden rounded-xl border"
+        style={{borderColor}}>
         {(['new', 'tickets'] as TabKey[]).map(key => {
           const active = tab === key
           return (
@@ -225,7 +351,9 @@ export default function SupportScreen() {
                   : 'transparent',
               }}>
               <Text className="font-bold" style={{opacity: active ? 1 : 0.6}}>
-                {key === 'new' ? t('support_tab_new') : t('support_tab_my_tickets')}
+                {key === 'new'
+                  ? t('support_tab_new')
+                  : t('support_tab_my_tickets')}
               </Text>
             </Pressable>
           )
@@ -237,14 +365,18 @@ export default function SupportScreen() {
           <Text className="mb-3 text-sm" style={{color: muted}}>
             {t('support_description')}
           </Text>
-          <Text className="mb-1 font-semibold">{t('support_request_title_label')}</Text>
+          <Text className="mb-1 font-semibold">
+            {t('support_request_title_label')}
+          </Text>
           <TextInput
             value={title}
             onChangeText={setTitle}
             placeholder={t('support_request_title_placeholder')}
             editable={!submitting}
           />
-          <Text className="mb-1 mt-4 font-semibold">{t('support_message_label')}</Text>
+          <Text className="mb-1 mt-4 font-semibold">
+            {t('support_message_label')}
+          </Text>
           <TextInput
             value={message}
             onChangeText={setMessage}
@@ -263,9 +395,15 @@ export default function SupportScreen() {
               backgroundColor: isDark
                 ? 'rgba(148, 163, 184, 0.12)'
                 : 'rgba(148, 163, 184, 0.14)',
-              opacity: submitting || attachments.length >= MAX_ATTACHMENTS ? 0.55 : 1,
+              opacity:
+                submitting || attachments.length >= MAX_ATTACHMENTS ? 0.55 : 1,
             }}>
-            <MCI name="image-plus" size={18} color="#0ea5e9" style={{marginRight: 8}} />
+            <MCI
+              name="image-plus"
+              size={18}
+              color="#0ea5e9"
+              style={{marginRight: 8}}
+            />
             <Text className="text-sm font-semibold" style={{color: '#0ea5e9'}}>
               {t('support_attach_images')}
             </Text>
@@ -275,7 +413,10 @@ export default function SupportScreen() {
           </Text>
 
           {attachments.length > 0 ? (
-            <ScrollView horizontal className="mt-3" showsHorizontalScrollIndicator={false}>
+            <ScrollView
+              horizontal
+              className="mt-3"
+              showsHorizontalScrollIndicator={false}>
               {attachments.map((item, index) => (
                 <RNView key={`${item.uri}-${index}`} className="relative mr-3">
                   <Image
@@ -315,6 +456,9 @@ export default function SupportScreen() {
         </View>
       ) : (
         <View>
+          <Text className="mb-3 text-sm" style={{color: muted}}>
+            {t('support_swipe_delete_hint')}
+          </Text>
           {loading ? (
             <ActivityIndicator className="mt-8" />
           ) : listError ? (
@@ -329,10 +473,28 @@ export default function SupportScreen() {
             items.map(item => {
               const colors = statusColor(item.status)
               const unread = item.unread_staff_replies > 0
+              const openTicket = () =>
+                router.push(`/Settings/Support/${item.id}` as any)
+
+              if (item.status === 'closed') {
+                return (
+                  <ClosedTicketRow
+                    key={item.id}
+                    item={item}
+                    borderColor={borderColor}
+                    muted={muted}
+                    isDark={isDark}
+                    statusColors={colors}
+                    onOpen={openTicket}
+                    onDelete={() => confirmDeleteTicket(item)}
+                  />
+                )
+              }
+
               return (
                 <Pressable
                   key={item.id}
-                  onPress={() => router.push(`/Settings/Support/${item.id}` as any)}
+                  onPress={openTicket}
                   className="mb-3 rounded-xl border p-4"
                   style={{
                     borderColor: unread ? '#38bdf8' : borderColor,
@@ -349,12 +511,17 @@ export default function SupportScreen() {
                     <RNView
                       className="rounded-full px-2 py-0.5"
                       style={{backgroundColor: colors.bg}}>
-                      <Text className="text-xs font-bold" style={{color: colors.fg}}>
+                      <Text
+                        className="text-xs font-bold"
+                        style={{color: colors.fg}}>
                         {t(supportStatusLabelKey(item.status))}
                       </Text>
                     </RNView>
                   </RNView>
-                  <Text className="text-sm" style={{color: muted}} numberOfLines={2}>
+                  <Text
+                    className="text-sm"
+                    style={{color: muted}}
+                    numberOfLines={2}>
                     {messagePreview(item.message)}
                   </Text>
                   <RNView className="mt-2 flex-row items-center justify-between">

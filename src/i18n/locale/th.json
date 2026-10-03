@@ -489,10 +489,10 @@
   "support_image_permission_title": "ต้องการสิทธิ์เข้าถึงรูปภาพ",
   "support_image_permission_body": "อนุญาตเข้าถึงคลังรูปภาพเพื่อแนบรูปกับตั๋วช่วยเหลือ",
   "support_attachment": "ไฟล์แนบ",
-  "support_reply_count": "{{count}} ข้อความตอบกลับ",
+  "support_reply_count": "{count} ข้อความตอบกลับ",
   "support_unread_badge": "ใหม่",
   "support_ticket_not_found": "ไม่พบตั๋วช่วยเหลือนี้",
-  "support_ticket_opened": "เปิดเมื่อ {{date}}",
+  "support_ticket_opened": "เปิดเมื่อ {date}",
   "support_conversation": "การสนทนา",
   "support_your_original_message": "ข้อความของคุณ",
   "support_reply_from_staff": "ทีมช่วยเหลือ",
@@ -712,5 +712,10 @@
   "cups_bye": "บาย่",
   "cups_unplaced": "ยังไม่จัดคู่",
   "cups_draw": "จับคู่",
-  "cups_third_place": "ชิงที่ 3"
+  "cups_third_place": "ชิงที่ 3",
+  "support_delete": "ลบ",
+  "support_delete_confirm_title": "ลบตั๋ว?",
+  "support_delete_confirm_body": "การลบตั๋วที่ปิดแล้วจะถาวรและไม่สามารถกู้คืนได้",
+  "support_delete_failed": "ลบตั๋วไม่สำเร็จ กรุณาลองใหม่",
+  "support_swipe_delete_hint": "ปัดไปทางซ้ายบนตั๋วที่ปิดแล้วเพื่อลบ"
 }

@@ -182,6 +182,17 @@ export function useSupportTickets() {
     [],
   )
 
+  const deleteTicket = React.useCallback(
+    async (id: number): Promise<{ok?: boolean; error?: string}> => {
+      const res = await networkRef.current.Delete(`/support/tickets/${id}`)
+      if (res?.status === 'ok') {
+        return {ok: true}
+      }
+      return {error: res?.error ?? 'request_failed'}
+    },
+    [],
+  )
+
   return {
     listTickets,
     getTicket,
@@ -189,5 +200,6 @@ export function useSupportTickets() {
     createTicket,
     replyToTicket,
     updateTicketStatus,
+    deleteTicket,
   }
 }

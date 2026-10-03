@@ -489,10 +489,10 @@
   "support_image_permission_title": "Photo access needed",
   "support_image_permission_body": "Allow photo library access to attach images to your support ticket.",
   "support_attachment": "Attachment",
-  "support_reply_count": "{{count}} replies",
+  "support_reply_count": "{count} replies",
   "support_unread_badge": "New",
   "support_ticket_not_found": "This support ticket was not found.",
-  "support_ticket_opened": "Opened {{date}}",
+  "support_ticket_opened": "Opened {date}",
   "support_conversation": "Conversation",
   "support_your_original_message": "Your message",
   "support_reply_from_staff": "Support team",
@@ -716,5 +716,10 @@
   "cups_bye": "BYE",
   "cups_unplaced": "Unplaced",
   "cups_draw": "Draw",
-  "cups_third_place": "3rd place"
+  "cups_third_place": "3rd place",
+  "support_delete": "Delete",
+  "support_delete_confirm_title": "Delete ticket?",
+  "support_delete_confirm_body": "This permanently deletes the closed ticket and cannot be undone.",
+  "support_delete_failed": "Could not delete this ticket. Please try again.",
+  "support_swipe_delete_hint": "Swipe left on a closed ticket to delete it."
 }
