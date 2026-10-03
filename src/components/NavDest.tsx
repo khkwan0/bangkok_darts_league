@@ -56,13 +56,15 @@ export default function NavDest(props: NavDestProps) {
         <View className="flex-auto">
           <Text className="font-bold">{text}</Text>
         </View>
-        <View className="flex-auto">
-          {messageCount > 0 && (
-            <Text className="bg-red-500 rounded-full px-2 mx-24 py-1 text-center text-white">
+        {messageCount > 0 ? (
+          <View className="mr-2 rounded-full bg-red-500 px-2 py-0.5">
+            <Text className="text-xs font-bold text-white">
               {messageCount.toString()}
             </Text>
-          )}
-        </View>
+          </View>
+        ) : (
+          <View className="flex-auto" />
+        )}
         <View className="content-end">
           <MCI name="greater-than" color={colors.text} size={20} />
         </View>

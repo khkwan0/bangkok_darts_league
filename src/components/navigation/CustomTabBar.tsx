@@ -8,8 +8,11 @@ import {
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useForumActivitySync} from '@/hooks/useForumActivity'
 import {useSupportTickets} from '@/hooks/useSupportTickets'
+import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
 import {useHasNewForumPosts} from '@/lib/forumActivity'
 import {refreshSupportUnread} from '@/lib/supportUnread'
+import {refreshAdminSupportUnread} from '@/lib/adminSupportUnread'
+import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import {
   getCompetitionPalette,
   isCanonicalCompetition,
@@ -109,6 +112,7 @@ export function CustomTabBar({state, descriptors, navigation}: BottomTabBarProps
   const {t} = useTranslation()
   const {refreshForumActivity} = useForumActivitySync()
   const {getUnreadCount: getSupportUnreadCount} = useSupportTickets()
+  const {getUnreadCount: getAdminSupportUnreadCount} = useAdminSupportTickets()
   const hasNewForumPosts = useHasNewForumPosts()
   const showForumFabBadge =
     (leagueState.showForumFabBadge ?? true) && hasNewForumPosts
@@ -146,6 +150,9 @@ export function CustomTabBar({state, descriptors, navigation}: BottomTabBarProps
     }
     refreshForumActivity()
     void refreshSupportUnread(getSupportUnreadCount)
+    if (isLeagueAdmin(leagueState.user)) {
+      void refreshAdminSupportUnread(getAdminSupportUnreadCount)
+    }
     sheetRef.current?.present()
   }
 

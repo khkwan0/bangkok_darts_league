@@ -109,6 +109,12 @@ export function isSupportTicketRemoteMessage(remoteMessage: {
   return remoteMessage?.data?.type === 'support_ticket'
 }
 
+export function isAdminSupportTicketRemoteMessage(remoteMessage: {
+  data?: Record<string, unknown> | null
+}): boolean {
+  return remoteMessage?.data?.type === 'admin_support_ticket'
+}
+
 export function getSupportTicketIdFromRemoteMessage(remoteMessage: {
   data?: Record<string, unknown> | null
 }): number | null {

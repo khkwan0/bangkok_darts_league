@@ -715,7 +715,19 @@
   "cups_third_place": "ชิงที่ 3",
   "support_delete": "ลบ",
   "support_delete_confirm_title": "ลบตั๋ว?",
-  "support_delete_confirm_body": "การลบตั๋วที่ปิดแล้วจะถาวรและไม่สามารถกู้คืนได้",
+  "support_delete_confirm_body": "ตั๋วที่ปิดแล้วจะถูกลบออกจากรายการของคุณ",
   "support_delete_failed": "ลบตั๋วไม่สำเร็จ กรุณาลองใหม่",
-  "support_swipe_delete_hint": "ปัดไปทางซ้ายบนตั๋วที่ปิดแล้วเพื่อลบ"
+  "support_swipe_delete_hint": "ปัดไปทางซ้ายบนตั๋วที่ปิดแล้วเพื่อลบ",
+  "admin_support": "ตั๋วช่วยเหลือ",
+  "admin_support_load_failed": "โหลดตั๋วช่วยเหลือไม่สำเร็จ",
+  "admin_support_empty": "ไม่มีตั๋วที่ตรงกับตัวกรองนี้",
+  "admin_support_filter_all": "ทั้งหมด",
+  "admin_support_attachments": "{count} ไฟล์แนบ",
+  "admin_support_original_message": "ข้อความต้นฉบับ",
+  "admin_support_manage": "จัดการตั๋ว",
+  "admin_support_status": "สถานะ",
+  "admin_support_notes": "บันทึกแอดมิน",
+  "admin_support_notes_placeholder": "บันทึกภายใน (ผู้เล่นมองไม่เห็น)",
+  "admin_support_save": "บันทึกการเปลี่ยนแปลง",
+  "admin_support_save_failed": "บันทึกการเปลี่ยนแปลงไม่สำเร็จ กรุณาลองใหม่"
 }

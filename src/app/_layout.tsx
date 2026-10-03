@@ -3,7 +3,12 @@ import {MatchProvider} from '@/context/MatchContext'
 import OTAUpdatePrompt from '@/components/OTAUpdatePrompt'
 import {SystemNavigationBar} from '@/components/SystemNavigationBar'
 import '@/i18n'
-import {ensureAppWideChannel, getSupportTicketIdFromRemoteMessage} from '@/lib/notifications'
+import {
+  ensureAppWideChannel,
+  getSupportTicketIdFromRemoteMessage,
+  isAdminSupportTicketRemoteMessage,
+  isSupportTicketRemoteMessage,
+} from '@/lib/notifications'
 import {BottomSheetModalProvider} from '@expo/ui/community/bottom-sheet'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
@@ -118,13 +123,26 @@ function RootLayout() {
       const unsubscribe = onNotificationOpenedApp(
         messagingInstance,
         remoteMessage => {
-          const supportTicketId =
-            getSupportTicketIdFromRemoteMessage(remoteMessage)
-          if (supportTicketId) {
-            setTimeout(() => {
-              handleSupportTicketNavigation(supportTicketId)
-            }, 500)
-            return
+          if (isAdminSupportTicketRemoteMessage(remoteMessage)) {
+            const ticketId =
+              getSupportTicketIdFromRemoteMessage(remoteMessage)
+            if (ticketId) {
+              setTimeout(() => {
+                handleAdminSupportTicketNavigation(ticketId)
+              }, 500)
+              return
+            }
+          }
+
+          if (isSupportTicketRemoteMessage(remoteMessage)) {
+            const supportTicketId =
+              getSupportTicketIdFromRemoteMessage(remoteMessage)
+            if (supportTicketId) {
+              setTimeout(() => {
+                handleSupportTicketNavigation(supportTicketId)
+              }, 500)
+              return
+            }
           }
 
           const senderId = remoteMessage?.data?.senderId || null
@@ -149,13 +167,26 @@ function RootLayout() {
       getInitialNotification(messagingInstance)
         .then(remoteMessage => {
           if (remoteMessage) {
-            const supportTicketId =
-              getSupportTicketIdFromRemoteMessage(remoteMessage)
-            if (supportTicketId) {
-              setTimeout(() => {
-                handleSupportTicketNavigation(supportTicketId)
-              }, 1000)
-              return
+            if (isAdminSupportTicketRemoteMessage(remoteMessage)) {
+              const ticketId =
+                getSupportTicketIdFromRemoteMessage(remoteMessage)
+              if (ticketId) {
+                setTimeout(() => {
+                  handleAdminSupportTicketNavigation(ticketId)
+                }, 1000)
+                return
+              }
+            }
+
+            if (isSupportTicketRemoteMessage(remoteMessage)) {
+              const supportTicketId =
+                getSupportTicketIdFromRemoteMessage(remoteMessage)
+              if (supportTicketId) {
+                setTimeout(() => {
+                  handleSupportTicketNavigation(supportTicketId)
+                }, 1000)
+                return
+              }
             }
 
             const senderId = remoteMessage?.data?.senderId || null
@@ -200,6 +231,26 @@ function RootLayout() {
       })
   }
 
+  function handleAdminSupportTicketNavigation(ticketId: number) {
+    AsyncStorage.getItem('jwt')
+      .then(jwt => {
+        if (!jwt) {
+          return
+        }
+        try {
+          router.push(`/Settings/Admin/Support/${ticketId}` as any)
+        } catch (error) {
+          console.error(
+            'Error handling admin support ticket notification:',
+            error,
+          )
+        }
+      })
+      .catch(error => {
+        console.error('Error checking jwt:', error)
+      })
+  }
+
   function handleNotificationNavigation(remoteMessage: any) {
     // Check if user is logged in by checking AsyncStorage for jwt
     AsyncStorage.getItem('jwt')
@@ -209,11 +260,22 @@ function RootLayout() {
         }
 
         try {
-          const supportTicketId =
-            getSupportTicketIdFromRemoteMessage(remoteMessage)
-          if (supportTicketId) {
-            router.push(`/Settings/Support/${supportTicketId}` as any)
-            return
+          if (isAdminSupportTicketRemoteMessage(remoteMessage)) {
+            const ticketId =
+              getSupportTicketIdFromRemoteMessage(remoteMessage)
+            if (ticketId) {
+              router.push(`/Settings/Admin/Support/${ticketId}` as any)
+              return
+            }
+          }
+
+          if (isSupportTicketRemoteMessage(remoteMessage)) {
+            const supportTicketId =
+              getSupportTicketIdFromRemoteMessage(remoteMessage)
+            if (supportTicketId) {
+              router.push(`/Settings/Support/${supportTicketId}` as any)
+              return
+            }
           }
 
           // Extract sender name from notification

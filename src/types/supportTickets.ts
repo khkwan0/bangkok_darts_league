@@ -52,6 +52,27 @@ export type MemberSupportTicketDetail = {
   replies: SupportTicketReply[]
 }
 
+export type AdminSupportTicketListItem = {
+  id: number
+  player_id: number
+  player_display_name: string
+  player_email: string | null
+  title: string | null
+  message: string
+  status: SupportTicketStatus
+  attachment_count: number
+  unread_user_activity: number
+  created_at: string
+  updated_at: string
+}
+
+export type AdminSupportTicketDetail = AdminSupportTicketListItem & {
+  admin_notes: string | null
+  attachments: SupportTicketAttachment[]
+  replies: SupportTicketReply[]
+  initial_message_unread?: boolean
+}
+
 export type SupportImageAttachment = {
   uri: string
   name: string

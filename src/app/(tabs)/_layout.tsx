@@ -17,13 +17,17 @@ import {
 import {
   applyBadgeFromRemoteMessage,
   getBadgeFromRemoteMessage,
+  isAdminSupportTicketRemoteMessage,
   isAnnouncementRemoteMessage,
   isSupportTicketRemoteMessage,
   presentRemoteNotification,
   setAppBadgeCount,
 } from '@/lib/notifications'
 import {refreshSupportUnread} from '@/lib/supportUnread'
+import {refreshAdminSupportUnread} from '@/lib/adminSupportUnread'
 import {useSupportTickets} from '@/hooks/useSupportTickets'
+import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
+import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   getMessaging,
@@ -43,6 +47,7 @@ export default function TabLayout() {
   const {markRead, syncReads, getAnnouncements, getAnnouncement} =
     useAnnouncements()
   const {getUnreadCount: getSupportUnreadCount} = useSupportTickets()
+  const {getUnreadCount: getAdminSupportUnreadCount} = useAdminSupportTickets()
   const [isMounted, setIsMounted] = React.useState(false)
   const [showLanguageOption, setShowLanguageOption] = React.useState(false)
   const [unreadAnnouncement, setUnreadAnnouncement] = React.useState<{
@@ -338,6 +343,9 @@ export default function TabLayout() {
         if (state.user?.id) {
           syncUnreadFromServer()
           void refreshSupportUnread(getSupportUnreadCount)
+          if (isLeagueAdmin(state.user)) {
+            void refreshAdminSupportUnread(getAdminSupportUnreadCount)
+          }
         }
         if (!showLanguageOption) {
           checkUnreadAnnouncements()
@@ -347,11 +355,12 @@ export default function TabLayout() {
 
     return () => subscription.remove()
   }, [
-    state.user?.id,
+    state.user,
     showLanguageOption,
     syncUnreadFromServer,
     checkUnreadAnnouncements,
     getSupportUnreadCount,
+    getAdminSupportUnreadCount,
   ])
 
   // Keep FCM token fresh and listen for foreground pushes (stable listener)
@@ -384,6 +393,14 @@ export default function TabLayout() {
       try {
         if (isAnnouncementRemoteMessage(remoteMessage)) {
           await checkUnreadAnnouncements()
+          return
+        }
+
+        if (isAdminSupportTicketRemoteMessage(remoteMessage)) {
+          await presentRemoteNotification(remoteMessage)
+          if (state.user?.id && isLeagueAdmin(state.user)) {
+            await refreshAdminSupportUnread(getAdminSupportUnreadCount)
+          }
           return
         }
 

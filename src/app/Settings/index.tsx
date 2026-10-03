@@ -21,8 +21,14 @@ import NavDest from '@/components/NavDest'
 import React, {useEffect, useState} from 'react'
 import {useColorScheme} from 'react-native'
 import {useAccount} from '@/hooks/useAccount'
+import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
+import {
+  refreshAdminSupportUnread,
+  useAdminSupportUnreadCount,
+} from '@/lib/adminSupportUnread'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import {isReanimated3} from 'react-native-reanimated'
+import {useFocusEffect} from 'expo-router'
 
 const SectionHeader = ({title}: {title: string}) => {
   const {colors} = useTheme()
@@ -46,6 +52,8 @@ export default function Settings() {
   const router = useRouter()
   const {t} = useTranslation()
   const account = useAccount()
+  const {getUnreadCount: getAdminSupportUnread} = useAdminSupportTickets()
+  const adminSupportUnread = useAdminSupportUnreadCount()
 
   useEffect(() => {
     navigation.setOptions({
@@ -57,6 +65,15 @@ export default function Settings() {
   const competition = state.competition
   const messageCount = state.messageCount
   const [logoutPressed, setLogoutPressed] = useState(false)
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!isLeagueAdmin(user)) {
+        return
+      }
+      void refreshAdminSupportUnread(getAdminSupportUnread)
+    }, [getAdminSupportUnread, user]),
+  )
 
   async function ToggleTheme(value: boolean) {
     try {
@@ -186,6 +203,7 @@ export default function Settings() {
             url={'/Settings/Admin'}
             iconColor="#6366F1"
             iconBackground="rgba(99, 102, 241, 0.15)"
+            messageCount={adminSupportUnread}
           />
         )}
         <NavDest

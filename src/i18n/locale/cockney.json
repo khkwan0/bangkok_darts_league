@@ -719,7 +719,19 @@
   "cups_third_place": "3rd place",
   "support_delete": "Bin it",
   "support_delete_confirm_title": "Bin this ticket?",
-  "support_delete_confirm_body": "This permanently bins the closed ticket and you can’t get it back.",
+  "support_delete_confirm_body": "This removes the closed ticket from your list.",
   "support_delete_failed": "Couldn’t bin this ticket. Have another go.",
-  "support_swipe_delete_hint": "Swipe left on a closed ticket to bin it."
+  "support_swipe_delete_hint": "Swipe left on a closed ticket to bin it.",
+  "admin_support": "Support tickets",
+  "admin_support_load_failed": "Couldn't load support tickets.",
+  "admin_support_empty": "No support tickets match this filter.",
+  "admin_support_filter_all": "All",
+  "admin_support_attachments": "{count} attachments",
+  "admin_support_original_message": "Original message",
+  "admin_support_manage": "Manage ticket",
+  "admin_support_status": "Status",
+  "admin_support_notes": "Admin notes",
+  "admin_support_notes_placeholder": "Internal notes (not visible to the player)",
+  "admin_support_save": "Save changes",
+  "admin_support_save_failed": "Couldn't save ticket changes. Have another go."
 }
