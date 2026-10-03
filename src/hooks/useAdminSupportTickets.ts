@@ -55,7 +55,7 @@ export function useAdminSupportTickets() {
 
   const listTickets = React.useCallback(
     async (options?: {
-      status?: SupportTicketStatus | 'all'
+      status?: SupportTicketStatus | 'all' | 'deleted'
       page?: number
       pageSize?: number
     }): Promise<ListResult> => {
@@ -65,8 +65,13 @@ export function useAdminSupportTickets() {
         page: String(page),
         pageSize: String(pageSize),
       })
-      if (options?.status && options.status !== 'all') {
-        params.set('status', options.status)
+      if (options?.status === 'deleted') {
+        params.set('deleted', 'only')
+      } else {
+        params.set('deleted', 'exclude')
+        if (options?.status && options.status !== 'all') {
+          params.set('status', options.status)
+        }
       }
       const res = await networkRef.current.Get(
         `/admin/support-tickets?${params.toString()}`,
@@ -131,6 +136,19 @@ export function useAdminSupportTickets() {
     [],
   )
 
+  const deleteTicket = React.useCallback(
+    async (id: number): Promise<{ok: boolean; error?: string}> => {
+      const res = await networkRef.current.Delete(
+        `/admin/support-tickets/${id}`,
+      )
+      if (res?.status === 'ok') {
+        return {ok: true}
+      }
+      return {ok: false, error: res?.error ?? 'request_failed'}
+    },
+    [],
+  )
+
   const replyToTicket = React.useCallback(
     async (
       id: number,
@@ -176,6 +194,7 @@ export function useAdminSupportTickets() {
     getTicket,
     getUnreadCount,
     updateTicket,
+    deleteTicket,
     replyToTicket,
   }
 }

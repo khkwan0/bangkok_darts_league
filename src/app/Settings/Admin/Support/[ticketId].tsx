@@ -172,7 +172,7 @@ export default function AdminSupportTicketDetailScreen() {
   const colorScheme = useColorScheme() ?? 'light'
   const isDark = colorScheme === 'dark'
   const {apiUrl, state} = useLeagueContext()
-  const {getTicket, updateTicket, replyToTicket, getUnreadCount} =
+  const {getTicket, updateTicket, replyToTicket, deleteTicket, getUnreadCount} =
     useAdminSupportTickets()
 
   const [ticket, setTicket] = React.useState<AdminSupportTicketDetail | null>(
@@ -183,6 +183,7 @@ export default function AdminSupportTicketDetailScreen() {
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
+  const [deleting, setDeleting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [reply, setReply] = React.useState('')
   const [attachments, setAttachments] = React.useState<SupportImageAttachment[]>(
@@ -267,7 +268,7 @@ export default function AdminSupportTicketDetailScreen() {
   }
 
   async function handleSave() {
-    if (!ticket) return
+    if (!ticket || ticket.deleted_at) return
     setSaving(true)
     try {
       const result = await updateTicket(ticket.id, {
@@ -289,7 +290,7 @@ export default function AdminSupportTicketDetailScreen() {
 
   async function handleSendReply() {
     const trimmed = reply.trim()
-    if (!trimmed || !ticket) return
+    if (!trimmed || !ticket || ticket.deleted_at) return
     setSending(true)
     try {
       const result = await replyToTicket(ticket.id, {
@@ -311,6 +312,40 @@ export default function AdminSupportTicketDetailScreen() {
     }
   }
 
+  function confirmDelete() {
+    if (!ticket || ticket.deleted_at) return
+    Alert.alert(
+      t('admin_support_delete_confirm_title'),
+      t('admin_support_delete_confirm_body'),
+      [
+        {text: t('cancel'), style: 'cancel'},
+        {
+          text: t('admin_support_delete'),
+          style: 'destructive',
+          onPress: () => {
+            void handleDelete()
+          },
+        },
+      ],
+    )
+  }
+
+  async function handleDelete() {
+    if (!ticket || ticket.deleted_at) return
+    setDeleting(true)
+    try {
+      const result = await deleteTicket(ticket.id)
+      if (!result.ok) {
+        Alert.alert(t('admin_support_delete_failed'))
+        return
+      }
+      await refreshAdminSupportUnread(getUnreadCount)
+      router.replace('/Settings/Admin/Support' as any)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center">
@@ -329,6 +364,7 @@ export default function AdminSupportTicketDetailScreen() {
 
   const muted = isDark ? '#94a3b8' : '#64748b'
   const borderColor = isDark ? '#334155' : '#e2e8f0'
+  const isDeleted = Boolean(ticket.deleted_at)
 
   return (
     <ScrollView
@@ -347,7 +383,24 @@ export default function AdminSupportTicketDetailScreen() {
       <RNView
         className="mb-4 rounded-xl border p-4"
         style={{borderColor}}>
-        <Text className="mb-1 font-bold">{ticket.player_display_name}</Text>
+        <RNView className="mb-1 flex-row items-center justify-between">
+          <Text className="flex-1 pr-3 font-bold">
+            {ticket.player_display_name}
+          </Text>
+          {isDeleted ? (
+            <RNView
+              className="rounded-full px-2 py-0.5"
+              style={{
+                backgroundColor: isDark
+                  ? 'rgba(248, 113, 113, 0.2)'
+                  : '#fee2e2',
+              }}>
+              <Text className="text-xs font-bold" style={{color: '#b91c1c'}}>
+                {t('admin_support_deleted_badge')}
+              </Text>
+            </RNView>
+          ) : null}
+        </RNView>
         <Text className="text-sm" style={{color: muted}}>
           #{ticket.player_id}
           {ticket.player_email ? ` · ${ticket.player_email}` : ''}
@@ -357,6 +410,13 @@ export default function AdminSupportTicketDetailScreen() {
             date: formatTicketDate(ticket.created_at),
           })}
         </Text>
+        {isDeleted && ticket.deleted_at ? (
+          <Text className="mt-1 text-xs" style={{color: '#b91c1c'}}>
+            {t('admin_support_deleted_at', {
+              date: formatTicketDate(ticket.deleted_at),
+            })}
+          </Text>
+        ) : null}
       </RNView>
 
       <Text className="mb-3 font-bold">{t('support_conversation')}</Text>
@@ -403,117 +463,157 @@ export default function AdminSupportTicketDetailScreen() {
         />
       ))}
 
-      <Text className="mb-2 mt-2 font-bold">{t('admin_support_manage')}</Text>
-      <Text className="mb-2 text-sm font-semibold">{t('admin_support_status')}</Text>
-      <RNView className="mb-4 flex-row flex-wrap" style={{gap: 8}}>
-        {SUPPORT_TICKET_STATUSES.map(value => {
-          const active = status === value
-          return (
-            <Pressable
-              key={value}
-              onPress={() => setStatus(value)}
-              className="rounded-full border px-3 py-2"
-              style={{
-                borderColor: active ? '#0ea5e9' : borderColor,
-                backgroundColor: active
-                  ? isDark
-                    ? 'rgba(14, 165, 233, 0.2)'
-                    : 'rgba(14, 165, 233, 0.12)'
-                  : 'transparent',
-              }}>
-              <Text className="text-sm font-semibold">
-                {t(supportStatusLabelKey(value))}
+      {isDeleted ? null : (
+        <>
+          <Text className="mb-2 mt-2 font-bold">{t('admin_support_manage')}</Text>
+          <Text className="mb-2 text-sm font-semibold">
+            {t('admin_support_status')}
+          </Text>
+          <RNView className="mb-4 flex-row flex-wrap" style={{gap: 8}}>
+            {SUPPORT_TICKET_STATUSES.map(value => {
+              const active = status === value
+              return (
+                <Pressable
+                  key={value}
+                  onPress={() => setStatus(value)}
+                  className="rounded-full border px-3 py-2"
+                  style={{
+                    borderColor: active ? '#0ea5e9' : borderColor,
+                    backgroundColor: active
+                      ? isDark
+                        ? 'rgba(14, 165, 233, 0.2)'
+                        : 'rgba(14, 165, 233, 0.12)'
+                      : 'transparent',
+                  }}>
+                  <Text className="text-sm font-semibold">
+                    {t(supportStatusLabelKey(value))}
+                  </Text>
+                </Pressable>
+              )
+            })}
+          </RNView>
+
+          <Text className="mb-1 text-sm font-semibold">
+            {t('admin_support_notes')}
+          </Text>
+          <TextInput
+            value={adminNotes}
+            onChangeText={setAdminNotes}
+            placeholder={t('admin_support_notes_placeholder')}
+            multiline
+            numberOfLines={4}
+            style={{minHeight: 100, textAlignVertical: 'top'}}
+            editable={!saving}
+          />
+          <Pressable
+            onPress={() => void handleSave()}
+            disabled={saving}
+            className="mt-3 items-center rounded-xl px-4 py-3"
+            style={{
+              backgroundColor: '#64748b',
+              opacity: saving ? 0.7 : 1,
+            }}>
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text className="font-bold text-white">
+                {t('admin_support_save')}
               </Text>
-            </Pressable>
-          )
-        })}
-      </RNView>
+            )}
+          </Pressable>
 
-      <Text className="mb-1 text-sm font-semibold">
-        {t('admin_support_notes')}
-      </Text>
-      <TextInput
-        value={adminNotes}
-        onChangeText={setAdminNotes}
-        placeholder={t('admin_support_notes_placeholder')}
-        multiline
-        numberOfLines={4}
-        style={{minHeight: 100, textAlignVertical: 'top'}}
-        editable={!saving}
-      />
-      <Pressable
-        onPress={() => void handleSave()}
-        disabled={saving}
-        className="mt-3 items-center rounded-xl px-4 py-3"
-        style={{
-          backgroundColor: '#64748b',
-          opacity: saving ? 0.7 : 1,
-        }}>
-        {saving ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text className="font-bold text-white">{t('admin_support_save')}</Text>
-        )}
-      </Pressable>
+          <Text className="mb-2 mt-6 font-bold">{t('support_add_reply')}</Text>
+          <TextInput
+            value={reply}
+            onChangeText={setReply}
+            placeholder={t('support_message_placeholder')}
+            multiline
+            numberOfLines={4}
+            style={{minHeight: 100, textAlignVertical: 'top'}}
+            editable={!sending}
+          />
+          <Pressable
+            onPress={() => void handleAttach()}
+            disabled={sending || attachments.length >= MAX_ATTACHMENTS}
+            className="mt-3 flex-row items-center self-start rounded-full px-3 py-2"
+            style={{
+              backgroundColor: isDark
+                ? 'rgba(148, 163, 184, 0.12)'
+                : 'rgba(148, 163, 184, 0.14)',
+              opacity:
+                sending || attachments.length >= MAX_ATTACHMENTS ? 0.55 : 1,
+            }}>
+            <MCI
+              name="image-plus"
+              size={18}
+              color="#0ea5e9"
+              style={{marginRight: 8}}
+            />
+            <Text className="text-sm font-semibold" style={{color: '#0ea5e9'}}>
+              {t('support_attach_images')}
+            </Text>
+          </Pressable>
+          {attachments.length > 0 ? (
+            <ScrollView
+              horizontal
+              className="mt-3"
+              showsHorizontalScrollIndicator={false}>
+              {attachments.map((item, index) => (
+                <RNView key={`${item.uri}-${index}`} className="relative mr-3">
+                  <Image
+                    source={{uri: item.uri}}
+                    style={{width: 72, height: 72, borderRadius: 10}}
+                  />
+                  <Pressable
+                    onPress={() =>
+                      setAttachments(prev => prev.filter((_, i) => i !== index))
+                    }
+                    className="absolute -right-1 -top-1 h-6 w-6 items-center justify-center rounded-full bg-red-500">
+                    <MCI name="close" size={14} color="#fff" />
+                  </Pressable>
+                </RNView>
+              ))}
+            </ScrollView>
+          ) : null}
+          <Pressable
+            onPress={() => void handleSendReply()}
+            disabled={sending || !reply.trim()}
+            className="mt-4 items-center rounded-xl px-4 py-3"
+            style={{
+              backgroundColor: '#0ea5e9',
+              opacity: sending || !reply.trim() ? 0.7 : 1,
+            }}>
+            {sending ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text className="font-bold text-white">
+                {t('support_send_reply')}
+              </Text>
+            )}
+          </Pressable>
+        </>
+      )}
 
-      <Text className="mb-2 mt-6 font-bold">{t('support_add_reply')}</Text>
-      <TextInput
-        value={reply}
-        onChangeText={setReply}
-        placeholder={t('support_message_placeholder')}
-        multiline
-        numberOfLines={4}
-        style={{minHeight: 100, textAlignVertical: 'top'}}
-        editable={!sending}
-      />
-      <Pressable
-        onPress={() => void handleAttach()}
-        disabled={sending || attachments.length >= MAX_ATTACHMENTS}
-        className="mt-3 flex-row items-center self-start rounded-full px-3 py-2"
-        style={{
-          backgroundColor: isDark
-            ? 'rgba(148, 163, 184, 0.12)'
-            : 'rgba(148, 163, 184, 0.14)',
-          opacity: sending || attachments.length >= MAX_ATTACHMENTS ? 0.55 : 1,
-        }}>
-        <MCI name="image-plus" size={18} color="#0ea5e9" style={{marginRight: 8}} />
-        <Text className="text-sm font-semibold" style={{color: '#0ea5e9'}}>
-          {t('support_attach_images')}
-        </Text>
-      </Pressable>
-      {attachments.length > 0 ? (
-        <ScrollView horizontal className="mt-3" showsHorizontalScrollIndicator={false}>
-          {attachments.map((item, index) => (
-            <RNView key={`${item.uri}-${index}`} className="relative mr-3">
-              <Image
-                source={{uri: item.uri}}
-                style={{width: 72, height: 72, borderRadius: 10}}
-              />
-              <Pressable
-                onPress={() =>
-                  setAttachments(prev => prev.filter((_, i) => i !== index))
-                }
-                className="absolute -right-1 -top-1 h-6 w-6 items-center justify-center rounded-full bg-red-500">
-                <MCI name="close" size={14} color="#fff" />
-              </Pressable>
-            </RNView>
-          ))}
-        </ScrollView>
-      ) : null}
-      <Pressable
-        onPress={() => void handleSendReply()}
-        disabled={sending || !reply.trim()}
-        className="mt-4 items-center rounded-xl px-4 py-3"
-        style={{
-          backgroundColor: '#0ea5e9',
-          opacity: sending || !reply.trim() ? 0.7 : 1,
-        }}>
-        {sending ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text className="font-bold text-white">{t('support_send_reply')}</Text>
-        )}
-      </Pressable>
+      {isDeleted ? null : (
+        <Pressable
+          onPress={confirmDelete}
+          disabled={deleting}
+          className="mt-8 items-center rounded-xl px-4 py-3"
+          style={{
+            backgroundColor: isDark
+              ? 'rgba(239, 68, 68, 0.2)'
+              : '#fee2e2',
+            opacity: deleting ? 0.7 : 1,
+          }}>
+          {deleting ? (
+            <ActivityIndicator color="#b91c1c" />
+          ) : (
+            <Text className="font-bold" style={{color: '#b91c1c'}}>
+              {t('admin_support_delete')}
+            </Text>
+          )}
+        </Pressable>
+      )}
     </ScrollView>
   )
 }

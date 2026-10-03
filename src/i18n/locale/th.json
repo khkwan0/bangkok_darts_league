@@ -722,6 +722,7 @@
   "admin_support_load_failed": "โหลดตั๋วช่วยเหลือไม่สำเร็จ",
   "admin_support_empty": "ไม่มีตั๋วที่ตรงกับตัวกรองนี้",
   "admin_support_filter_all": "ทั้งหมด",
+  "admin_support_filter_deleted": "ลบแล้ว",
   "admin_support_attachments": "{count} ไฟล์แนบ",
   "admin_support_original_message": "ข้อความต้นฉบับ",
   "admin_support_manage": "จัดการตั๋ว",
@@ -729,5 +730,11 @@
   "admin_support_notes": "บันทึกแอดมิน",
   "admin_support_notes_placeholder": "บันทึกภายใน (ผู้เล่นมองไม่เห็น)",
   "admin_support_save": "บันทึกการเปลี่ยนแปลง",
-  "admin_support_save_failed": "บันทึกการเปลี่ยนแปลงไม่สำเร็จ กรุณาลองใหม่"
+  "admin_support_save_failed": "บันทึกการเปลี่ยนแปลงไม่สำเร็จ กรุณาลองใหม่",
+  "admin_support_delete": "ลบตั๋ว",
+  "admin_support_delete_confirm_title": "ลบตั๋ว?",
+  "admin_support_delete_confirm_body": "จะซ่อนตั๋วออกจากสมาชิก แต่แอดมินยังดูได้ในตัวกรองลบแล้ว",
+  "admin_support_delete_failed": "ลบตั๋วไม่สำเร็จ กรุณาลองใหม่",
+  "admin_support_deleted_badge": "ลบแล้ว",
+  "admin_support_deleted_at": "ลบเมื่อ {date}"
 }

@@ -726,6 +726,7 @@
   "admin_support_load_failed": "Couldn't load support tickets.",
   "admin_support_empty": "No support tickets match this filter.",
   "admin_support_filter_all": "All",
+  "admin_support_filter_deleted": "Deleted",
   "admin_support_attachments": "{count} attachments",
   "admin_support_original_message": "Original message",
   "admin_support_manage": "Manage ticket",
@@ -733,5 +734,11 @@
   "admin_support_notes": "Admin notes",
   "admin_support_notes_placeholder": "Internal notes (not visible to the player)",
   "admin_support_save": "Save changes",
-  "admin_support_save_failed": "Couldn't save ticket changes. Have another go."
+  "admin_support_save_failed": "Couldn't save ticket changes. Have another go.",
+  "admin_support_delete": "Bin ticket",
+  "admin_support_delete_confirm_title": "Bin this ticket?",
+  "admin_support_delete_confirm_body": "Soft-deletes it. Members won't see it; admins can still find it under Deleted.",
+  "admin_support_delete_failed": "Couldn't bin this ticket. Have another go.",
+  "admin_support_deleted_badge": "Deleted",
+  "admin_support_deleted_at": "Deleted {date}"
 }

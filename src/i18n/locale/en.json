@@ -726,6 +726,7 @@
   "admin_support_load_failed": "Could not load support tickets.",
   "admin_support_empty": "No support tickets match this filter.",
   "admin_support_filter_all": "All",
+  "admin_support_filter_deleted": "Deleted",
   "admin_support_attachments": "{count} attachments",
   "admin_support_original_message": "Original message",
   "admin_support_manage": "Manage ticket",
@@ -733,5 +734,11 @@
   "admin_support_notes": "Admin notes",
   "admin_support_notes_placeholder": "Internal notes (not visible to the player)",
   "admin_support_save": "Save changes",
-  "admin_support_save_failed": "Could not save ticket changes. Please try again."
+  "admin_support_save_failed": "Could not save ticket changes. Please try again.",
+  "admin_support_delete": "Delete ticket",
+  "admin_support_delete_confirm_title": "Delete ticket?",
+  "admin_support_delete_confirm_body": "This soft-deletes the ticket. Members will no longer see it; admins can still view it under Deleted.",
+  "admin_support_delete_failed": "Could not delete this ticket. Please try again.",
+  "admin_support_deleted_badge": "Deleted",
+  "admin_support_deleted_at": "Deleted {date}"
 }

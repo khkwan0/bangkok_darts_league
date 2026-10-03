@@ -24,7 +24,7 @@ import {
   View as RNView,
 } from 'react-native'
 
-type StatusFilter = SupportTicketStatus | 'all'
+type StatusFilter = SupportTicketStatus | 'all' | 'deleted'
 
 function formatTicketDate(iso: string) {
   try {
@@ -124,7 +124,7 @@ export default function AdminSupportScreen() {
 
   const borderColor = isDark ? '#334155' : '#e2e8f0'
   const muted = isDark ? '#94a3b8' : '#64748b'
-  const filters: StatusFilter[] = ['all', ...SUPPORT_TICKET_STATUSES]
+  const filters: StatusFilter[] = ['all', ...SUPPORT_TICKET_STATUSES, 'deleted']
 
   return (
     <ScrollView
@@ -149,7 +149,9 @@ export default function AdminSupportScreen() {
           const label =
             filter === 'all'
               ? t('admin_support_filter_all')
-              : t(supportStatusLabelKey(filter))
+              : filter === 'deleted'
+                ? t('admin_support_filter_deleted')
+                : t(supportStatusLabelKey(filter))
           return (
             <Pressable
               key={filter}
@@ -184,7 +186,9 @@ export default function AdminSupportScreen() {
       ) : (
         items.map(item => {
           const colors = statusColor(item.status)
-          const unread = item.unread_user_activity > 0
+          const unread =
+            !item.deleted_at && item.unread_user_activity > 0
+          const isDeleted = Boolean(item.deleted_at)
           return (
             <Pressable
               key={item.id}
@@ -199,18 +203,38 @@ export default function AdminSupportScreen() {
                     ? 'rgba(14, 165, 233, 0.12)'
                     : 'rgba(14, 165, 233, 0.06)'
                   : 'transparent',
+                opacity: isDeleted ? 0.75 : 1,
               }}>
               <RNView className="mb-2 flex-row items-center justify-between">
                 <Text className="flex-1 pr-3 font-bold" numberOfLines={1}>
                   #{item.id}{' '}
                   {item.title?.trim() || t('support_request_default_title')}
                 </Text>
-                <RNView
-                  className="rounded-full px-2 py-0.5"
-                  style={{backgroundColor: colors.bg}}>
-                  <Text className="text-xs font-bold" style={{color: colors.fg}}>
-                    {t(supportStatusLabelKey(item.status))}
-                  </Text>
+                <RNView className="flex-row items-center" style={{gap: 6}}>
+                  {isDeleted ? (
+                    <RNView
+                      className="rounded-full px-2 py-0.5"
+                      style={{
+                        backgroundColor: isDark
+                          ? 'rgba(248, 113, 113, 0.2)'
+                          : '#fee2e2',
+                      }}>
+                      <Text
+                        className="text-xs font-bold"
+                        style={{color: '#b91c1c'}}>
+                        {t('admin_support_deleted_badge')}
+                      </Text>
+                    </RNView>
+                  ) : null}
+                  <RNView
+                    className="rounded-full px-2 py-0.5"
+                    style={{backgroundColor: colors.bg}}>
+                    <Text
+                      className="text-xs font-bold"
+                      style={{color: colors.fg}}>
+                      {t(supportStatusLabelKey(item.status))}
+                    </Text>
+                  </RNView>
                 </RNView>
               </RNView>
               <Text className="mb-1 text-sm font-semibold">

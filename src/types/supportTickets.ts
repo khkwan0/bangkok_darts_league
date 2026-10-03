@@ -64,6 +64,7 @@ export type AdminSupportTicketListItem = {
   unread_user_activity: number
   created_at: string
   updated_at: string
+  deleted_at: string | null
 }
 
 export type AdminSupportTicketDetail = AdminSupportTicketListItem & {
