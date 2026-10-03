@@ -3,7 +3,7 @@ import {MatchProvider} from '@/context/MatchContext'
 import OTAUpdatePrompt from '@/components/OTAUpdatePrompt'
 import {SystemNavigationBar} from '@/components/SystemNavigationBar'
 import '@/i18n'
-import {ensureAppWideChannel} from '@/lib/notifications'
+import {ensureAppWideChannel, getSupportTicketIdFromRemoteMessage} from '@/lib/notifications'
 import {BottomSheetModalProvider} from '@expo/ui/community/bottom-sheet'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
@@ -118,24 +118,25 @@ function RootLayout() {
       const unsubscribe = onNotificationOpenedApp(
         messagingInstance,
         remoteMessage => {
-          // console.log('Notification opened app (background/foreground):', JSON.stringify(remoteMessage, null, 2))
+          const supportTicketId =
+            getSupportTicketIdFromRemoteMessage(remoteMessage)
+          if (supportTicketId) {
+            setTimeout(() => {
+              handleSupportTicketNavigation(supportTicketId)
+            }, 500)
+            return
+          }
 
-          // Check for threadId first - if it exists, navigate to message thread
           const senderId = remoteMessage?.data?.senderId || null
           if (senderId) {
-            //console.log('Found threadId, navigating to message thread')
-            // Add small delay to ensure router is ready
             setTimeout(() => {
               handleNotificationNavigation(remoteMessage)
             }, 500)
           } else {
-            // No threadId, check for link URL
             const url = remoteMessage.data?.link
             if (url) {
-              // console.log('No threadId, opening link:', url)
               Linking.openURL(url as string)
             } else {
-              // console.log('No threadId or link, attempting navigation anyway')
               setTimeout(() => {
                 handleNotificationNavigation(remoteMessage)
               }, 500)
@@ -147,24 +148,26 @@ function RootLayout() {
       // Check if app was opened from a notification (quit state)
       getInitialNotification(messagingInstance)
         .then(remoteMessage => {
-          // console.log('Initial notification (quit state):', JSON.stringify(remoteMessage, null, 2))
           if (remoteMessage) {
-            // Check for threadId first - if it exists, navigate to message thread
+            const supportTicketId =
+              getSupportTicketIdFromRemoteMessage(remoteMessage)
+            if (supportTicketId) {
+              setTimeout(() => {
+                handleSupportTicketNavigation(supportTicketId)
+              }, 1000)
+              return
+            }
+
             const senderId = remoteMessage?.data?.senderId || null
             if (senderId) {
-              // console.log('Found threadId in initial notification, navigating to message thread')
-              // Add delay to ensure router and app are fully initialized
               setTimeout(() => {
                 handleNotificationNavigation(remoteMessage)
               }, 1000)
             } else {
-              // No threadId, check for link URL
               const url = remoteMessage.data?.link
               if (url) {
-                // console.log('No threadId in initial notification, opening link:', url)
                 Linking.openURL(url as string)
               } else {
-                // console.log('No threadId or link in initial notification, attempting navigation anyway')
                 setTimeout(() => {
                   handleNotificationNavigation(remoteMessage)
                 }, 1000)
@@ -180,6 +183,23 @@ function RootLayout() {
     }
   }, [])
 
+  function handleSupportTicketNavigation(ticketId: number) {
+    AsyncStorage.getItem('jwt')
+      .then(jwt => {
+        if (!jwt) {
+          return
+        }
+        try {
+          router.push(`/Settings/Support/${ticketId}` as any)
+        } catch (error) {
+          console.error('Error handling support ticket notification:', error)
+        }
+      })
+      .catch(error => {
+        console.error('Error checking jwt:', error)
+      })
+  }
+
   function handleNotificationNavigation(remoteMessage: any) {
     // Check if user is logged in by checking AsyncStorage for jwt
     AsyncStorage.getItem('jwt')
@@ -189,6 +209,13 @@ function RootLayout() {
         }
 
         try {
+          const supportTicketId =
+            getSupportTicketIdFromRemoteMessage(remoteMessage)
+          if (supportTicketId) {
+            router.push(`/Settings/Support/${supportTicketId}` as any)
+            return
+          }
+
           // Extract sender name from notification
           const fromPlayerId = parseInt(
             remoteMessage?.data?.senderId || '0',

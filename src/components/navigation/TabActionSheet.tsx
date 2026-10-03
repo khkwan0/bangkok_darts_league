@@ -5,6 +5,7 @@ import config from '@/config.js'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useHasNewForumPosts} from '@/lib/forumActivity'
 import {useHasUnreadAnnouncements} from '@/lib/announcementUnread'
+import {useHasUnreadSupport} from '@/lib/supportUnread'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import {
   BottomSheetModal,
@@ -101,10 +102,11 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
     const user = state.user
     const hasNewForumPosts = useHasNewForumPosts()
     const hasUnreadAnnouncements = useHasUnreadAnnouncements()
+    const hasUnreadSupport = useHasUnreadSupport()
     const competition = state.competition
     // Cap height so short phones (SE, etc.) always get scrollable overflow.
     const snapPoints = React.useMemo(() => {
-      const estimatedContentHeight = 760 + Math.max(insets.bottom, 16)
+      const estimatedContentHeight = 840 + Math.max(insets.bottom, 16)
       const minOpenRatio = 0.65
       const maxOpenRatio = windowHeight < 700 ? 0.82 : 0.88
       const ratio = Math.min(
@@ -194,6 +196,15 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
                 : '—'}
             </Text>
           </View>
+          <QuickActionItem
+            icon="lifebuoy"
+            label={t('support')}
+            iconColor="#0EA5E9"
+            iconBackground="rgba(14, 165, 233, 0.15)"
+            showBadge={hasUnreadSupport}
+            badgeLabel={t('support_new')}
+            onPress={() => navigate('/Settings/Support')}
+          />
           <QuickActionItem
             icon="bullhorn-outline"
             label={t('announcements')}

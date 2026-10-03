@@ -39,7 +39,7 @@ const SectionHeader = ({title}: {title: string}) => {
 
 export default function Settings() {
   const {colors} = useTheme()
-  const {state, dispatch} = useLeagueContext()
+  const {state, dispatch, openCompetitionPicker} = useLeagueContext()
   const [isDark, setIsDark] = useState(useColorScheme() === 'dark')
   const insets = useSafeAreaInsets()
   const navigation = useNavigation()
@@ -54,6 +54,7 @@ export default function Settings() {
   }, [navigation, t])
 
   const user = state.user
+  const competition = state.competition
   const messageCount = state.messageCount
   const [logoutPressed, setLogoutPressed] = useState(false)
 
@@ -168,6 +169,13 @@ export default function Settings() {
           iconColor="#9C27B0"
           iconBackground="rgba(156, 39, 176, 0.15)"
         />
+        <NavDest
+          icon="lifebuoy"
+          text={t('support')}
+          url={'/Settings/Support'}
+          iconColor="#0EA5E9"
+          iconBackground="rgba(14, 165, 233, 0.15)"
+        />
 
         {/* League Management */}
         <SectionHeader title={t('league_management')} />
@@ -183,9 +191,20 @@ export default function Settings() {
         <NavDest
           icon="account-group"
           text={t('teams')}
-          url={'/Settings/Teams'}
+          url={
+            competition?.type === 'mini'
+              ? `/teams/mini-leagues/${competition.id}`
+              : '/teams'
+          }
           iconColor="#4CAF50"
           iconBackground="rgba(76, 175, 80, 0.15)"
+        />
+        <NavDest
+          icon="trophy"
+          text={t('tournaments')}
+          url={'/(tabs)/(index)/cups'}
+          iconColor="#B45309"
+          iconBackground="rgba(180, 83, 9, 0.15)"
         />
         <NavDest
           icon="bullhorn-outline"
@@ -195,11 +214,26 @@ export default function Settings() {
           iconBackground="rgba(255, 152, 0, 0.15)"
         />
         <NavDest
+          icon="forum-outline"
+          text={t('forums')}
+          url={'/Settings/Forums'}
+          iconColor="#2196F3"
+          iconBackground="rgba(33, 150, 243, 0.15)"
+        />
+        <NavDest
           icon="chart-areaspline-variant"
           text={t('statistics')}
           url={'/statistics'}
           iconColor="#2196F3"
           iconBackground="rgba(33, 150, 243, 0.15)"
+        />
+        <NavDest
+          icon="trophy-outline"
+          text={t('change_league')}
+          url=""
+          iconColor="#E91E63"
+          iconBackground="rgba(233, 30, 99, 0.15)"
+          onPress={() => openCompetitionPicker()}
         />
         <NavDest
           icon="information-outline"
@@ -239,6 +273,13 @@ export default function Settings() {
 
         {/* App Settings */}
         <SectionHeader title={t('app_settings')} />
+        <NavDest
+          icon="hand-coin"
+          text={t('coin_flip')}
+          url={'/Settings/CoinFlip'}
+          iconColor="#F59E0B"
+          iconBackground="rgba(245, 158, 11, 0.15)"
+        />
         <NavDest
           icon="cog"
           text={t('preferences')}

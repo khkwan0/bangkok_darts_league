@@ -103,6 +103,23 @@ export function isAnnouncementRemoteMessage(remoteMessage: {
   return remoteMessage?.data?.type === 'announcement'
 }
 
+export function isSupportTicketRemoteMessage(remoteMessage: {
+  data?: Record<string, unknown> | null
+}): boolean {
+  return remoteMessage?.data?.type === 'support_ticket'
+}
+
+export function getSupportTicketIdFromRemoteMessage(remoteMessage: {
+  data?: Record<string, unknown> | null
+}): number | null {
+  const raw = remoteMessage?.data?.ticketId
+  if (typeof raw !== 'string' && typeof raw !== 'number') {
+    return null
+  }
+  const id = parseInt(String(raw), 10)
+  return Number.isFinite(id) && id > 0 ? id : null
+}
+
 export async function applyBadgeFromRemoteMessage(remoteMessage: {
   data?: Record<string, unknown> | null
   notification?: {android?: {count?: number | string} | null} | null

@@ -18,9 +18,12 @@ import {
   applyBadgeFromRemoteMessage,
   getBadgeFromRemoteMessage,
   isAnnouncementRemoteMessage,
+  isSupportTicketRemoteMessage,
   presentRemoteNotification,
   setAppBadgeCount,
 } from '@/lib/notifications'
+import {refreshSupportUnread} from '@/lib/supportUnread'
+import {useSupportTickets} from '@/hooks/useSupportTickets'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   getMessaging,
@@ -39,6 +42,7 @@ export default function TabLayout() {
   const account = useAccount()
   const {markRead, syncReads, getAnnouncements, getAnnouncement} =
     useAnnouncements()
+  const {getUnreadCount: getSupportUnreadCount} = useSupportTickets()
   const [isMounted, setIsMounted] = React.useState(false)
   const [showLanguageOption, setShowLanguageOption] = React.useState(false)
   const [unreadAnnouncement, setUnreadAnnouncement] = React.useState<{
@@ -333,6 +337,7 @@ export default function TabLayout() {
       if (nextState === 'active') {
         if (state.user?.id) {
           syncUnreadFromServer()
+          void refreshSupportUnread(getSupportUnreadCount)
         }
         if (!showLanguageOption) {
           checkUnreadAnnouncements()
@@ -346,6 +351,7 @@ export default function TabLayout() {
     showLanguageOption,
     syncUnreadFromServer,
     checkUnreadAnnouncements,
+    getSupportUnreadCount,
   ])
 
   // Keep FCM token fresh and listen for foreground pushes (stable listener)
@@ -381,6 +387,14 @@ export default function TabLayout() {
           return
         }
 
+        if (isSupportTicketRemoteMessage(remoteMessage)) {
+          await presentRemoteNotification(remoteMessage)
+          if (state.user?.id) {
+            await refreshSupportUnread(getSupportUnreadCount)
+          }
+          return
+        }
+
         await presentRemoteNotification(remoteMessage)
 
         if (!state.user?.id) {
@@ -406,7 +420,12 @@ export default function TabLayout() {
       unsubscribeMessage()
       unsubscribeToken()
     }
-  }, [state.user?.id, syncUnreadFromServer, checkUnreadAnnouncements])
+  }, [
+    state.user?.id,
+    syncUnreadFromServer,
+    checkUnreadAnnouncements,
+    getSupportUnreadCount,
+  ])
 
   async function handleLanguageOption(lang: string) {
     try {

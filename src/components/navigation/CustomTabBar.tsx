@@ -7,7 +7,9 @@ import {
 } from '@/components/navigation/tabBarMetrics'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useForumActivitySync} from '@/hooks/useForumActivity'
+import {useSupportTickets} from '@/hooks/useSupportTickets'
 import {useHasNewForumPosts} from '@/lib/forumActivity'
+import {refreshSupportUnread} from '@/lib/supportUnread'
 import {
   getCompetitionPalette,
   isCanonicalCompetition,
@@ -106,6 +108,7 @@ export function CustomTabBar({state, descriptors, navigation}: BottomTabBarProps
   const {state: leagueState} = useLeagueContext()
   const {t} = useTranslation()
   const {refreshForumActivity} = useForumActivitySync()
+  const {getUnreadCount: getSupportUnreadCount} = useSupportTickets()
   const hasNewForumPosts = useHasNewForumPosts()
   const showForumFabBadge =
     (leagueState.showForumFabBadge ?? true) && hasNewForumPosts
@@ -142,6 +145,7 @@ export function CustomTabBar({state, descriptors, navigation}: BottomTabBarProps
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     }
     refreshForumActivity()
+    void refreshSupportUnread(getSupportUnreadCount)
     sheetRef.current?.present()
   }
 
