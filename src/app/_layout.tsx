@@ -1,5 +1,6 @@
 import {LeagueProvider} from '@/context/LeagueContext'
 import {MatchProvider} from '@/context/MatchContext'
+import OTAUpdatePrompt from '@/components/OTAUpdatePrompt'
 import {SystemNavigationBar} from '@/components/SystemNavigationBar'
 import '@/i18n'
 import {ensureAppWideChannel} from '@/lib/notifications'
@@ -236,6 +237,7 @@ function RootLayout() {
             <SystemNavigationBar />
             <LeagueProvider>
               <MatchProvider>
+                <OTAUpdatePrompt />
                 <Stack>
                   <Stack.Screen
                     name="(tabs)"

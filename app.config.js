@@ -35,7 +35,34 @@ function applyEnvConfig(expo) {
   }
 }
 
+/** xprem dashboard App ID for Bangkok Darts League (set in .env.local). */
+const xpremAppId = process.env.XPREM_APP_ID || ''
+
 /** @type {import('expo/config').ExpoConfig} */
 module.exports = () => ({
-  expo: applyEnvConfig(appJson.expo),
+  // Must nest updates/runtimeVersion under `expo` — top-level siblings are ignored.
+  expo: {
+    ...applyEnvConfig(appJson.expo),
+    runtimeVersion: {
+      policy: 'appVersion',
+    },
+    updates: {
+      url: 'https://ota.bkkleague.com/manifest',
+      enabled: true,
+      codeSigningMetadata: process.env.DISABLE_CODE_SIGNING
+        ? undefined
+        : {keyid: 'main', alg: 'rsa-v1_5-sha256'},
+      codeSigningCertificate: process.env.DISABLE_CODE_SIGNING
+        ? undefined
+        : './certs/certificate.pem',
+      requestHeaders: {
+        // Literal (or RELEASE_CHANNEL with a default). An unset env key is
+        // stripped at export time and breaks channel resolution.
+        'expo-channel-name': process.env.RELEASE_CHANNEL || 'production',
+        'expo-app-id': xpremAppId,
+        // Branch surfing — empty means the channel decides.
+        'xprem-branch': '',
+      },
+    },
+  },
 })

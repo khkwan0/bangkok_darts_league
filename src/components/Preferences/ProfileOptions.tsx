@@ -24,7 +24,6 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context'
 //import ImagePicker from 'react-native-image-crop-picker'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import * as ImagePicker from 'expo-image-picker'
-import {router} from 'expo-router'
 
 interface Country {
   id: number
@@ -57,7 +56,11 @@ export default function ProfileOptions() {
   const [selectedCountry, setSelectedCountry] = useState(
     user?.nationality?.id ?? 0,
   )
-  const [newAvatar, setNewAvatar] = useState<ImagePicker.Image | null>(null)
+  const [newAvatar, setNewAvatar] = useState<ImagePicker.ImagePickerAsset | null>(
+    null,
+  )
+  const [avatarHistory, setAvatarHistory] = useState<string[]>([])
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false)
   const [countries, setCountries] = useState<Country[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -229,15 +232,68 @@ export default function ProfileOptions() {
     Keyboard.dismiss()
   }
 
-  async function HandleSaveNewAvatar() {
+  async function loadAvatarHistory() {
     try {
-      const res = await account.SaveAvatar(newAvatar?.uri)
-      if (typeof res.status !== 'undefined' && res.status === 'ok') {
-        dispatch({type: 'SET_PROFILE_PICTURE', payload: res.data})
-        router.back()
+      const res = await account.GetAvatarHistory()
+      if (res?.status === 'ok' && Array.isArray(res.data?.history)) {
+        setAvatarHistory(res.data.history)
       }
     } catch (e) {
       console.error(e)
+    }
+  }
+
+  useEffect(() => {
+    if (isEditingProfilePicture) {
+      loadAvatarHistory()
+    }
+  }, [isEditingProfilePicture])
+
+  async function HandleSaveNewAvatar() {
+    if (!newAvatar?.uri || isSavingAvatar) return
+    try {
+      setIsSavingAvatar(true)
+      setImageError(null)
+      const res = await account.SaveAvatar(
+        newAvatar.uri,
+        newAvatar.mimeType || 'image/jpeg',
+      )
+      if (typeof res.status !== 'undefined' && res.status === 'ok') {
+        dispatch({type: 'SET_PROFILE_PICTURE', payload: res.data})
+        setNewAvatar(null)
+        setIsEditingProfilePicture(false)
+        await loadAvatarHistory()
+      } else {
+        setImageError(
+          new Error(
+            typeof res?.error === 'string' ? res.error : 'Save failed',
+          ),
+        )
+      }
+    } catch (e) {
+      console.error(e)
+      setImageError(e as Error)
+    } finally {
+      setIsSavingAvatar(false)
+    }
+  }
+
+  async function HandleRestoreAvatar(filename: string) {
+    if (!filename || isSavingAvatar || filename === user?.profile_picture) {
+      return
+    }
+    try {
+      setIsSavingAvatar(true)
+      const res = await account.RestoreAvatar(filename)
+      if (typeof res.status !== 'undefined' && res.status === 'ok') {
+        dispatch({type: 'SET_PROFILE_PICTURE', payload: res.data})
+        setNewAvatar(null)
+        await loadAvatarHistory()
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsSavingAvatar(false)
     }
   }
 
@@ -300,7 +356,15 @@ export default function ProfileOptions() {
               />
             </Pressable>
           </View>
-          <View className="flex-1 items-center justify-center">
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{
+              flexGrow: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingBottom: 40,
+            }}
+            keyboardShouldPersistTaps="handled">
             {newAvatar && (
               <Image
                 source={{uri: newAvatar.uri}}
@@ -343,30 +407,67 @@ export default function ProfileOptions() {
                 <Pressable
                   className="mt-10 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-6 py-3 rounded-full"
                   onPress={() => setNewAvatar(null)}>
-                  <Text>reset</Text>
+                  <Text>{t('reset')}</Text>
                 </Pressable>
                 <Pressable
-                  className="mt-10 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-6 py-3 rounded-full"
+                  className="mt-10 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-6 py-3 rounded-full items-center"
+                  disabled={isSavingAvatar}
                   onPress={() => HandleSaveNewAvatar()}>
-                  <Text>save</Text>
+                  {isSavingAvatar ? (
+                    <ActivityIndicator size="small" color="#4B5563" />
+                  ) : (
+                    <Text>{t('save')}</Text>
+                  )}
                 </Pressable>
               </View>
             )}
             {!newAvatar && (
-              <View className="mt-10">
+              <View className="mt-10 w-full px-6">
                 <Pressable
-                  className="my-2 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-6 py-3 rounded-full"
+                  className="my-2 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-6 py-3 rounded-full items-center"
                   onPress={() => HandleShowPicker('gallery')}>
                   <Text>{t('gallery')}</Text>
                 </Pressable>
                 <Pressable
-                  className=" my-2 bg-primary border border-gray-300 dark:border-gray-700 px-6 py-3 rounded-full"
+                  className="my-2 bg-primary border border-gray-300 dark:border-gray-700 px-6 py-3 rounded-full items-center"
                   onPress={() => HandleShowPicker('camera')}>
                   <Text className="text-white">{t('camera')}</Text>
                 </Pressable>
+                {avatarHistory.length > 0 && (
+                  <View className="mt-8">
+                    <Text className="text-sm font-semibold mb-3 opacity-70">
+                      {t('previous_photos')}
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{gap: 12, paddingVertical: 4}}>
+                      {avatarHistory.map(filename => (
+                        <Pressable
+                          key={filename}
+                          disabled={isSavingAvatar}
+                          onPress={() => HandleRestoreAvatar(filename)}
+                          className="h-20 w-20 rounded-full overflow-hidden border-2 border-gray-300 dark:border-gray-600">
+                          <Image
+                            source={{uri: config.profileUrl + filename}}
+                            className="h-20 w-20"
+                            resizeMode="cover"
+                          />
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                    {isSavingAvatar && (
+                      <ActivityIndicator
+                        className="mt-3"
+                        size="small"
+                        color="#4B5563"
+                      />
+                    )}
+                  </View>
+                )}
               </View>
             )}
-          </View>
+          </ScrollView>
         </Animated.View>
       </View>
     )

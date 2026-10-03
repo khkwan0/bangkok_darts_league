@@ -285,6 +285,78 @@ MAX_CPUS=2 MAX_HEAP_MB=2048 npm run archive_android
 
 Create `.env.local` in the project root (gitignored). Both archive scripts `source` it automatically. Never commit keystores, `.p8` keys, or service account JSON — keep them under `private_keys/` or outside the repo.
 
+## Over-the-air updates (xprem)
+
+JS/asset updates are published to a self-hosted [xprem](https://mercure-technologies.gitbook.io/xprem) server at **https://ota.bkkleague.com**. The app uses `expo-updates` with code signing. Native changes still need a store build.
+
+Use a **separate** xprem dashboard app from Pool League (own App ID, cert, and `EOO_TOKEN`).
+
+OTA only reaches binaries that were built **after** the update URL and signing cert were configured. Existing store installs will not pull updates until users upgrade to that new binary.
+
+In release builds, `OTAUpdatePrompt` checks for updates on launch and when returning to the foreground, shows a download modal, then asks the user to **Restart** (or **Later**). Dev builds skip this (`expo-updates` is disabled in `__DEV__`).
+
+### Baseline (one-time)
+
+1. Open **https://ota.bkkleague.com/dashboard** and sign in.
+2. **Create app** (e.g. “Bangkok Darts League”) → copy the **App ID**.
+3. Put it in `.env.local` (and keep it set for every archive/deploy — it is baked into the binary):
+
+   ```bash
+   XPREM_APP_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   ```
+
+   Optionally hardcode the same UUID as `expo-app-id` in `app.config.js` once stable (same pattern as the pool app).
+4. **Download certificate** → save as `certs/certificate.pem` and **commit** it (see `certs/README.md`).
+5. **API tokens** → create a token → put in `.env.local` as `EOO_TOKEN` (do not commit).
+6. Publish the first update and map the channel:
+
+   ```bash
+   npm run ota_publish -- -m "Initial OTA baseline"
+   ```
+
+   Do **not** use bare `npx eoas publish` with default `--platform all` (web export fails on native-only packages). `ota_publish` runs iOS then Android.
+
+   In the dashboard: **Channels → Create Channel** `production` → point it at branch `production`.
+
+7. Verify:
+
+   ```bash
+   npm run ota_check
+   ```
+
+8. **Ship a new native binary** so devices embed the update URL and cert:
+
+   ```bash
+   npm run deploy_ios
+   npm run deploy_android
+   # then store:
+   npm run archive_ios
+   npm run archive_android
+   ```
+
+### Publish an update (day-to-day)
+
+```bash
+npm run ota_publish -- -m "Describe the fix"
+npm run ota_check
+```
+
+Notes:
+
+- `ota_publish` sources `.env.local` for `EOO_TOKEN` / `XPREM_APP_ID`.
+- Dirty git working tree blocks publish — commit first, or pass `--disableRepositoryCheck`.
+- Bump `expo.version` and archive when native code / plugins change (`runtimeVersion` uses `appVersion` policy).
+
+### Related files
+
+| Path | Purpose |
+|------|---------|
+| `app.config.js` | `updates.url`, headers, code signing, `runtimeVersion` |
+| `certs/certificate.pem` | Public cert embedded in the app (committed) |
+| `XPREM_APP_ID` / `EOO_TOKEN` | Dashboard app id + publish token (`.env.local`) |
+
+Docs: [xprem configure app](https://mercure-technologies.gitbook.io/xprem/installation-guide/configure-your-application), [publish](https://mercure-technologies.gitbook.io/xprem/eoas/publish-an-update).
+
 ## Get a fresh project
 
 When you're ready, run:

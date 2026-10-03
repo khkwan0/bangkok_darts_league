@@ -6,6 +6,8 @@ import {useNetwork} from '@/hooks/useNetwork'
 import {ensureUserChannels} from '@/lib/notifications'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {getMessaging, getToken} from '@react-native-firebase/messaging'
+import {File} from 'expo-file-system'
+import {manipulateAsync, SaveFormat} from 'expo-image-manipulator'
 import {Platform} from 'react-native'
 
 export const useAccount = () => {
@@ -281,12 +283,37 @@ export const useAccount = () => {
     }
   }
 
-  async function SaveAvatar(path) {
+  async function SaveAvatar(path, _mimeType = 'image/jpeg') {
     try {
       const token = await AsyncStorage.getItem('jwt')
+      if (!token) {
+        return {status: 'error', error: 'unauthorized'}
+      }
+      if (!path) {
+        return {status: 'error', error: 'no_file_provided'}
+      }
+
+      // Match Get/Post: prefer persisted api_url (stage) over compiled config.apiUrl
+      let apiDomain = (config.apiUrl || '').replace(/\/$/, '')
+      try {
+        const saved = await AsyncStorage.getItem('api_url')
+        if (saved && saved.trim()) {
+          apiDomain = saved.replace(/\/$/, '')
+        }
+      } catch {
+        // ignore
+      }
+
+      // Normalize to JPEG (HEIC etc.) and use expo-file-system File — Expo winter
+      // fetch rejects RN `{uri,name,type}` FormData parts with FormDataPart error.
+      const jpeg = await manipulateAsync(path, [], {
+        compress: 0.9,
+        format: SaveFormat.JPEG,
+      })
       const data = new FormData()
-      data.append('photo', {uri: path, name: 'oho', type: 'image/jpg'})
-      const res = await fetch(config.apiUrl + '/avatar', {
+      data.append('photo', new File(jpeg.uri))
+
+      const res = await fetch(apiDomain + '/avatar', {
         method: 'POST',
         body: data,
         headers: {
@@ -294,8 +321,41 @@ export const useAccount = () => {
           Authorization: 'Bearer ' + token,
         },
       })
-      const json = await res.json()
+      const json = await res.json().catch(() => ({
+        status: 'error',
+        error: 'invalid_response',
+      }))
+      if (!res.ok && !json?.status) {
+        return {
+          status: 'error',
+          error: json?.error || 'request_failed',
+          httpStatus: res.status,
+        }
+      }
       return json
+    } catch (e) {
+      console.log(e)
+      return {
+        status: 'error',
+        error: e?.message || 'server_error',
+      }
+    }
+  }
+
+  async function GetAvatarHistory() {
+    try {
+      const res = await Get('/avatar')
+      return res
+    } catch (e) {
+      console.log(e)
+      return {status: 'error', error: 'server_error'}
+    }
+  }
+
+  async function RestoreAvatar(filename) {
+    try {
+      const res = await Post('/avatar/restore', {filename})
+      return res
     } catch (e) {
       console.log(e)
       return {status: 'error', error: 'server_error'}
@@ -573,6 +633,8 @@ export const useAccount = () => {
     Recover,
     RefreshPushToken,
     SaveAvatar,
+    GetAvatarHistory,
+    RestoreAvatar,
     SendMessage,
     SetFirstName,
     SetLastName,
