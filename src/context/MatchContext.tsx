@@ -89,15 +89,29 @@ const MatchReducer = (state: StateType, action: any) => {
       const {frameIndex, playerId, side, slot} = action.payload
       const frame = {...state.frameData[frameIndex]}
       const sideKey = side === 'home' ? 'homePlayerIds' : 'awayPlayerIds'
+      const statsKey = side === 'home' ? 'homePlayerStats' : 'awayPlayerStats'
       const ids = [...(frame[sideKey] ?? [])]
+      const stats = [...(frame[statsKey] ?? [])]
       if (!playerId || Number(playerId) <= 0) {
-        if (slot >= 0 && slot < ids.length) ids.splice(slot, 1)
+        if (slot >= 0 && slot < ids.length) {
+          ids.splice(slot, 1)
+          if (slot < stats.length) stats.splice(slot, 1)
+        }
         frame[sideKey] = ids.filter(
           (id: number) => id != null && Number(id) > 0,
         )
+        frame[statsKey] = stats
       } else {
+        const prev = Number(ids[slot] ?? 0)
         ids[slot] = playerId
         frame[sideKey] = ids
+        while (stats.length <= slot) {
+          stats.push({tons: 0, heavyTons: 0, closes: 0})
+        }
+        if (prev !== Number(playerId)) {
+          stats[slot] = {tons: 0, heavyTons: 0, closes: 0}
+        }
+        frame[statsKey] = stats
       }
       const _frameData = [...state.frameData]
       _frameData[frameIndex] = frame
@@ -120,7 +134,11 @@ const MatchReducer = (state: StateType, action: any) => {
     }
     case 'SET_FRAME_STATS': {
       const {frameIndex, ...stats} = action.payload
-      const frame = {...state.frameData[frameIndex], ...stats}
+      const next: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(stats)) {
+        if (v !== undefined) next[k] = v
+      }
+      const frame = {...state.frameData[frameIndex], ...next}
       const _frameData = [...state.frameData]
       _frameData[frameIndex] = frame
       return {
@@ -311,6 +329,8 @@ export const MatchProvider = (props: any) => {
               awayHeavyTons: data.awayHeavyTons,
               homeCloses: data.homeCloses,
               awayCloses: data.awayCloses,
+              homePlayerStats: data.homePlayerStats,
+              awayPlayerStats: data.awayPlayerStats,
               homeScore: data.homeScore,
               awayScore: data.awayScore,
               homeBoardScore: data.homeBoardScore,
@@ -513,6 +533,7 @@ export const MatchProvider = (props: any) => {
     side: 'home' | 'away',
     field: 'tons' | 'heavyTons' | 'closes' | 'games' | 'boardScore',
     delta: number,
+    playerIdx: number = 0,
   ) {
     const frame = state.frameData[frameIdx]
     const initial = state.matchInfo.initialFrames?.[frameIdx]
@@ -529,7 +550,7 @@ export const MatchProvider = (props: any) => {
       mfpp: frame?.mfpp ?? initial?.mfpp ?? 0,
       homeTeamId: state.matchInfo.home_team_id,
       awayTeamId: state.matchInfo.away_team_id,
-      playerIdx: 0,
+      playerIdx,
       playerId: 0,
       winnerTeamId: 0,
       goldenBreak: false,

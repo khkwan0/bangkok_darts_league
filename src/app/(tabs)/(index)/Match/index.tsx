@@ -131,6 +131,8 @@ export default function ScoreSheet() {
             awayHeavyTons: 0,
             homeCloses: 0,
             awayCloses: 0,
+            homePlayerStats: [],
+            awayPlayerStats: [],
             homeBoardScore: 0,
             awayBoardScore: 0,
           }

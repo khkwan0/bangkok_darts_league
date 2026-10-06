@@ -84,11 +84,21 @@ export type FrameType = {
   awayHeavyTons?: number
   homeCloses?: number
   awayCloses?: number
+  /** Per-slot tons/closes (aligned with homePlayerIds). */
+  homePlayerStats?: PlayerLegStat[]
+  /** Per-slot tons/closes (aligned with awayPlayerIds). */
+  awayPlayerStats?: PlayerLegStat[]
   homeBoardScore?: number
   awayBoardScore?: number
   frameIdx?: number
   frameIndex?: number
   goldenBreak?: boolean
+}
+
+export type PlayerLegStat = {
+  tons: number
+  heavyTons: number
+  closes: number
 }
 
 export interface FrameProps {

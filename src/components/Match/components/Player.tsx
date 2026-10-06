@@ -9,10 +9,11 @@ import {useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {Alert, Pressable, Text, View} from 'react-native'
 import {useScoresheetTheme} from './scoresheetTheme'
+import StatStepper from './StatStepper'
 
 interface PlayerProps {
   teamId: number | string
-  side: string
+  side: 'home' | 'away' | string
   frameIndex: number
   frameNumber: number
   frameType?: string
@@ -20,6 +21,7 @@ interface PlayerProps {
   maxPlayers?: number
   noPlayers?: number
   playerIds: number[]
+  trackStats?: boolean
   refreshing?: boolean
   ink: string
   mark: string
@@ -106,11 +108,12 @@ export default function Player({
   maxPlayers,
   noPlayers,
   playerIds,
+  trackStats = false,
   refreshing = false,
   ink,
   mark,
 }: PlayerProps) {
-  const {state, UpdateFramePlayers}: any = useMatchContext()
+  const {state, UpdateFramePlayers, UpdateFrameStats}: any = useMatchContext()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
   const [pressedSlot, setPressedSlot] = useState<number | null>(null)
@@ -128,6 +131,10 @@ export default function Player({
   const slotCount = isFlexible
     ? Math.min(maxCount, assigned.length + 1)
     : maxCount
+  const locked = !!(state.finalizedHome && state.finalizedAway)
+  const statsKey = side === 'home' ? 'homePlayerStats' : 'awayPlayerStats'
+  const playerStats = state.frameData?.[frameIndex]?.[statsKey] ?? []
+  const accent = side === 'home' ? theme.home.button : theme.away.button
 
   const isPlayerOnTeam = () => {
     try {
@@ -259,11 +266,62 @@ export default function Player({
 
   return (
     <View style={{alignItems: 'center'}}>
-      {Array.from({length: slotCount}, (_, slot) => (
-        <View key={slot} style={slot > 0 ? {marginTop: 8} : undefined}>
-          <PlayerSlot {...slotProps(slot)} />
-        </View>
-      ))}
+      {Array.from({length: slotCount}, (_, slot) => {
+        const filled = slotProps(slot).filled
+        const slotStat = playerStats[slot] ?? {
+          tons: 0,
+          heavyTons: 0,
+          closes: 0,
+        }
+        return (
+          <View
+            key={slot}
+            style={slot > 0 ? {marginTop: 10, alignItems: 'center'} : {alignItems: 'center'}}>
+            <PlayerSlot {...slotProps(slot)} />
+            {trackStats && filled ? (
+              <View
+                style={{
+                  marginTop: 6,
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}>
+                <StatStepper
+                  label={t('tons')}
+                  value={Number(slotStat.tons ?? 0)}
+                  ink={ink}
+                  accent={accent}
+                  disabled={locked}
+                  onDelta={d =>
+                    UpdateFrameStats(frameIndex, side, 'tons', d, slot)
+                  }
+                />
+                <StatStepper
+                  label={t('heavy')}
+                  value={Number(slotStat.heavyTons ?? 0)}
+                  ink={ink}
+                  accent={accent}
+                  disabled={locked}
+                  onDelta={d =>
+                    UpdateFrameStats(frameIndex, side, 'heavyTons', d, slot)
+                  }
+                />
+                <StatStepper
+                  label={t('closes')}
+                  value={Number(slotStat.closes ?? 0)}
+                  ink={ink}
+                  accent={accent}
+                  disabled={locked}
+                  onDelta={d =>
+                    UpdateFrameStats(frameIndex, side, 'closes', d, slot)
+                  }
+                />
+              </View>
+            ) : null}
+          </View>
+        )
+      })}
       {hasBreak && (
         <View
           style={{

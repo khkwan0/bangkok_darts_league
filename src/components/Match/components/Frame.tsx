@@ -174,47 +174,11 @@ export default function Frame({item, index, refreshing}: FrameProps) {
 
   function sideStats(side: 'home' | 'away') {
     const palette = side === 'home' ? theme.home : theme.away
-    const tons = side === 'home' ? live.homeTons : live.awayTons
-    const heavy = side === 'home' ? live.homeHeavyTons : live.awayHeavyTons
-    const closes = side === 'home' ? live.homeCloses : live.awayCloses
     const legs = side === 'home' ? live.homeScore : live.awayScore
     const board = side === 'home' ? live.homeBoardScore : live.awayBoardScore
+    if (!isMickey && !showSeries) return null
     return (
       <View style={{marginTop: 10, gap: 8, alignItems: 'center'}}>
-        {trackStats ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-              gap: 8,
-            }}>
-            <StatStepper
-              label={t('tons')}
-              value={Number(tons ?? 0)}
-              ink={palette.ink}
-              accent={palette.button}
-              disabled={locked}
-              onDelta={d => UpdateFrameStats(index, side, 'tons', d)}
-            />
-            <StatStepper
-              label={t('heavy')}
-              value={Number(heavy ?? 0)}
-              ink={palette.ink}
-              accent={palette.button}
-              disabled={locked}
-              onDelta={d => UpdateFrameStats(index, side, 'heavyTons', d)}
-            />
-            <StatStepper
-              label={t('closes')}
-              value={Number(closes ?? 0)}
-              ink={palette.ink}
-              accent={palette.button}
-              disabled={locked}
-              onDelta={d => UpdateFrameStats(index, side, 'closes', d)}
-            />
-          </View>
-        ) : null}
         {isMickey ? (
           <StatStepper
             label={t('score')}
@@ -298,6 +262,7 @@ export default function Frame({item, index, refreshing}: FrameProps) {
             maxPlayers={maxPlayers}
             noPlayers={minPlayers}
             playerIds={live.homePlayerIds}
+            trackStats={trackStats}
             refreshing={refreshing}
             ink={theme.home.ink}
             mark={theme.home.button}
@@ -338,6 +303,7 @@ export default function Frame({item, index, refreshing}: FrameProps) {
             maxPlayers={maxPlayers}
             noPlayers={minPlayers}
             playerIds={live.awayPlayerIds}
+            trackStats={trackStats}
             refreshing={refreshing}
             ink={theme.away.ink}
             mark={theme.away.button}

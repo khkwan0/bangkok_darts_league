@@ -7,7 +7,6 @@ import MCI from 'expo-vector-icons/MaterialCommunityIcons'
 import {useLeague, useYBase} from '~/lib/hooks'
 import {FlatList} from 'react-native'
 import SeasonPicker from '@/components/SeasonPicker'
-import GameTypePicker from '@/components/GameTypePicker'
 
 const Division = props => {
   const division = props.item.item
@@ -32,7 +31,7 @@ const Division = props => {
             </View>
           </>
         )}
-      </>
+      </View>
     </View>
   )
 }
@@ -44,7 +43,6 @@ const Divisions = props => {
   const [divisions, setDivisions] = React.useState([])
   const [showAdd, setShowAdd] = React.useState(false)
   const [divisionName, setDivisionName] = React.useState('')
-  const [gameType, setGameType] = React.useState('')
 
   React.useEffect(() => {
     ;(async () => {
@@ -79,7 +77,7 @@ const Divisions = props => {
 
   async function DoSave() {
     try {
-      if (divisionName && gameType) {
+      if (divisionName) {
         const res = await league.SaveDivision(divisionName)
       }
     } catch (e) {
@@ -102,9 +100,8 @@ const Divisions = props => {
             <TextInput
               onChangeText={text => setDivisionName(text)}
               value={divisionName}
-              placeholder="Name (required) Ex: 8 Ball - A"
+              placeholder="Name (required)"
             />
-            <GameTypePicker gameType={gameType} setGameType={setGameType} />
             <View className="flex-row items-center">
               <View className="flex-1">
                 <Button onPress={() => DoCancel()}>Cancel</Button>
