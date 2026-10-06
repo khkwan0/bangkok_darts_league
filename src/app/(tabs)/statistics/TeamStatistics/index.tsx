@@ -1,7 +1,9 @@
 import React from 'react'
 import {TeamStats, useLeague} from '@/hooks'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
+import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
+import {useStatsScope} from '@/context/StatsScopeContext'
 import Button from '@/components/Button'
 import {ActivityIndicator, Pressable, ScrollView, View} from 'react-native'
 import {ThemedText as Text} from '@/components/ThemedText'
@@ -134,6 +136,7 @@ const TeamStatisticsHeader = () => {
 }
 const TeamStatistics = () => {
   const league = useLeague()
+  const {scope} = useStatsScope()
   const [stats, setStats] = React.useState<TeamStats>({})
   const [isLoading, setIsLoading] = React.useState(false)
   const navigation = useNavigation()
@@ -160,7 +163,7 @@ const TeamStatistics = () => {
         setIsLoading(false)
       }
     })()
-  }, [pastSeasonId])
+  }, [pastSeasonId, scope])
 
   async function GetTeamStats() {
     try {
@@ -173,11 +176,14 @@ const TeamStatistics = () => {
   }
 
   const seasonChips = (
-    <MiniSeasonChips
-      seasons={seasons}
-      seasonId={seasonId}
-      onSelect={setSeasonId}
-    />
+    <>
+      <StatsScopeChips />
+      <MiniSeasonChips
+        seasons={seasons}
+        seasonId={seasonId}
+        onSelect={setSeasonId}
+      />
+    </>
   )
 
   if (isLoading) {
@@ -200,7 +206,7 @@ const TeamStatistics = () => {
         {seasonChips}
         <View className="my-4">
           <Text type="subtitle" className="text-xl font-bold">
-            {t('eight_ball')}
+            {scope === 'cup' ? t('stats_scope_cup') : t('eight_ball')}
           </Text>
         </View>
         <Card className="mb-6 rounded-lg overflow-hidden">
@@ -210,18 +216,22 @@ const TeamStatistics = () => {
               <TeamStanding key={'8b' + index} data={item} idx={index} />
             ))}
         </Card>
-        <View className="my-4">
-          <Text type="subtitle" className="text-xl font-bold">
-            {t('nine_ball')}
-          </Text>
-        </View>
-        <Card className="mb-6 rounded-lg overflow-hidden">
-          <TeamStatisticsHeader />
-          {typeof stats.nineBall !== 'undefined' &&
-            stats.nineBall.map((item, index) => (
-              <TeamStanding key={'9b' + index} data={item} idx={index} />
-            ))}
-        </Card>
+        {scope !== 'cup' ? (
+          <>
+            <View className="my-4">
+              <Text type="subtitle" className="text-xl font-bold">
+                {t('nine_ball')}
+              </Text>
+            </View>
+            <Card className="mb-6 rounded-lg overflow-hidden">
+              <TeamStatisticsHeader />
+              {typeof stats.nineBall !== 'undefined' &&
+                stats.nineBall.map((item, index) => (
+                  <TeamStanding key={'9b' + index} data={item} idx={index} />
+                ))}
+            </Card>
+          </>
+        ) : null}
       </ScrollView>
     )
   }

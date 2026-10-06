@@ -2,6 +2,7 @@
 import PlayerStatistics from '@/components/PlayerStatistics'
 import StatShortcuts from '@/components/Statistics/StatShortcuts'
 import {useStatColors} from '@/components/PlayerStatistics/statUi'
+import {useStatsScope} from '@/context/StatsScopeContext'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import {MiniLeagueStats} from '@/components/mini-leagues/MiniLeagueStats'
@@ -65,6 +66,7 @@ export default function StatisticsHome() {
   const [error, setError] = React.useState('')
   const {t} = useTranslation()
   const {state} = useLeagueContext()
+  const {scope} = useStatsScope()
   const user = state.user
   const {colors} = useTheme()
   const statColors = useStatColors()
@@ -88,7 +90,7 @@ export default function StatisticsHome() {
     if (userId != null && !isMiniCompetition(state.competition)) {
       fetchPlayerInfo(userId)
     }
-  }, [user?.id, state.competition])
+  }, [user?.id, state.competition, scope])
 
   if (isMiniCompetition(state.competition)) {
     return <MiniStatsWithSeason miniLeagueId={state.competition.id} />

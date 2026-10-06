@@ -1,9 +1,11 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import Row from '@/components/Row'
+import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import TextInput from '@/components/TextInput'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
+import {useStatsScope} from '@/context/StatsScopeContext'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
 import {useNetwork} from '@/hooks/useNetwork'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
@@ -141,6 +143,7 @@ export default function PlayerRankings({
 }) {
   const {t} = useTranslation()
   const {Get} = useNetwork()
+  const {scope} = useStatsScope()
   const [rankings, setRankings] = useState<DivisionPlayerRankings[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -163,7 +166,7 @@ export default function PlayerRankings({
         setError(null)
 
         // Build query string with optional parameters
-        const queryParams: string[] = []
+        const queryParams: string[] = [`scope=${scope}`]
         if (effectiveSeason !== undefined && effectiveSeason !== null) {
           queryParams.push(`season=${effectiveSeason}`)
         }
@@ -171,8 +174,7 @@ export default function PlayerRankings({
           queryParams.push(`division_id=${divisionId}`)
         }
 
-        const queryString =
-          queryParams.length > 0 ? '?' + queryParams.join('&') : ''
+        const queryString = '?' + queryParams.join('&')
         const endpoint = `/league/0/division/players/stats${queryString}`
 
         const res = await Get(endpoint)
@@ -210,7 +212,7 @@ export default function PlayerRankings({
     }
 
     fetchRankings()
-  }, [effectiveSeason, divisionId])
+  }, [effectiveSeason, divisionId, scope])
 
   // Filter out divisions with no players meeting minimum games
   const filteredRankings = rankings.filter(division => {
@@ -248,6 +250,7 @@ export default function PlayerRankings({
           </View>
         </View>
         <View className="mt-3">
+          <StatsScopeChips />
           <MiniSeasonChips
             seasons={seasons}
             seasonId={seasonId}

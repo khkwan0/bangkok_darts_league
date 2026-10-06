@@ -7,11 +7,13 @@ import {
   ActivityIndicator,
 } from 'react-native'
 import {ThemedText as Text} from '@/components/ThemedText'
+import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import React from 'react'
 import {useNavigation} from "expo-router/react-navigation"
 import {useTranslation} from 'react-i18next'
 import {useLeague} from '@/hooks/useLeague'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {useStatsScope} from '@/context/StatsScopeContext'
 import {usePathname, router} from 'expo-router'
 import MaterialIcons from '@expo/vector-icons/MaterialIcons'
 import TextInput from '@/components/TextInput'
@@ -312,6 +314,7 @@ function PlayerStatsHeader({
 export default function PlayerStatistics(props: any) {
   const navigation = useNavigation()
   const {t} = useTranslation()
+  const {scope} = useStatsScope()
   const [minimumGames, setMinimumGames] = React.useState('20')
   const [nameFilter, setNameFilter] = React.useState('')
   const [gameVariety, setGameVariety] = React.useState('both')
@@ -353,7 +356,7 @@ export default function PlayerStatistics(props: any) {
 
   React.useEffect(() => {
     getPlayerStats()
-  }, [gameType, gameVariety, minimumGames])
+  }, [gameType, gameVariety, minimumGames, scope])
 
   React.useEffect(() => {
     if (nameFilter) {
@@ -372,6 +375,7 @@ export default function PlayerStatistics(props: any) {
         </View>
       </Modal>
       <View className="flex-1 p-4 bg-gray-50 dark:bg-gray-950">
+        <StatsScopeChips />
         <View className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden flex-1">
           <FlatList
             data={playerStats}

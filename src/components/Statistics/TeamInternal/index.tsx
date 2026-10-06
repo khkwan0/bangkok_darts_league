@@ -1,8 +1,10 @@
 import React from 'react'
 import {ThemedText as Text} from '@/components/ThemedText'
+import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import {Image, FlatList, View, Pressable} from 'react-native'
 import Row from '@/components/Row'
 import {useTeams} from '@/hooks'
+import {useStatsScope} from '@/context/StatsScopeContext'
 import config from '@/config'
 import {useLocalSearchParams} from 'expo-router'
 import {useNavigation} from 'expo-router'
@@ -107,6 +109,7 @@ function Stat(props: StatProps) {
 }
 export default function TeamInternal({teamId, teamName}: {teamId: number, teamName: string}) {
   const teams = useTeams()
+  const {scope} = useStatsScope()
   const [stats, setStats] = React.useState([])
   const [sortOption, setSortOption] = React.useState('points')
   const navigation = useNavigation()
@@ -129,7 +132,7 @@ export default function TeamInternal({teamId, teamName}: {teamId: number, teamNa
     if (teamId) {
       GetTeamInternalStats()
     }
-  }, [sortOption])
+  }, [sortOption, scope, teamId])
 
   React.useEffect(() => {
     navigation.setOptions({
@@ -144,7 +147,12 @@ export default function TeamInternal({teamId, teamName}: {teamId: number, teamNa
         paddingTop: 20,
       }}
       data={stats}
-      ListHeaderComponent={<StatsHeader setSortOption={setSortOption} sortOption={sortOption} />}
+      ListHeaderComponent={
+        <>
+          <StatsScopeChips />
+          <StatsHeader setSortOption={setSortOption} sortOption={sortOption} />
+        </>
+      }
       renderItem={({item, index}) => <Stat item={item} index={index} />}
     />
   )

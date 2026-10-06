@@ -1,14 +1,20 @@
 import {useNetwork} from '@/hooks/useNetwork'
+import {useStatsScope} from '@/context/StatsScopeContext'
 
 const seasonQuery = seasonId => (seasonId != null ? '&season=' + seasonId : '')
+const scopeQuery = scope => (scope ? '&scope=' + scope : '')
 
 export const useSeason = () => {
   const {Get} = useNetwork()
+  const {scope} = useStatsScope()
 
   const GetDoublesStats = async (playerId, seasonId = null) => {
     try {
       const stats = await Get(
-        '/stats/doubles?playerid=' + playerId + seasonQuery(seasonId),
+        '/stats/doubles?playerid=' +
+          playerId +
+          seasonQuery(seasonId) +
+          scopeQuery(scope),
       )
       return stats
     } catch (e) {
@@ -20,7 +26,10 @@ export const useSeason = () => {
   const GetMatchPerformance = async (playerId, seasonId = null) => {
     try {
       const stats = await Get(
-        '/stats/match?playerid=' + playerId + seasonQuery(seasonId),
+        '/stats/match?playerid=' +
+          playerId +
+          seasonQuery(seasonId) +
+          scopeQuery(scope),
       )
       return stats
     } catch (e) {
@@ -63,7 +72,10 @@ export const useSeason = () => {
   const GetPlayerStats = async (playerId, seasonId = null) => {
     try {
       const stats = await Get(
-        '/stats?playerid=' + playerId + seasonQuery(seasonId),
+        '/stats?playerid=' +
+          playerId +
+          seasonQuery(seasonId) +
+          scopeQuery(scope),
       )
       return stats
     } catch (e) {

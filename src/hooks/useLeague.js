@@ -1,10 +1,12 @@
 import {useNetwork} from '@/hooks/useNetwork'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {useStatsScope} from '@/context/StatsScopeContext'
 import {isMiniCompetition} from '@/types/competition'
 
 export const useLeague = () => {
   const {Get, Post} = useNetwork()
   const {state} = useLeagueContext()
+  const {scope} = useStatsScope()
 
   const AddNewSeason = async (name = '', shortName = '', description = '') => {
     try {
@@ -67,7 +69,7 @@ export const useLeague = () => {
     gameVariety = 'all',
   ) => {
     try {
-      let query = `minimum=${minimumGames}`
+      let query = `minimum=${minimumGames}&scope=${scope}`
       if (gameType) {
         query += `&gameType=${gameType}`
       }
@@ -106,10 +108,12 @@ export const useLeague = () => {
       const miniId = isMiniCompetition(state.competition)
         ? state.competition.id
         : null
-      const qs =
-        miniId != null && Number(miniId) > 0
-          ? `?mini_league_id=${Number(miniId)}`
-          : ''
+      const params = new URLSearchParams()
+      if (miniId != null && Number(miniId) > 0) {
+        params.set('mini_league_id', String(Number(miniId)))
+      }
+      params.set('scope', scope)
+      const qs = `?${params.toString()}`
       const playerInfo = await Get('/player/stats/info/' + playerId + qs)
       return playerInfo
     } catch (e) {
@@ -138,7 +142,9 @@ export const useLeague = () => {
 
   const GetStandings = async (seasonId = null) => {
     try {
-      const res = await Get('/league/standings/' + seasonId)
+      const res = await Get(
+        '/league/standings/' + seasonId + '?scope=' + scope,
+      )
       return res
     } catch (e) {
       console.log(e)
@@ -149,7 +155,10 @@ export const useLeague = () => {
   const GetPlayerStatsByDivision = async (seasonId = 'null') => {
     try {
       const res = await Get(
-        '/league/season/' + seasonId + '/division/player/stats',
+        '/league/season/' +
+          seasonId +
+          '/division/player/stats?scope=' +
+          scope,
       )
       return res
     } catch (e) {
@@ -191,7 +200,7 @@ export const useLeague = () => {
 
   const GetTeamStats = async (seasonId = null) => {
     try {
-      const res = await Get('/stats/teams/' + seasonId)
+      const res = await Get('/stats/teams/' + seasonId + '?scope=' + scope)
       return res
     } catch (e) {
       return []

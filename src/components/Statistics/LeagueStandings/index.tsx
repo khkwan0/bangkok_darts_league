@@ -1,7 +1,9 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import {useStatColors} from '@/components/PlayerStatistics/statUi'
+import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import {Colors} from '@/constants/Colors'
+import {useStatsScope} from '@/context/StatsScopeContext'
 import {useLeague} from '@/hooks'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
@@ -319,12 +321,15 @@ export default function LeagueStandings() {
   const navigation = useNavigation()
   const {t} = useTranslation()
   const league = useLeague()
+  const {scope} = useStatsScope()
   const [standings, setStandings] = useState<DivisionData[]>([])
   const [ready, setReady] = useState(false)
   const {seasons, seasonId, setSeasonId, pastSeasonId} =
     useLeagueSeasonSelection()
   const [loadedSeasonId, setLoadedSeasonId] = useState<number | null>(null)
-  const isLoading = ready && loadedSeasonId !== pastSeasonId
+  const [loadedScope, setLoadedScope] = useState(scope)
+  const isLoading =
+    ready && (loadedSeasonId !== pastSeasonId || loadedScope !== scope)
   const listContentStyle = useTabListContentContainerStyle({paddingTop: 8})
   const pageBg = Colors[useColorScheme() === 'dark' ? 'dark' : 'light'].background
 
@@ -344,8 +349,9 @@ export default function LeagueStandings() {
       .finally(() => {
         setReady(true)
         setLoadedSeasonId(pastSeasonId)
+        setLoadedScope(scope)
       })
-  }, [pastSeasonId])
+  }, [pastSeasonId, scope])
 
   if (!ready) {
     return (
@@ -370,6 +376,7 @@ export default function LeagueStandings() {
       renderItem={({item}) => <DivisionStandings data={item} />}
       ListHeaderComponent={
         <View style={{paddingHorizontal: 16, paddingTop: 4}}>
+          <StatsScopeChips />
           <MiniSeasonChips
             seasons={seasons}
             seasonId={seasonId}
@@ -378,7 +385,25 @@ export default function LeagueStandings() {
           {isLoading ? (
             <ActivityIndicator style={{marginBottom: 12}} color="#0a7ea4" />
           ) : null}
+          {scope === 'cup' ? (
+            <Text
+              style={{
+                marginBottom: 12,
+                opacity: 0.7,
+                fontSize: 14,
+                textAlign: 'center',
+              }}>
+              {t('stats_standings_cup_empty')}
+            </Text>
+          ) : null}
         </View>
+      }
+      ListEmptyComponent={
+        scope === 'cup' ? null : (
+          <Text style={{textAlign: 'center', opacity: 0.6, marginTop: 24}}>
+            {t('no_data_available')}
+          </Text>
+        )
       }
     />
   )

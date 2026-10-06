@@ -11,9 +11,11 @@ import {
   winRateColor,
   winRatePercent,
 } from '@/components/PlayerStatistics/statUi'
+import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import config from '@/config'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {useStatsScope} from '@/context/StatsScopeContext'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
 import {useSeason} from '@/hooks/useSeason'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
@@ -62,6 +64,7 @@ export default function PlayerStatistics({
 }) {
   const season = useSeason()
   const {state} = useLeagueContext()
+  const {scope} = useStatsScope()
   const {seasons, seasonId, setSeasonId, selectedSeason, pastSeasonId} =
     useLeagueSeasonSelection()
   const [stats, setStats] = useState<any>(null)
@@ -149,7 +152,7 @@ export default function PlayerStatistics({
         setIsRefreshing(false)
       }
     })()
-  }, [playerInfo.player_id, isRefreshing, pastSeasonId])
+  }, [playerInfo.player_id, isRefreshing, pastSeasonId, scope])
 
   React.useEffect(() => {
     ;(async () => {
@@ -164,7 +167,7 @@ export default function PlayerStatistics({
         setIsRefreshing(false)
       }
     })()
-  }, [playerInfo.player_id, isRefreshing, pastSeasonId])
+  }, [playerInfo.player_id, isRefreshing, pastSeasonId, scope])
 
   React.useEffect(() => {
     ;(async () => {
@@ -179,7 +182,7 @@ export default function PlayerStatistics({
         setIsRefreshing(false)
       }
     })()
-  }, [playerInfo.player_id, isRefreshing, pastSeasonId])
+  }, [playerInfo.player_id, isRefreshing, pastSeasonId, scope])
 
   const nationalityName =
     (i18n.language?.startsWith('th')
@@ -300,6 +303,7 @@ export default function PlayerStatistics({
         </RNView>
       </Surface>
 
+      <StatsScopeChips />
       <MiniSeasonChips
         seasons={seasons}
         seasonId={seasonId}
