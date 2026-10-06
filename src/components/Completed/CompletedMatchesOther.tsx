@@ -7,7 +7,7 @@ import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContaine
 import React, {useMemo} from 'react'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {
-  matchMatchesScope,
+  filterMatchesByScope,
   useStatsScope,
 } from '@/context/StatsScopeContext'
 import MatchDateItem from './MatchDateItem'
@@ -57,9 +57,7 @@ export default function CompletedMatchesOther({
     return matchDates
       .map(group => ({
         ...group,
-        matches: group.matches.filter(m =>
-          matchMatchesScope(m.tournament_id, scope),
-        ),
+        matches: filterMatchesByScope(group.matches, scope),
       }))
       .filter(group => group.matches.length > 0)
   }, [matchDates, scope])

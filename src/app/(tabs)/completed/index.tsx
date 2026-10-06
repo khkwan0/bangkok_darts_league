@@ -9,7 +9,7 @@ import {MiniLeagueCompleted} from '@/components/mini-leagues/MiniLeagueCompleted
 import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {
-  matchMatchesScope,
+  filterMatchesByScope,
   useStatsScope,
 } from '@/context/StatsScopeContext'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
@@ -93,7 +93,7 @@ export default function CompletedHome() {
   const seasonSelection = useLeagueSeasonSelection()
 
   const filteredMatches = useMemo(
-    () => matches.filter(m => matchMatchesScope(m.tournament_id, scope)),
+    () => filterMatchesByScope(matches, scope),
     [matches, scope],
   )
 
