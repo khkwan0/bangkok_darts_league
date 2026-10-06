@@ -63,11 +63,27 @@ export type FrameType = {
   winner: number
   homePlayerIds: number[]
   awayPlayerIds: number[]
+  /** Games won inside BoN series (paper "Legs" for the row). */
   homeScore: number
   awayScore: number
   type?: string
-  /** Players required per side from frame_types.no_players */
+  /** Min players per side */
   noPlayers?: number
+  minPlayers?: number
+  maxPlayers?: number
+  /** Series parameter: BoN length or Race-to M target */
+  games?: number
+  /** best_of | race_to when games > 1 */
+  seriesMode?: 'best_of' | 'race_to'
+  trackStats?: boolean
+  homeTons?: number
+  awayTons?: number
+  homeHeavyTons?: number
+  awayHeavyTons?: number
+  homeCloses?: number
+  awayCloses?: number
+  homeBoardScore?: number
+  awayBoardScore?: number
   frameIdx?: number
   frameIndex?: number
   goldenBreak?: boolean

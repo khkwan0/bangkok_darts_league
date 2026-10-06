@@ -88,10 +88,16 @@ const MatchReducer = (state: StateType, action: any) => {
       // by user input
       const {frameIndex, playerId, side, slot} = action.payload
       const frame = {...state.frameData[frameIndex]}
-      if (side === 'home') {
-        frame.homePlayerIds[slot] = playerId
+      const sideKey = side === 'home' ? 'homePlayerIds' : 'awayPlayerIds'
+      const ids = [...(frame[sideKey] ?? [])]
+      if (!playerId || Number(playerId) <= 0) {
+        if (slot >= 0 && slot < ids.length) ids.splice(slot, 1)
+        frame[sideKey] = ids.filter(
+          (id: number) => id != null && Number(id) > 0,
+        )
       } else {
-        frame.awayPlayerIds[slot] = playerId
+        ids[slot] = playerId
+        frame[sideKey] = ids
       }
       const _frameData = [...state.frameData]
       _frameData[frameIndex] = frame
@@ -112,10 +118,22 @@ const MatchReducer = (state: StateType, action: any) => {
         frameData: _frameData,
       }
     }
+    case 'SET_FRAME_STATS': {
+      const {frameIndex, ...stats} = action.payload
+      const frame = {...state.frameData[frameIndex], ...stats}
+      const _frameData = [...state.frameData]
+      _frameData[frameIndex] = frame
+      return {
+        ...state,
+        frameData: _frameData,
+      }
+    }
     case 'CLEAR_WINNER': {
       const {frameIdx} = action.payload
       const frame = {...state.frameData[frameIdx]}
       frame.winner = 0
+      frame.homeScore = 0
+      frame.awayScore = 0
       const _frameData = [...state.frameData]
       _frameData[frameIdx] = frame
       return {
@@ -282,6 +300,25 @@ export const MatchProvider = (props: any) => {
               frameIdx: data.frameIdx,
             },
           })
+        } else if (data.type === 'framestats') {
+          dispatch({
+            type: 'SET_FRAME_STATS',
+            payload: {
+              frameIndex: data.frameIdx,
+              homeTons: data.homeTons,
+              awayTons: data.awayTons,
+              homeHeavyTons: data.homeHeavyTons,
+              awayHeavyTons: data.awayHeavyTons,
+              homeCloses: data.homeCloses,
+              awayCloses: data.awayCloses,
+              homeScore: data.homeScore,
+              awayScore: data.awayScore,
+              homeBoardScore: data.homeBoardScore,
+              awayBoardScore: data.awayBoardScore,
+              winner: data.winner,
+              games: data.games,
+            },
+          })
         }
       }
     }
@@ -427,33 +464,78 @@ export const MatchProvider = (props: any) => {
     SocketSend('firstbreak', {firstBreak: normalized})
   }
 
+  function countPlayers(ids?: number[]) {
+    if (!Array.isArray(ids)) return 0
+    return ids.filter(id => id != null && Number(id) > 0).length
+  }
+
   function UpdateFrameWin(
     side: string,
     frameIdx: string,
     winnerTeamId: string,
     goldenBreak: boolean,
   ) {
-    const frame = state.frameData[parseInt(frameIdx)]
-    const needed =
+    const idx = parseInt(String(frameIdx), 10)
+    const frame = state.frameData[idx]
+    const initial = state.matchInfo.initialFrames?.[idx]
+    const minNeeded =
+      frame?.minPlayers ??
       frame?.noPlayers ??
-      state.matchInfo.initialFrames?.[parseInt(frameIdx)]?.noPlayers ??
+      initial?.minPlayers ??
+      initial?.noPlayers ??
       1
-    const awayPlayerCount = frame.awayPlayerIds.length
-    const homePlayerCount = frame.homePlayerIds.length
+    const homePlayerCount = countPlayers(frame.homePlayerIds)
+    const awayPlayerCount = countPlayers(frame.awayPlayerIds)
     const playerIds =
       side === 'home' ? frame.homePlayerIds : frame.awayPlayerIds
-    if (awayPlayerCount === needed && homePlayerCount === needed) {
+    if (awayPlayerCount >= minNeeded && homePlayerCount >= minNeeded) {
       const data = {
         side: side,
         matchId: state.matchInfo.match_id,
-        frameIdx: parseInt(frameIdx),
+        frameIdx: idx,
         frameNumber: frame.frameNumber,
         winnerTeamId: winnerTeamId,
-        playerIds: playerIds,
+        playerIds: playerIds.filter(
+          (id: number) => id != null && Number(id) > 0,
+        ),
         goldenBreak: goldenBreak,
+        homeTeamId: state.matchInfo.home_team_id,
+        awayTeamId: state.matchInfo.away_team_id,
+        games: frame.games ?? initial?.games ?? 1,
+        seriesMode: frame.seriesMode ?? initial?.seriesMode,
       }
       SocketSend('win', data)
     }
+  }
+
+  function UpdateFrameStats(
+    frameIdx: number,
+    side: 'home' | 'away',
+    field: 'tons' | 'heavyTons' | 'closes' | 'games' | 'boardScore',
+    delta: number,
+  ) {
+    const frame = state.frameData[frameIdx]
+    const initial = state.matchInfo.initialFrames?.[frameIdx]
+    const data = {
+      matchId: state.matchInfo.match_id,
+      frameIdx,
+      frameNumber: frame?.frameNumber ?? 0,
+      side,
+      field,
+      delta,
+      games: frame?.games ?? initial?.games ?? 1,
+      seriesMode: frame?.seriesMode ?? initial?.seriesMode,
+      frameType: frame?.type ?? initial?.type ?? '',
+      mfpp: frame?.mfpp ?? initial?.mfpp ?? 0,
+      homeTeamId: state.matchInfo.home_team_id,
+      awayTeamId: state.matchInfo.away_team_id,
+      playerIdx: 0,
+      playerId: 0,
+      winnerTeamId: 0,
+      goldenBreak: false,
+      newPlayer: false,
+    }
+    SocketSend('framestats', data)
   }
 
   function ClearFrameWinner(frameIdx: number) {
@@ -595,6 +677,7 @@ export const MatchProvider = (props: any) => {
         UnfinalizeMatch,
         UpdateFirstBreak,
         UpdateFramePlayers,
+        UpdateFrameStats,
         UpdateFrameWin,
         UpdateTeams,
       }}>

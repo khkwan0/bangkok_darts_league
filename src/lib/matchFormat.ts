@@ -41,16 +41,32 @@ export function parseMatchFormat(raw: unknown): DivisionFormatLite | null {
   }
 }
 
+export type FrameSeriesMode = 'best_of' | 'race_to'
+
 export type FormatSubsection = {
   frames: number
   type: string
   mfpp: number
   noPlayers?: number
+  games?: number
+  seriesMode?: FrameSeriesMode
+  minPlayers?: number
+  maxPlayers?: number
+  trackStats?: boolean
 }
 
-/** Map frame_types.short_name → no_players for scoresheet slot counts. */
+export type FrameTypeMeta = {
+  short_name?: string
+  no_players?: number | string
+  max_players?: number | string
+  default_games?: number | string
+  default_series_mode?: string
+  track_stats?: boolean | string | number
+}
+
+/** Map frame_types.short_name → no_players (min) for scoresheet slot counts. */
 export function buildNoPlayersByType(
-  frameTypes: Array<{short_name?: string; no_players?: number | string}> | null | undefined,
+  frameTypes: FrameTypeMeta[] | null | undefined,
 ): Record<string, number> {
   const map: Record<string, number> = {}
   if (!Array.isArray(frameTypes)) return map
@@ -59,6 +75,59 @@ export function buildNoPlayersByType(
     const n = Number(ft?.no_players)
     if (key && Number.isFinite(n) && n > 0) {
       map[key] = Math.trunc(n)
+    }
+  }
+  return map
+}
+
+export function buildFrameTypeMetaByType(
+  frameTypes: FrameTypeMeta[] | null | undefined,
+): Record<
+  string,
+  {
+    minPlayers: number
+    maxPlayers: number
+    games: number
+    seriesMode?: FrameSeriesMode
+    trackStats: boolean
+  }
+> {
+  const map: Record<
+    string,
+    {
+      minPlayers: number
+      maxPlayers: number
+      games: number
+      seriesMode?: FrameSeriesMode
+      trackStats: boolean
+    }
+  > = {}
+  if (!Array.isArray(frameTypes)) return map
+  for (const ft of frameTypes) {
+    const key = String(ft?.short_name ?? '').trim()
+    if (!key) continue
+    const minPlayers = Math.max(1, Math.trunc(Number(ft?.no_players) || 1))
+    const maxRaw = Number(ft?.max_players)
+    const maxPlayers =
+      Number.isFinite(maxRaw) && maxRaw >= minPlayers
+        ? Math.trunc(maxRaw)
+        : minPlayers
+    const gamesRaw = Number(ft?.default_games)
+    const games =
+      Number.isFinite(gamesRaw) && gamesRaw >= 1 ? Math.trunc(gamesRaw) : 1
+    const seriesMode =
+      games > 1
+        ? String(ft?.default_series_mode ?? '') === 'race_to'
+          ? 'race_to'
+          : 'best_of'
+        : undefined
+    map[key] = {
+      minPlayers,
+      maxPlayers,
+      games,
+      seriesMode,
+      // Darts scoresheet: track tons/closes unless explicitly disabled.
+      trackStats: ft?.track_stats !== false && ft?.track_stats !== 0,
     }
   }
   return map
@@ -76,6 +145,21 @@ export function resolveNoPlayers(
   const fromMap = key && noPlayersByType ? noPlayersByType[key] : undefined
   if (fromMap != null && fromMap > 0) return fromMap
   return 1
+}
+
+/** Wins needed to take the row. Race-to uses M; best-of uses ceil(N/2). */
+export function seriesWinsNeeded(
+  seriesMode: FrameSeriesMode | string | undefined,
+  games: number | undefined,
+): number {
+  const g = Math.max(1, Math.trunc(Number(games) || 1))
+  if (String(seriesMode ?? '') === 'race_to') return g
+  return Math.ceil(g / 2)
+}
+
+/** @deprecated use seriesWinsNeeded */
+export function seriesNeed(games: number | undefined): number {
+  return seriesWinsNeeded('best_of', games)
 }
 
 /**
@@ -98,16 +182,48 @@ export function resolveFormatSubsections(raw: unknown): FormatSubsection[] {
       .filter(item => item && typeof item === 'object')
       .map(item => {
         const section = item as Record<string, unknown>
-        const noPlayersRaw = section.no_players ?? section.noPlayers
-        const noPlayers = Number(noPlayersRaw)
+        const minRaw = section.minPlayers ?? section.min_players ?? section.no_players ?? section.noPlayers
+        const maxRaw = section.maxPlayers ?? section.max_players
+        const gamesRaw = section.games
+        const minPlayers = Number(minRaw)
+        const maxPlayers = Number(maxRaw)
+        const games = Number(gamesRaw)
+        const trackStats =
+          section.trackStats != null
+            ? Boolean(section.trackStats)
+            : section.track_stats != null
+              ? Boolean(section.track_stats)
+              : undefined
+        const seriesRaw = String(
+          section.seriesMode ?? section.series_mode ?? '',
+        ).trim()
+        const truncatedGames =
+          Number.isFinite(games) && games > 0 ? Math.trunc(games) : undefined
+        const seriesMode: FrameSeriesMode | undefined =
+          truncatedGames != null && truncatedGames > 1
+            ? seriesRaw === 'race_to'
+              ? 'race_to'
+              : 'best_of'
+            : undefined
         return {
           frames: Number(section.frames) || 0,
           type: String(section.type ?? ''),
           mfpp: Number(section.mfpp) || 1,
           noPlayers:
-            Number.isFinite(noPlayers) && noPlayers > 0
-              ? Math.trunc(noPlayers)
+            Number.isFinite(minPlayers) && minPlayers > 0
+              ? Math.trunc(minPlayers)
               : undefined,
+          minPlayers:
+            Number.isFinite(minPlayers) && minPlayers > 0
+              ? Math.trunc(minPlayers)
+              : undefined,
+          maxPlayers:
+            Number.isFinite(maxPlayers) && maxPlayers > 0
+              ? Math.trunc(maxPlayers)
+              : undefined,
+          games: truncatedGames,
+          seriesMode,
+          trackStats,
         }
       })
       .filter(section => section.frames > 0)
@@ -152,17 +268,33 @@ function countAssignedPlayers(ids?: number[]): number {
   return ids.filter(id => id != null && Number(id) > 0).length
 }
 
-/** True when each side has the required number of players for the frame type. */
+/** True when each side has at least min players (and not over max when set). */
 export function frameHasCompleteRosters(frame: {
   type?: string
   noPlayers?: number
+  minPlayers?: number
+  maxPlayers?: number
   homePlayerIds?: number[]
   awayPlayerIds?: number[]
 }): boolean {
-  const needed = resolveNoPlayers(frame.type, null, frame.noPlayers)
+  const minNeeded = resolveNoPlayers(
+    frame.type,
+    null,
+    frame.minPlayers ?? frame.noPlayers,
+  )
+  const maxAllowed =
+    frame.maxPlayers != null &&
+    Number.isFinite(Number(frame.maxPlayers)) &&
+    Number(frame.maxPlayers) > 0
+      ? Math.trunc(Number(frame.maxPlayers))
+      : minNeeded
+  const homeCount = countAssignedPlayers(frame.homePlayerIds)
+  const awayCount = countAssignedPlayers(frame.awayPlayerIds)
   return (
-    countAssignedPlayers(frame.homePlayerIds) === needed &&
-    countAssignedPlayers(frame.awayPlayerIds) === needed
+    homeCount >= minNeeded &&
+    awayCount >= minNeeded &&
+    homeCount <= maxAllowed &&
+    awayCount <= maxAllowed
   )
 }
 

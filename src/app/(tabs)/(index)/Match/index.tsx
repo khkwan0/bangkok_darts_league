@@ -12,6 +12,7 @@ import { useMatchContext } from '@/context/MatchContext'
 import { useMatch } from '@/hooks/useMatch'
 import { useTabListContentContainerStyle } from '@/hooks/useTabListContentContainerStyle'
 import {
+  buildFrameTypeMetaByType,
   buildNoPlayersByType,
   resolveFormatSubsections,
   resolveNoPlayers,
@@ -81,28 +82,56 @@ export default function ScoreSheet() {
       if (cancelled) return
 
       const noPlayersByType = buildNoPlayersByType(frameTypes)
+      const metaByType = buildFrameTypeMetaByType(frameTypes)
       const subsections = resolveFormatSubsections(matchInfo.format)
       let frameNumber = 1
       let sectionCount = 1
       const _frames: FrameType[] = []
       subsections.forEach((section, idx: number) => {
-        const noPlayers = resolveNoPlayers(
+        const typeMeta = metaByType[section.type]
+        const minPlayers = resolveNoPlayers(
           section.type,
           noPlayersByType,
-          section.noPlayers,
+          section.minPlayers ?? section.noPlayers,
         )
+        const maxPlayers =
+          section.maxPlayers ?? typeMeta?.maxPlayers ?? minPlayers
+        const games = section.games ?? typeMeta?.games ?? 1
+        const seriesMode =
+          games > 1
+            ? section.seriesMode ??
+              typeMeta?.seriesMode ??
+              'best_of'
+            : undefined
+        const trackStats =
+          section.trackStats != null
+            ? section.trackStats
+            : (typeMeta?.trackStats ?? true)
         for (let i = 0; i < section.frames; i++) {
           const _frame: FrameType = {
             frameNumber: frameNumber,
             section: sectionCount,
             mfpp: section.mfpp,
             type: section.type,
-            noPlayers,
+            noPlayers: minPlayers,
+            minPlayers,
+            maxPlayers,
+            games,
+            seriesMode,
+            trackStats,
             winner: 0,
             homePlayerIds: [],
             awayPlayerIds: [],
             homeScore: 0,
             awayScore: 0,
+            homeTons: 0,
+            awayTons: 0,
+            homeHeavyTons: 0,
+            awayHeavyTons: 0,
+            homeCloses: 0,
+            awayCloses: 0,
+            homeBoardScore: 0,
+            awayBoardScore: 0,
           }
           _frames.push(_frame)
           frameNumber++
@@ -169,6 +198,11 @@ export default function ScoreSheet() {
               type: frame.type ?? template?.type,
               mfpp: frame.mfpp ?? template?.mfpp,
               noPlayers: frame.noPlayers ?? template?.noPlayers,
+              minPlayers: frame.minPlayers ?? template?.minPlayers,
+              maxPlayers: frame.maxPlayers ?? template?.maxPlayers,
+              games: frame.games ?? template?.games,
+              seriesMode: frame.seriesMode ?? template?.seriesMode,
+              trackStats: frame.trackStats ?? template?.trackStats,
             }
           }
         })

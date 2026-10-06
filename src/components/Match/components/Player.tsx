@@ -2,7 +2,6 @@ import Row from '@/components/Row'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useMatchContext} from '@/context/MatchContext'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
-import {resolveNoPlayers} from '@/lib/matchFormat'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import * as Haptics from 'expo-haptics'
 import {router} from 'expo-router'
@@ -17,6 +16,8 @@ interface PlayerProps {
   frameIndex: number
   frameNumber: number
   frameType?: string
+  minPlayers?: number
+  maxPlayers?: number
   noPlayers?: number
   playerIds: number[]
   refreshing?: boolean
@@ -46,6 +47,7 @@ function PlayerSlot({
   label,
   pressed,
   onPress,
+  onLongPress,
   onPressIn,
   onPressOut,
 }: {
@@ -56,6 +58,7 @@ function PlayerSlot({
   label: string
   pressed: boolean
   onPress: () => void
+  onLongPress?: () => void
   onPressIn: () => void
   onPressOut: () => void
 }) {
@@ -63,6 +66,7 @@ function PlayerSlot({
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       style={{paddingVertical: 2}}>
@@ -98,24 +102,32 @@ export default function Player({
   frameIndex,
   frameNumber,
   frameType,
+  minPlayers,
+  maxPlayers,
   noPlayers,
   playerIds,
   refreshing = false,
   ink,
   mark,
 }: PlayerProps) {
-  const {state}: any = useMatchContext()
+  const {state, UpdateFramePlayers}: any = useMatchContext()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
   const [pressedSlot, setPressedSlot] = useState<number | null>(null)
   const {state: playerState}: any = useLeagueContext()
   const user = playerState.user
   const {home_team_id: homeTeamId, away_team_id: awayTeamId} = state.matchInfo
-  const slotCount = resolveNoPlayers(
-    frameType,
-    null,
-    noPlayers ?? state.matchInfo.initialFrames?.[frameIndex]?.noPlayers,
+  const minCount = Math.max(1, Number(minPlayers ?? noPlayers ?? 1))
+  const maxCount = Math.max(minCount, Number(maxPlayers ?? minCount))
+  const assigned = (playerIds ?? []).filter(
+    id => id != null && Number(id) > 0,
   )
+  const isFlexible = maxCount > minCount
+  // Fixed slots (singles/doubles): always show maxCount slots.
+  // Team frames: show filled + one add slot while under max.
+  const slotCount = isFlexible
+    ? Math.min(maxCount, assigned.length + 1)
+    : maxCount
 
   const isPlayerOnTeam = () => {
     try {
@@ -161,6 +173,37 @@ export default function Player({
     }
   }
 
+  const handleRemovePlayer = (slot: number) => {
+    if (state.finalizedHome && state.finalizedAway) {
+      Alert.alert(t('match_completed'))
+      return
+    }
+    if (!isPlayerOnTeam()) {
+      Alert.alert(t('user_not_on_team'))
+      return
+    }
+    const initial = state.matchInfo.initialFrames[frameIndex]
+    Alert.alert(t('remove_player'), t('remove_player_confirm'), [
+      {text: t('cancel'), style: 'cancel'},
+      {
+        text: t('remove'),
+        style: 'destructive',
+        onPress: () => {
+          UpdateFramePlayers(
+            frameIndex,
+            side,
+            slot,
+            0,
+            '',
+            false,
+            frameType || initial?.type,
+            frameNumber,
+          )
+        },
+      },
+    ])
+  }
+
   const hasBreak =
     (teamId === homeTeamId &&
       state.firstBreak === homeTeamId &&
@@ -178,14 +221,16 @@ export default function Player({
   function slotProps(slot: number) {
     const playerId = playerIds[slot]
     const nickname = state?.teams?.[teamId]?.[playerId]?.nickname
+    const filled = typeof playerId !== 'undefined' && !!nickname
     return {
-      filled: typeof playerId !== 'undefined' && !!nickname,
+      filled,
       nickname,
       ink,
       pressColor: theme.win,
       label: t('player'),
       pressed: pressedSlot === slot,
       onPress: () => handlePlayerSlotPress(slot),
+      onLongPress: filled ? () => handleRemovePlayer(slot) : undefined,
       onPressIn: () => setPressedSlot(slot),
       onPressOut: () => setPressedSlot(null),
     }
@@ -194,7 +239,7 @@ export default function Player({
   if (refreshing) {
     return (
       <View style={{alignItems: 'center', gap: 10}}>
-        {Array.from({length: slotCount}, (_, slot) => (
+        {Array.from({length: Math.min(slotCount, 4)}, (_, slot) => (
           <PlayerSkeleton key={slot} ink={ink} />
         ))}
         {hasBreak && (
