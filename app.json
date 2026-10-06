@@ -19,16 +19,23 @@
       ],
       "entitlements": {
         "aps-environment": "production",
-        "com.apple.developer.applesignin": ["Default"]
+        "com.apple.developer.applesignin": [
+          "Default"
+        ]
       },
       "infoPlist": {
         "CFBundleDisplayName": "Bangkok Darts League",
         "LSApplicationCategoryType": "public.app-category.sports",
-        "UIBackgroundModes": ["fetch", "remote-notification"],
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ],
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
-        "LSApplicationQueriesSchemes": ["lineauth2"],
+        "LSApplicationQueriesSchemes": [
+          "lineauth2"
+        ],
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
@@ -99,7 +106,10 @@
         {
           "ios": {
             "useFrameworks": "static",
-            "forceStaticLinking": ["RNFBApp", "RNFBMessaging"]
+            "forceStaticLinking": [
+              "RNFBApp",
+              "RNFBMessaging"
+            ]
           }
         }
       ],
@@ -128,7 +138,15 @@
       "expo-status-bar",
       "./plugins/withIosMarketingVersion",
       "./plugins/withIosSignEmbeddedFrameworks",
-      "./plugins/withAndroidReleaseSigning"
+      "./plugins/withAndroidReleaseSigning",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "bangkok-darts-league",
+          "organization": "nitrox-studios"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

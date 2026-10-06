@@ -6,14 +6,19 @@ import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
 import {useStatColors} from '@/components/PlayerStatistics/statUi'
 import {MiniLeagueCompleted} from '@/components/mini-leagues/MiniLeagueCompleted'
+import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {
+  matchMatchesScope,
+  useStatsScope,
+} from '@/context/StatsScopeContext'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
 import {useLeague} from '@/hooks/useLeague'
 import {Colors} from '@/constants/Colors'
 import {isMiniCompetition} from '@/types/competition'
 import {Ionicons} from '@expo/vector-icons'
 import {usePathname, useRouter} from 'expo-router'
-import React, {useCallback} from 'react'
+import React, {useCallback, useMemo} from 'react'
 import {useTranslation} from 'react-i18next'
 import {FlatList, Pressable, Text, useColorScheme, View} from 'react-native'
 
@@ -25,6 +30,7 @@ type CompletedMatchType = {
   away_team_name: string
   home_frames: number
   away_frames: number
+  tournament_id?: number
 }
 
 type ApiResponse = {
@@ -77,12 +83,19 @@ export default function CompletedHome() {
   const {state} = useLeagueContext()
   const league = useLeague()
   const user = state.user
+  const {scope} = useStatsScope()
+  const {t} = useTranslation()
   const [matches, setMatches] = React.useState<CompletedMatchType[]>([])
   const [refreshing, setRefreshing] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
   const listContentStyle = useTabListContentContainerStyle()
   const pageBg = Colors[useColorScheme() === 'dark' ? 'dark' : 'light'].background
   const seasonSelection = useLeagueSeasonSelection()
+
+  const filteredMatches = useMemo(
+    () => matches.filter(m => matchMatchesScope(m.tournament_id, scope)),
+    [matches, scope],
+  )
 
   const getCompletedMatches = useCallback(
     async (teams: {id: number}[]) => {
@@ -122,7 +135,7 @@ export default function CompletedHome() {
     <View className="flex-1" style={{backgroundColor: pageBg}}>
       <FlatList
         style={{backgroundColor: pageBg}}
-        data={matches}
+        data={filteredMatches}
         keyExtractor={item => item.match_id.toString()}
         renderItem={({item, index}) => (
           <CompletedMatch item={item} index={index} />
@@ -132,7 +145,7 @@ export default function CompletedHome() {
         contentContainerClassName="py-4"
         contentContainerStyle={listContentStyle}
         ListHeaderComponent={
-          matches.length > 0 ? (
+          isMounted && matches.length > 0 ? (
             <>
               <View style={{paddingHorizontal: 16}}>
                 <MiniSeasonChips
@@ -140,13 +153,20 @@ export default function CompletedHome() {
                   seasonId={seasonSelection.seasonId}
                   onSelect={seasonSelection.setSeasonId}
                 />
+                <StatsScopeChips />
               </View>
               <ShowAllMatches />
             </>
           ) : null
         }
         ListEmptyComponent={
-          isMounted ? <NoMatches seasonSelection={seasonSelection} /> : null
+          !isMounted ? null : matches.length === 0 ? (
+            <NoMatches seasonSelection={seasonSelection} />
+          ) : (
+            <View className="p-4 items-center justify-center">
+              <Text>{t('no_completed_matches')}</Text>
+            </View>
+          )
         }
         ListFooterComponent={<View className="h-4" />}
       />

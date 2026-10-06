@@ -19,6 +19,7 @@ type MatchDateItemProps = {
       home_frames: number
       away_frames: number
       division_name?: string
+      tournament_id?: number
     }[]
   }
 }

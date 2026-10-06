@@ -25,3 +25,13 @@ export function StatsScopeProvider({children}: {children: React.ReactNode}) {
 export function useStatsScope() {
   return useContext(StatsScopeContext)
 }
+
+/** League = tournament_id 0; cup = tournament_id > 0; both = no filter. */
+export function matchMatchesScope(
+  tournamentId: number | null | undefined,
+  scope: StatsScope,
+): boolean {
+  if (scope === 'both') return true
+  const isCup = Number(tournamentId) > 0
+  return scope === 'cup' ? isCup : !isCup
+}

@@ -101,6 +101,9 @@ echo "Archiving Release build (iPhone only) → ${ARCHIVE_PATH}…"
 echo "Logging to ${ARCHIVE_LOG} (MAX_CPUS=${MAX_CPUS})…"
 # Transient Sentry TLS/network errors should not fail the App Store build.
 export SENTRY_ALLOW_FAILURE="${SENTRY_ALLOW_FAILURE:-true}"
+# -allowProvisioningUpdates: create/download the App Store profile for
+# com.bangkok-darts-league (wildcard Team profiles cannot include Push /
+# Sign In with Apple / Associated Domains).
 xcodebuild -workspace ios/BangkokDartsLeague.xcworkspace \
   -scheme BangkokDartsLeague \
   -configuration Release \
@@ -108,6 +111,7 @@ xcodebuild -workspace ios/BangkokDartsLeague.xcworkspace \
   -archivePath "$ARCHIVE_PATH" \
   -jobs "$MAX_CPUS" \
   -IDEBuildOperationMaxNumberOfConcurrentCompileTasks="$MAX_CPUS" \
+  -allowProvisioningUpdates \
   COMPILER_INDEX_STORE_ENABLE=NO \
   TARGETED_DEVICE_FAMILY=1 \
   archive \

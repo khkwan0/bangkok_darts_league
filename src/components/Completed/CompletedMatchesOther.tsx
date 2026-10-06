@@ -4,10 +4,15 @@ import {View, FlatList, ActivityIndicator, useColorScheme} from 'react-native'
 import {useSeason} from '@/hooks/useSeason'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
-import React from 'react'
+import React, {useMemo} from 'react'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {
+  matchMatchesScope,
+  useStatsScope,
+} from '@/context/StatsScopeContext'
 import MatchDateItem from './MatchDateItem'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
+import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import {useTranslation} from 'react-i18next'
 import {ThemedText as Text} from '@/components/ThemedText'
 
@@ -21,6 +26,7 @@ type MatchDate = {
     away_team_name: string
     home_frames: number
     away_frames: number
+    tournament_id?: number
   }[]
 }
 
@@ -34,6 +40,7 @@ export default function CompletedMatchesOther({
 }) {
   const {GetCompletedMatchesBySeason} = useSeason()
   const {state} = useLeagueContext()
+  const {scope} = useStatsScope()
   const ownSelection = useLeagueSeasonSelection()
   const {seasons, seasonId, setSeasonId, pastSeasonId} =
     seasonSelection ?? ownSelection
@@ -45,6 +52,17 @@ export default function CompletedMatchesOther({
   const pageBg = Colors[useColorScheme() === 'dark' ? 'dark' : 'light'].background
   const isMounted = loadedSeason !== null
   const isLoading = loadedSeason !== season
+
+  const filteredMatchDates = useMemo(() => {
+    return matchDates
+      .map(group => ({
+        ...group,
+        matches: group.matches.filter(m =>
+          matchMatchesScope(m.tournament_id, scope),
+        ),
+      }))
+      .filter(group => group.matches.length > 0)
+  }, [matchDates, scope])
 
   React.useEffect(() => {
     let cancelled = false
@@ -77,7 +95,7 @@ export default function CompletedMatchesOther({
   return (
     <FlatList
       style={{backgroundColor: pageBg, flex: 1}}
-      data={isLoading ? [] : matchDates}
+      data={isLoading ? [] : filteredMatchDates}
       contentContainerStyle={listContentStyle}
       renderItem={({item}) => <MatchDateItem date={item} />}
       keyExtractor={(item, index) => `${index.toString()}_${item.date}`}
@@ -88,6 +106,7 @@ export default function CompletedMatchesOther({
             seasonId={seasonId}
             onSelect={setSeasonId}
           />
+          <StatsScopeChips />
         </View>
       }
       ListEmptyComponent={() =>
