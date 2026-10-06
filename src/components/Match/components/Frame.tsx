@@ -29,6 +29,8 @@ export default function Frame({item, index, refreshing}: FrameProps) {
   const theme = useScoresheetTheme()
   const initial = state.matchInfo.initialFrames[index]
   const frameType = initial?.type
+  const frameLabel =
+    item.label || initial?.label || frameType
   const minPlayers = item.minPlayers ?? item.noPlayers ?? initial?.minPlayers
   const maxPlayers = item.maxPlayers ?? initial?.maxPlayers ?? minPlayers
   const games = item.games ?? initial?.games ?? 1
@@ -37,7 +39,11 @@ export default function Frame({item, index, refreshing}: FrameProps) {
       ? item.seriesMode ?? initial?.seriesMode ?? 'best_of'
       : undefined
   const trackStats = item.trackStats ?? initial?.trackStats ?? true
-  const isMickey = String(frameType ?? '').toLowerCase() === 'mm'
+  const isMickey =
+    String(frameType ?? '').toLowerCase() === 'mm' ||
+    String(frameLabel ?? '')
+      .toLowerCase()
+      .includes('mickey')
   const {home_team_id: homeTeamId, away_team_id: awayTeamId} = state.matchInfo
   const locked = !!(state.finalizedHome && state.finalizedAway)
 
@@ -265,7 +271,7 @@ export default function Frame({item, index, refreshing}: FrameProps) {
           }}>
           {t('frame')} {item.frameNumber}
           {showSeries ? ` · ${seriesLabel} (first to ${need})` : ''}
-          {frameType ? ` · ${frameType}` : ''}
+          {frameLabel ? ` · ${frameLabel}` : ''}
         </Text>
         {kind ? (
           <Text style={{color: theme.muted, fontSize: 12, fontWeight: '600'}}>

@@ -46,6 +46,8 @@ export type FrameSeriesMode = 'best_of' | 'race_to'
 export type FormatSubsection = {
   frames: number
   type: string
+  /** Display name from format JSON (preferred over type on scoresheet). */
+  label?: string
   mfpp: number
   noPlayers?: number
   games?: number
@@ -205,9 +207,17 @@ export function resolveFormatSubsections(raw: unknown): FormatSubsection[] {
               ? 'race_to'
               : 'best_of'
             : undefined
+        const type = String(section.type ?? '').trim()
+        const labelRaw =
+          section.label != null
+            ? String(section.label).trim()
+            : section.name != null
+              ? String(section.name).trim()
+              : ''
         return {
           frames: Number(section.frames) || 0,
-          type: String(section.type ?? ''),
+          type,
+          label: labelRaw || undefined,
           mfpp: Number(section.mfpp) || 1,
           noPlayers:
             Number.isFinite(minPlayers) && minPlayers > 0

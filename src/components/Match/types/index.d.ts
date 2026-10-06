@@ -67,6 +67,8 @@ export type FrameType = {
   homeScore: number
   awayScore: number
   type?: string
+  /** Display name from match format section (e.g. "501 Doubles"). */
+  label?: string
   /** Min players per side */
   noPlayers?: number
   minPlayers?: number
