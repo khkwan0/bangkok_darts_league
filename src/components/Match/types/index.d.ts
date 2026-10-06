@@ -105,4 +105,5 @@ export interface FrameProps {
   item: FrameType
   index: number
   refreshing: boolean
+  statsView?: import('@/lib/scoresheetStatsView').ScoresheetStatsView
 }

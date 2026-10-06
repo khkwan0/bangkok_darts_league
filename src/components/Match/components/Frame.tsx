@@ -1,4 +1,5 @@
 import {useMatchContext} from '@/context/MatchContext'
+import type {ScoresheetStatsView} from '@/lib/scoresheetStatsView'
 import {seriesWinsNeeded} from '@/lib/matchFormat'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
@@ -22,15 +23,21 @@ function frameKindLabel(
   return ''
 }
 
-export default function Frame({item, index, refreshing}: FrameProps) {
+export default function Frame({
+  item,
+  index,
+  refreshing,
+  statsView = 'full',
+}: FrameProps) {
   const {state, UpdateFrameWin, ClearFrameWinner, UpdateFrameStats}: any =
     useMatchContext()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
+  const [focusHome, setFocusHome] = React.useState<number | null>(null)
+  const [focusAway, setFocusAway] = React.useState<number | null>(null)
   const initial = state.matchInfo.initialFrames[index]
   const frameType = initial?.type
-  const frameLabel =
-    item.label || initial?.label || frameType
+  const frameLabel = item.label || initial?.label || frameType
   const minPlayers = item.minPlayers ?? item.noPlayers ?? initial?.minPlayers
   const maxPlayers = item.maxPlayers ?? initial?.maxPlayers ?? minPlayers
   const games = item.games ?? initial?.games ?? 1
@@ -46,6 +53,7 @@ export default function Frame({item, index, refreshing}: FrameProps) {
       .includes('mickey')
   const {home_team_id: homeTeamId, away_team_id: awayTeamId} = state.matchInfo
   const locked = !!(state.finalizedHome && state.finalizedAway)
+  const view: ScoresheetStatsView = statsView ?? 'full'
 
   function HandleWin(side: string, goldenBreak: boolean = false): void {
     const teamId = side === 'home' ? homeTeamId : awayTeamId
@@ -82,7 +90,8 @@ export default function Frame({item, index, refreshing}: FrameProps) {
       awayLegs += Number(f.awayScore ?? 0)
       i--
     }
-    const showStats = trackStats || homeTons + awayTons + homeHeavy + awayHeavy > 0
+    const showStats =
+      trackStats || homeTons + awayTons + homeHeavy + awayHeavy > 0
     return (
       <View
         style={{
@@ -154,31 +163,20 @@ export default function Frame({item, index, refreshing}: FrameProps) {
   const seriesLabel =
     seriesMode === 'race_to' ? `Race to ${games}` : `Bo${games}`
 
-  function panel(side: 'home' | 'away') {
-    const palette = side === 'home' ? theme.home : theme.away
-    const won = side === 'home' ? homeWon : awayWon
-    const lost = !!winner && !won
-    return {
-      flex: 1,
-      flexDirection: 'column' as const,
-      justifyContent: 'space-between' as const,
-      borderRadius: 14,
-      paddingVertical: 12,
-      paddingHorizontal: 8,
-      backgroundColor: won ? palette.panelWinner : palette.panel,
-      borderWidth: won ? 1.5 : 1,
-      borderColor: won ? palette.accent : palette.border,
-      opacity: lost ? 0.72 : 1,
-    }
-  }
-
-  function sideStats(side: 'home' | 'away') {
+  function sideMetaExtras(side: 'home' | 'away') {
     const palette = side === 'home' ? theme.home : theme.away
     const legs = side === 'home' ? live.homeScore : live.awayScore
     const board = side === 'home' ? live.homeBoardScore : live.awayBoardScore
     if (!isMickey && !showSeries) return null
     return (
-      <View style={{marginTop: 10, gap: 8, alignItems: 'center'}}>
+      <View
+        style={{
+          marginTop: 8,
+          gap: 8,
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+        }}>
         {isMickey ? (
           <StatStepper
             label={t('score')}
@@ -203,19 +201,26 @@ export default function Frame({item, index, refreshing}: FrameProps) {
     )
   }
 
-  return (
-    <View
-      style={[
-        {
-          marginHorizontal: 12,
-          marginVertical: 6,
-          borderRadius: 18,
-          backgroundColor: theme.card,
-          borderWidth: 1,
-          borderColor: theme.cardBorder,
-        },
-        theme.shadow,
-      ]}>
+  function winFor(side: 'home' | 'away') {
+    const teamId = side === 'home' ? homeTeamId : awayTeamId
+    const palette = side === 'home' ? theme.home : theme.away
+    if (showSeries && !winner) return null
+    return (
+      <WinButton
+        winner={winner}
+        HandleWin={HandleWin}
+        side={side}
+        teamId={teamId}
+        ClearWinner={ClearWinner}
+        goldenBreak={item.goldenBreak ?? false}
+        accent={palette.button}
+        onAccent={palette.onButton}
+      />
+    )
+  }
+
+  function titleBar() {
+    return (
       <View
         style={{
           flexDirection: 'row',
@@ -232,6 +237,8 @@ export default function Frame({item, index, refreshing}: FrameProps) {
             fontWeight: '800',
             letterSpacing: 0.8,
             textTransform: 'uppercase',
+            flex: 1,
+            paddingRight: 8,
           }}>
           {t('frame')} {item.frameNumber}
           {showSeries ? ` · ${seriesLabel} (first to ${need})` : ''}
@@ -243,17 +250,63 @@ export default function Frame({item, index, refreshing}: FrameProps) {
           </Text>
         ) : null}
       </View>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'stretch',
-          gap: 8,
-          paddingHorizontal: 10,
-          paddingBottom: 10,
-        }}>
-        <View style={panel('home')}>
+    )
+  }
+
+  const cardShell = (children: React.ReactNode) => (
+    <View
+      style={[
+        {
+          marginHorizontal: 12,
+          marginVertical: 6,
+          borderRadius: 18,
+          backgroundColor: theme.card,
+          borderWidth: 1,
+          borderColor: theme.cardBorder,
+        },
+        theme.shadow,
+      ]}>
+      {titleBar()}
+      {children}
+    </View>
+  )
+
+  // —— Compact: stacked ledger (not 2-column) ——
+  if (view === 'compact') {
+    return cardShell(
+      <View style={{paddingHorizontal: 10, paddingBottom: 12, gap: 10}}>
+        <View
+          style={{
+            borderRadius: 14,
+            padding: 10,
+            backgroundColor: homeWon
+              ? theme.home.panelWinner
+              : theme.home.panel,
+            borderWidth: homeWon ? 1.5 : 1,
+            borderColor: homeWon ? theme.home.accent : theme.home.border,
+            opacity: winner && !homeWon ? 0.72 : 1,
+          }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 8,
+            }}>
+            <Text
+              style={{
+                color: theme.home.ink,
+                fontWeight: '800',
+                fontSize: 12,
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+              }}>
+              {t('home')}
+            </Text>
+            <View style={{minWidth: 88}}>{winFor('home')}</View>
+          </View>
           <Player
-            teamId={state.matchInfo.home_team_id ?? 0}
+            teamId={homeTeamId ?? 0}
             side="home"
             frameIndex={index}
             frameNumber={item.frameNumber}
@@ -263,38 +316,46 @@ export default function Frame({item, index, refreshing}: FrameProps) {
             noPlayers={minPlayers}
             playerIds={live.homePlayerIds}
             trackStats={trackStats}
+            layout="ledger"
             refreshing={refreshing}
             ink={theme.home.ink}
             mark={theme.home.button}
           />
-          {sideStats('home')}
-          {!showSeries ? (
-            <WinButton
-              winner={winner}
-              HandleWin={HandleWin}
-              side="home"
-              teamId={homeTeamId}
-              ClearWinner={ClearWinner}
-              goldenBreak={item.goldenBreak ?? false}
-              accent={theme.home.button}
-              onAccent={theme.home.onButton}
-            />
-          ) : winner ? (
-            <WinButton
-              winner={winner}
-              HandleWin={HandleWin}
-              side="home"
-              teamId={homeTeamId}
-              ClearWinner={ClearWinner}
-              goldenBreak={item.goldenBreak ?? false}
-              accent={theme.home.button}
-              onAccent={theme.home.onButton}
-            />
-          ) : null}
+          {sideMetaExtras('home')}
         </View>
-        <View style={panel('away')}>
+
+        <View
+          style={{
+            borderRadius: 14,
+            padding: 10,
+            backgroundColor: awayWon
+              ? theme.away.panelWinner
+              : theme.away.panel,
+            borderWidth: awayWon ? 1.5 : 1,
+            borderColor: awayWon ? theme.away.accent : theme.away.border,
+            opacity: winner && !awayWon ? 0.72 : 1,
+          }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 8,
+            }}>
+            <Text
+              style={{
+                color: theme.away.ink,
+                fontWeight: '800',
+                fontSize: 12,
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+              }}>
+              {t('away')}
+            </Text>
+            <View style={{minWidth: 88}}>{winFor('away')}</View>
+          </View>
           <Player
-            teamId={state.matchInfo.away_team_id ?? 0}
+            teamId={awayTeamId ?? 0}
             side="away"
             frameIndex={index}
             frameNumber={item.frameNumber}
@@ -304,36 +365,196 @@ export default function Frame({item, index, refreshing}: FrameProps) {
             noPlayers={minPlayers}
             playerIds={live.awayPlayerIds}
             trackStats={trackStats}
+            layout="ledger"
             refreshing={refreshing}
             ink={theme.away.ink}
             mark={theme.away.button}
           />
-          {sideStats('away')}
-          {!showSeries ? (
-            <WinButton
-              winner={winner}
-              HandleWin={HandleWin}
-              side="away"
-              teamId={awayTeamId}
-              ClearWinner={ClearWinner}
-              goldenBreak={item.goldenBreak ?? false}
-              accent={theme.away.button}
-              onAccent={theme.away.onButton}
-            />
-          ) : winner ? (
-            <WinButton
-              winner={winner}
-              HandleWin={HandleWin}
-              side="away"
-              teamId={awayTeamId}
-              ClearWinner={ClearWinner}
-              goldenBreak={item.goldenBreak ?? false}
-              accent={theme.away.button}
-              onAccent={theme.away.onButton}
-            />
-          ) : null}
+          {sideMetaExtras('away')}
         </View>
+      </View>,
+    )
+  }
+
+  // —— Focus: stacked home / vs / away with chip pickers ——
+  if (view === 'focus') {
+    return cardShell(
+      <View style={{paddingHorizontal: 10, paddingBottom: 12, gap: 8}}>
+        <View
+          style={{
+            borderRadius: 16,
+            padding: 12,
+            backgroundColor: homeWon
+              ? theme.home.panelWinner
+              : theme.home.panel,
+            borderWidth: homeWon ? 1.5 : 1,
+            borderColor: homeWon ? theme.home.accent : theme.home.border,
+            opacity: winner && !homeWon ? 0.72 : 1,
+          }}>
+          <Text
+            style={{
+              color: theme.home.ink,
+              fontWeight: '800',
+              fontSize: 11,
+              letterSpacing: 0.8,
+              textTransform: 'uppercase',
+              marginBottom: 10,
+            }}>
+            {t('home')}
+          </Text>
+          <Player
+            teamId={homeTeamId ?? 0}
+            side="home"
+            frameIndex={index}
+            frameNumber={item.frameNumber}
+            frameType={frameType}
+            minPlayers={minPlayers}
+            maxPlayers={maxPlayers}
+            noPlayers={minPlayers}
+            playerIds={live.homePlayerIds}
+            trackStats={trackStats}
+            layout="chips"
+            focusedSlot={focusHome}
+            onFocusSlot={setFocusHome}
+            refreshing={refreshing}
+            ink={theme.home.ink}
+            mark={theme.home.button}
+          />
+          {sideMetaExtras('home')}
+          {winFor('home')}
+        </View>
+
+        <View
+          style={{
+            alignItems: 'center',
+            paddingVertical: 2,
+          }}>
+          <Text
+            style={{
+              color: theme.muted,
+              fontWeight: '900',
+              fontSize: 13,
+              letterSpacing: 2,
+            }}>
+            VS
+          </Text>
+        </View>
+
+        <View
+          style={{
+            borderRadius: 16,
+            padding: 12,
+            backgroundColor: awayWon
+              ? theme.away.panelWinner
+              : theme.away.panel,
+            borderWidth: awayWon ? 1.5 : 1,
+            borderColor: awayWon ? theme.away.accent : theme.away.border,
+            opacity: winner && !awayWon ? 0.72 : 1,
+          }}>
+          <Text
+            style={{
+              color: theme.away.ink,
+              fontWeight: '800',
+              fontSize: 11,
+              letterSpacing: 0.8,
+              textTransform: 'uppercase',
+              marginBottom: 10,
+            }}>
+            {t('away')}
+          </Text>
+          <Player
+            teamId={awayTeamId ?? 0}
+            side="away"
+            frameIndex={index}
+            frameNumber={item.frameNumber}
+            frameType={frameType}
+            minPlayers={minPlayers}
+            maxPlayers={maxPlayers}
+            noPlayers={minPlayers}
+            playerIds={live.awayPlayerIds}
+            trackStats={trackStats}
+            layout="chips"
+            focusedSlot={focusAway}
+            onFocusSlot={setFocusAway}
+            refreshing={refreshing}
+            ink={theme.away.ink}
+            mark={theme.away.button}
+          />
+          {sideMetaExtras('away')}
+          {winFor('away')}
+        </View>
+      </View>,
+    )
+  }
+
+  // —— Full (default): classic 2-column panels ——
+  function panel(side: 'home' | 'away') {
+    const palette = side === 'home' ? theme.home : theme.away
+    const won = side === 'home' ? homeWon : awayWon
+    const lost = !!winner && !won
+    return {
+      flex: 1,
+      flexDirection: 'column' as const,
+      justifyContent: 'space-between' as const,
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      backgroundColor: won ? palette.panelWinner : palette.panel,
+      borderWidth: won ? 1.5 : 1,
+      borderColor: won ? palette.accent : palette.border,
+      opacity: lost ? 0.72 : 1,
+    }
+  }
+
+  return cardShell(
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'stretch',
+        gap: 8,
+        paddingHorizontal: 10,
+        paddingBottom: 10,
+      }}>
+      <View style={panel('home')}>
+        <Player
+          teamId={homeTeamId ?? 0}
+          side="home"
+          frameIndex={index}
+          frameNumber={item.frameNumber}
+          frameType={frameType}
+          minPlayers={minPlayers}
+          maxPlayers={maxPlayers}
+          noPlayers={minPlayers}
+          playerIds={live.homePlayerIds}
+          trackStats={trackStats}
+          layout="panel"
+          refreshing={refreshing}
+          ink={theme.home.ink}
+          mark={theme.home.button}
+        />
+        {sideMetaExtras('home')}
+        {winFor('home')}
       </View>
-    </View>
+      <View style={panel('away')}>
+        <Player
+          teamId={awayTeamId ?? 0}
+          side="away"
+          frameIndex={index}
+          frameNumber={item.frameNumber}
+          frameType={frameType}
+          minPlayers={minPlayers}
+          maxPlayers={maxPlayers}
+          noPlayers={minPlayers}
+          playerIds={live.awayPlayerIds}
+          trackStats={trackStats}
+          layout="panel"
+          refreshing={refreshing}
+          ink={theme.away.ink}
+          mark={theme.away.button}
+        />
+        {sideMetaExtras('away')}
+        {winFor('away')}
+      </View>
+    </View>,
   )
 }

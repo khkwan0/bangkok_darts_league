@@ -4,6 +4,7 @@ import {
   Frame,
   More,
   ScoresheetHeader,
+  ScoresheetStatsViewSelector,
 } from '@/components/Match/components'
 import {useScoresheetTheme} from '@/components/Match/components/scoresheetTheme'
 import { FrameType } from '@/components/Match/types'
@@ -17,6 +18,12 @@ import {
   resolveFormatSubsections,
   resolveNoPlayers,
 } from '@/lib/matchFormat'
+import {
+  DEFAULT_SCORESHEET_STATS_VIEW,
+  loadScoresheetStatsView,
+  saveScoresheetStatsView,
+  type ScoresheetStatsView,
+} from '@/lib/scoresheetStatsView'
 import { useNavigation } from "expo-router/react-navigation"
 import { router, useLocalSearchParams } from 'expo-router'
 import React from 'react'
@@ -30,6 +37,9 @@ export default function ScoreSheet() {
   const {params} = useLocalSearchParams()
   const [isMounted, setIsMounted] = React.useState(false)
   const [headerSticky, setHeaderSticky] = React.useState(true)
+  const [statsView, setStatsView] = React.useState<ScoresheetStatsView>(
+    DEFAULT_SCORESHEET_STATS_VIEW,
+  )
   const navigation = useNavigation()
   const theme = useScoresheetTheme()
   const listContentStyle = useTabListContentContainerStyle({paddingBottom: 16})
@@ -45,6 +55,32 @@ export default function ScoreSheet() {
   const frames = React.useRef<FrameType[]>([])
   const appState = React.useRef(AppState.currentState)
   const [refreshing, setRefreshing] = React.useState(false)
+
+  React.useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const view = await loadScoresheetStatsView()
+      if (!cancelled) setStatsView(view)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const showStatsViewSelector = React.useMemo(() => {
+    const list = state.frameData ?? frames.current ?? []
+    return list.some(
+      (f: FrameType) =>
+        f?.frameNumber !== -1 &&
+        f?.type !== 'section' &&
+        (f?.trackStats ?? true),
+    )
+  }, [state.frameData])
+
+  function handleStatsViewChange(view: ScoresheetStatsView) {
+    setStatsView(view)
+    saveScoresheetStatsView(view)
+  }
 
   React.useEffect(() => {
     if (typeof matchInfo.match_id !== 'undefined') {
@@ -294,10 +330,18 @@ export default function ScoreSheet() {
   }
 
   const header = (
-    <ScoresheetHeader
-      sticky={headerSticky}
-      onToggleSticky={() => setHeaderSticky(value => !value)}
-    />
+    <View>
+      <ScoresheetHeader
+        sticky={headerSticky}
+        onToggleSticky={() => setHeaderSticky(value => !value)}
+      />
+      {showStatsViewSelector ? (
+        <ScoresheetStatsViewSelector
+          value={statsView}
+          onChange={handleStatsViewChange}
+        />
+      ) : null}
+    </View>
   )
 
   return (
@@ -317,7 +361,12 @@ export default function ScoreSheet() {
         }
         data={state.frameData}
         renderItem={({item, index}) => (
-          <Frame item={item} index={index} refreshing={refreshing} />
+          <Frame
+            item={item}
+            index={index}
+            refreshing={refreshing}
+            statsView={statsView}
+          />
         )}
       />
     </View>
