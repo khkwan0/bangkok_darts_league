@@ -147,12 +147,14 @@ export default function Venues() {
     async function loadVenues() {
       try {
         const response = await league.GetVenues()
-        const filteredVenues = response
+        const list = Array.isArray(response) ? response : []
+        const seasonId = Number(currentSeason)
+        const filteredVenues = list
           .map((venue: Venue) => ({
             ...venue,
             teams:
               venue.teams?.filter(
-                (team: Team) => team.season_id === currentSeason,
+                (team: Team) => Number(team.season_id) === seasonId,
               ) || [],
           }))
           .filter((venue: Venue) => venue.teams.length > 0)

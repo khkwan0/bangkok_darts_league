@@ -133,11 +133,13 @@ export default function Venue() {
 
       try {
         const response = await league.GetVenues()
-        const venueData = response.find((v: Venue) => v.id === venueId)
+        const list = Array.isArray(response) ? response : []
+        const seasonId = Number(currentSeason)
+        const venueData = list.find((v: Venue) => v.id === venueId)
         if (venueData) {
           const filteredTeams =
             venueData.teams?.filter(
-              (team: Team) => team.season_id === currentSeason,
+              (team: Team) => Number(team.season_id) === seasonId,
             ) || []
           setVenue({...venueData, teams: filteredTeams})
         }
