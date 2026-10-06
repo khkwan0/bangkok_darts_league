@@ -41,6 +41,18 @@ function NoMatches({seasonSelection}: {seasonSelection: SeasonSelection}) {
   return <CompletedMatchesOther seasonSelection={seasonSelection} />
 }
 
+function EmptyCompletedMessage() {
+  const {t} = useTranslation()
+  const colors = useStatColors()
+  return (
+    <View className="p-4 items-center justify-center">
+      <Text style={{fontSize: 15, color: colors.text}}>
+        {t('no_completed_matches')}
+      </Text>
+    </View>
+  )
+}
+
 function ShowAllMatches() {
   const router = useRouter()
   const pathname = usePathname()
@@ -84,7 +96,6 @@ export default function CompletedHome() {
   const league = useLeague()
   const user = state.user
   const {scope} = useStatsScope()
-  const {t} = useTranslation()
   const [matches, setMatches] = React.useState<CompletedMatchType[]>([])
   const [refreshing, setRefreshing] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
@@ -163,9 +174,7 @@ export default function CompletedHome() {
           !isMounted ? null : matches.length === 0 ? (
             <NoMatches seasonSelection={seasonSelection} />
           ) : (
-            <View className="p-4 items-center justify-center">
-              <Text>{t('no_completed_matches')}</Text>
-            </View>
+            <EmptyCompletedMessage />
           )
         }
         ListFooterComponent={<View className="h-4" />}

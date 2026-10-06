@@ -36,18 +36,11 @@ export function matchMatchesScope(
   return scope === 'cup' ? isCup : !isCup
 }
 
-/**
- * Filter matches by league/cup scope. If no row carries tournament_id
- * (older API), skip filtering so Cup/League chips do not empty the list.
- */
+/** Filter matches by league/cup scope (strict: missing tournament_id is league). */
 export function filterMatchesByScope<T extends {tournament_id?: number | null}>(
   matches: T[],
   scope: StatsScope,
 ): T[] {
   if (scope === 'both') return matches
-  const hasTournamentIds = matches.some(
-    m => m.tournament_id !== undefined && m.tournament_id !== null,
-  )
-  if (!hasTournamentIds) return matches
   return matches.filter(m => matchMatchesScope(m.tournament_id, scope))
 }

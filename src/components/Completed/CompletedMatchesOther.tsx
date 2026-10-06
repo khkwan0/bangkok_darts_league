@@ -1,6 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import {Colors} from '@/constants/Colors'
-import {View, FlatList, ActivityIndicator, useColorScheme} from 'react-native'
+import {
+  View,
+  FlatList,
+  ActivityIndicator,
+  useColorScheme,
+  Text,
+} from 'react-native'
 import {useSeason} from '@/hooks/useSeason'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
@@ -14,7 +20,7 @@ import MatchDateItem from './MatchDateItem'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import {useTranslation} from 'react-i18next'
-import {ThemedText as Text} from '@/components/ThemedText'
+import {useStatColors} from '@/components/PlayerStatistics/statUi'
 
 type MatchDate = {
   date: string
@@ -47,6 +53,7 @@ export default function CompletedMatchesOther({
   const season = pastSeasonId ?? state.season
   const [matchDates, setMatchDates] = React.useState<MatchDate[]>([])
   const {t} = useTranslation()
+  const colors = useStatColors()
   const [loadedSeason, setLoadedSeason] = React.useState<number | null>(null)
   const listContentStyle = useTabListContentContainerStyle()
   const pageBg = Colors[useColorScheme() === 'dark' ? 'dark' : 'light'].background
@@ -57,7 +64,11 @@ export default function CompletedMatchesOther({
     return matchDates
       .map(group => ({
         ...group,
-        matches: filterMatchesByScope(group.matches, scope),
+        matches: filterMatchesByScope(
+          // Completed tab: never surface unfinished fixtures from the season API.
+          group.matches.filter(m => Number(m.match_status_id) === 3),
+          scope,
+        ),
       }))
       .filter(group => group.matches.length > 0)
   }, [matchDates, scope])
@@ -115,7 +126,9 @@ export default function CompletedMatchesOther({
         ) : (
           <View className="p-4 items-center justify-center">
             <View className="p-2">
-              <Text>{t('no_completed_matches')}</Text>
+              <Text style={{fontSize: 15, color: colors.text}}>
+                {t('no_completed_matches')}
+              </Text>
             </View>
           </View>
         )
