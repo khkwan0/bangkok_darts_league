@@ -71,30 +71,6 @@ export default function LanguageOption({
               )}
             </View>
           </Pressable>
-          <Pressable onPress={() => handleLanguageOption('cockney')} className="p-3">
-            <View className="flex-row items-center justify-between">
-              <View>
-                <Text
-                  style={{
-                    color:
-                      currentLanguage === 'cockney' ? colors.primary : colors.text,
-                  }}>
-                  {t('cockney_in_english')}
-                </Text>
-                <Text
-                  className="text-sm opacity-60"
-                  style={{
-                    color:
-                      currentLanguage === 'cockney' ? colors.primary : colors.text,
-                  }}>
-                  {t('cockney_in_thai')}
-                </Text>
-              </View>
-              {currentLanguage === 'cockney' && (
-                <MCI name="check" size={20} color={colors.primary} />
-              )}
-            </View>
-          </Pressable>
         </View>
       </View>
     </ThemedView>
