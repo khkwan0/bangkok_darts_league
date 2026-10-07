@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bangkok-darts-league",
-      "buildNumber": "1",
+      "buildNumber": "3",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
       "associatedDomains": [
@@ -19,23 +19,16 @@
       ],
       "entitlements": {
         "aps-environment": "production",
-        "com.apple.developer.applesignin": [
-          "Default"
-        ]
+        "com.apple.developer.applesignin": ["Default"]
       },
       "infoPlist": {
         "CFBundleDisplayName": "Bangkok Darts League",
         "LSApplicationCategoryType": "public.app-category.sports",
-        "UIBackgroundModes": [
-          "fetch",
-          "remote-notification"
-        ],
+        "UIBackgroundModes": ["fetch", "remote-notification"],
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
-        "LSApplicationQueriesSchemes": [
-          "lineauth2"
-        ],
+        "LSApplicationQueriesSchemes": ["lineauth2"],
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
@@ -48,7 +41,7 @@
     },
     "android": {
       "package": "com.bangkok_darts_league",
-      "versionCode": 1,
+      "versionCode": 3,
       "googleServicesFile": "./firebase.google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#111111",
@@ -64,9 +57,9 @@
         "android.permission.VIBRATE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.POST_NOTIFICATIONS",
-        "android.permission.CAMERA",
-        "com.google.android.gms.permission.AD_ID"
-      ]
+        "android.permission.CAMERA"
+      ],
+      "blockedPermissions": ["com.google.android.gms.permission.AD_ID"]
     },
     "androidStatusBar": {
       "backgroundColor": "#F5F5F5"
@@ -106,10 +99,7 @@
         {
           "ios": {
             "useFrameworks": "static",
-            "forceStaticLinking": [
-              "RNFBApp",
-              "RNFBMessaging"
-            ]
+            "forceStaticLinking": ["RNFBApp", "RNFBMessaging"]
           }
         }
       ],

@@ -162,6 +162,70 @@ function Chip({
   )
 }
 
+function hasLogoUri(uri?: string | null) {
+  if (typeof uri !== 'string') return false
+  const trimmed = uri.trim()
+  if (!trimmed) return false
+  if (/\/logos\/?$/i.test(trimmed)) return false
+  if (/\/(null|undefined)(\?|$)/i.test(trimmed)) return false
+  return true
+}
+
+function TeamLogoMark({
+  uri,
+  name,
+  size,
+  accent,
+  ringBg,
+  ringBorder,
+}: {
+  uri?: string | null
+  name?: string | null
+  size: number
+  accent: string
+  ringBg: string
+  ringBorder: string
+}) {
+  const [failed, setFailed] = React.useState(false)
+  const initial = (name || '?').trim().charAt(0).toUpperCase() || '?'
+  const showImage = hasLogoUri(uri) && !failed
+
+  return (
+    <View
+      style={[
+        styles.logoRing,
+        {backgroundColor: ringBg, borderColor: ringBorder},
+      ]}>
+      {showImage ? (
+        <Image
+          source={{uri: uri!}}
+          resizeMode="contain"
+          style={{width: size, height: size}}
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <View
+          style={[
+            styles.logoInitialWell,
+            {
+              width: size,
+              height: size,
+              backgroundColor: `${accent}22`,
+            },
+          ]}>
+          <Text
+            style={[
+              styles.logoInitial,
+              {color: accent, fontSize: size * 0.48},
+            ]}>
+            {initial}
+          </Text>
+        </View>
+      )}
+    </View>
+  )
+}
+
 function mixAccent(hex: string, toward: 0 | 255, amount: number) {
   const raw = hex.replace('#', '')
   const r = parseInt(raw.slice(0, 2), 16)
@@ -617,22 +681,14 @@ export default function MatchCardOld({
 
             <View style={styles.teamsRow}>
               <View style={styles.teamCol}>
-                {matchInfo.home_logo ? (
-                  <View
-                    style={[
-                      styles.logoRing,
-                      {
-                        backgroundColor: theme.logoRingBg,
-                        borderColor: theme.logoRingBorder,
-                      },
-                    ]}>
-                    <Image
-                      source={{uri: matchInfo.home_logo}}
-                      resizeMode="contain"
-                      style={{width: logoSize, height: logoSize}}
-                    />
-                  </View>
-                ) : null}
+                <TeamLogoMark
+                  uri={matchInfo.home_logo}
+                  name={matchInfo.home_team_short_name}
+                  size={logoSize}
+                  accent={accent}
+                  ringBg={theme.logoRingBg}
+                  ringBorder={theme.logoRingBorder}
+                />
                 {matchInfo?.homeStats?.rank != null ? (
                   <Text style={[styles.rank, {color: accent}]}>
                     #{matchInfo.homeStats.rank}
@@ -678,22 +734,14 @@ export default function MatchCardOld({
               </View>
 
               <View style={styles.teamCol}>
-                {matchInfo.away_logo ? (
-                  <View
-                    style={[
-                      styles.logoRing,
-                      {
-                        backgroundColor: theme.logoRingBg,
-                        borderColor: theme.logoRingBorder,
-                      },
-                    ]}>
-                    <Image
-                      source={{uri: matchInfo.away_logo}}
-                      resizeMode="contain"
-                      style={{width: logoSize, height: logoSize}}
-                    />
-                  </View>
-                ) : null}
+                <TeamLogoMark
+                  uri={matchInfo.away_logo}
+                  name={matchInfo.away_team_short_name}
+                  size={logoSize}
+                  accent={accent}
+                  ringBg={theme.logoRingBg}
+                  ringBorder={theme.logoRingBorder}
+                />
                 {matchInfo?.awayStats?.rank != null ? (
                   <Text style={[styles.rank, {color: accent}]}>
                     #{matchInfo.awayStats.rank}
@@ -1066,6 +1114,14 @@ const styles = StyleSheet.create({
     padding: 10,
     borderWidth: 1,
     marginBottom: 8,
+  },
+  logoInitialWell: {
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoInitial: {
+    fontWeight: '800',
   },
   rank: {
     fontSize: 12,

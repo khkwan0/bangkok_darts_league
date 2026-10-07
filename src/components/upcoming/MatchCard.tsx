@@ -88,7 +88,12 @@ function Chip({
 }
 
 function hasLogoUri(uri?: string | null) {
-  return typeof uri === 'string' && uri.trim().length > 0
+  if (typeof uri !== 'string') return false
+  const trimmed = uri.trim()
+  if (!trimmed) return false
+  if (/\/logos\/?$/i.test(trimmed)) return false
+  if (/\/(null|undefined)(\?|$)/i.test(trimmed)) return false
+  return true
 }
 
 function TeamLogoMark({
@@ -102,15 +107,18 @@ function TeamLogoMark({
   size: number
   accent: string
 }) {
+  const [failed, setFailed] = React.useState(false)
   const initial = (name || '?').trim().charAt(0).toUpperCase() || '?'
+  const showImage = hasLogoUri(uri) && !failed
 
   return (
     <View style={styles.logoRing}>
-      {hasLogoUri(uri) ? (
+      {showImage ? (
         <Image
           source={{uri: uri!}}
           resizeMode="contain"
           style={{width: size, height: size}}
+          onError={() => setFailed(true)}
         />
       ) : (
         <View

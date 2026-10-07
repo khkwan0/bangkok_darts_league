@@ -38,6 +38,8 @@ export default function AuthHome() {
     })
     Line.setup({
       channelId: config.line.channelId,
+    }).catch((e: unknown) => {
+      console.log('LINE setup failed', e)
     })
   }, [navigation, t])
 
@@ -49,13 +51,35 @@ export default function AuthHome() {
       if (typeof lineRes.accessToken !== 'undefined') {
         setLineSuccess(true)
         const res: StatusType = (await SocialLogin('line', lineRes))!
-        if (typeof res.status !== 'undefined' && res.status === 'ok') {
+        if (typeof res?.status !== 'undefined' && res.status === 'ok') {
           router.back()
+        } else {
+          setErr(
+            res?.error
+              ? String(res.error)
+              : 'LINE signed in, but the server rejected the login. Try again.',
+          )
         }
+      } else {
+        setErr('LINE login did not return an access token. Try again.')
       }
-    } catch (e) {
-      console.log(e)
-      setErr('Unable to Login')
+    } catch (e: any) {
+      console.log('LINE login error', e)
+      const message = String(e?.message || e?.userInfo?.message || '')
+      // LINE's native dialog often shows "An unknown error occurred" when the
+      // Android package name / SHA-1 fingerprint is not registered for this channel.
+      if (/unknown error/i.test(message)) {
+        setErr(
+          'LINE login failed (Android package / SHA-1 mismatch). Check LINE Developers Console → LINE Login → Android package name com.bangkok_darts_league and both debug + release SHA-1 fingerprints.',
+        )
+      } else if (
+        e?.code === 'LOGIN_CANCELLED' ||
+        /cancel/i.test(message)
+      ) {
+        // User dismissed LINE — no banner needed.
+      } else {
+        setErr(message || 'Unable to Login with LINE')
+      }
     } finally {
       setLoading(false)
       setDisabledLoginButton(false)
