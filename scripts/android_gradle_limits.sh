@@ -37,16 +37,11 @@ text = text.replace(
 text = text.replace(/\n?# BPL_GRADLE_LIMITS_END\n?/g, '\n')
 
 // Unglue marker stuck on previous line (corrupts Expo's last property)
-text = text.replace(/# BPL_GRADLE_LIMITS\b/g, '')
+text = text.replace(/([^\n])# BPL_GRADLE_LIMITS\b/g, '$1\n')
+text = text.replace(/\n?# BPL_GRADLE_LIMITS\b\n?/g, '\n')
 
-// Expo's last generated property — discard anything after it (orphan keys from
-// older broken appends), then write a clean limits block.
-const marker = 'expo.inlineModules.watchedDirectories=[]'
-const idx = text.lastIndexOf(marker)
-if (idx !== -1) {
-  text = text.slice(0, idx + marker.length)
-}
-
+// Keep Expo / expo-build-properties keys (e.g. enableMinifyInReleaseBuilds)
+// that appear after inlineModules — only strip orphan BPL limit keys.
 text = text.replace(/\s+$/g, '\n')
 
 const block = `
