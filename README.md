@@ -270,7 +270,7 @@ PLAY_TRACK=beta npm run archive_android
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `MAX_CPUS` | `4` | Gradle workers / Xcode `-jobs` |
-| `MAX_HEAP_MB` | `1536` | Gradle daemon heap |
+| `MAX_HEAP_MB` | `2048` | Gradle daemon heap |
 | `MAX_METASPACE_MB` | `768` | Gradle metaspace |
 | `KOTLIN_HEAP_MB` | `1024` | Kotlin daemon heap |
 | `NODE_HEAP_MB` | `1536` | Metro bundler (`NODE_OPTIONS`) |

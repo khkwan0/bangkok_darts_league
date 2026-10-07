@@ -3,14 +3,14 @@
 #
 # Env overrides:
 #   MAX_CPUS          default 4
-#   MAX_HEAP_MB       Gradle daemon heap (default 1536)
+#   MAX_HEAP_MB       Gradle daemon heap (default 2048)
 #   MAX_METASPACE_MB  Gradle MaxMetaspaceSize (default 768)
 #   KOTLIN_HEAP_MB    Kotlin daemon heap (default 1024)
 #   NODE_HEAP_MB      Metro/React Native bundler heap (default 1536)
 
 apply_android_gradle_limits() {
   MAX_CPUS="${MAX_CPUS:-4}"
-  MAX_HEAP_MB="${MAX_HEAP_MB:-1536}"
+  MAX_HEAP_MB="${MAX_HEAP_MB:-2048}"
   MAX_METASPACE_MB="${MAX_METASPACE_MB:-768}"
   KOTLIN_HEAP_MB="${KOTLIN_HEAP_MB:-1024}"
   NODE_HEAP_MB="${NODE_HEAP_MB:-1536}"
