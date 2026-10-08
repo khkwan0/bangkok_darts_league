@@ -1,7 +1,5 @@
 import CompletedMatch from '@/components/Completed/CompletedMatch'
-import CompletedMatchesOther, {
-  type SeasonSelection,
-} from '@/components/Completed/CompletedMatchesOther'
+import CompletedMatchesOther from '@/components/Completed/CompletedMatchesOther'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
 import {useStatColors} from '@/components/PlayerStatistics/statUi'
@@ -35,10 +33,6 @@ type CompletedMatchType = {
 
 type ApiResponse = {
   data: CompletedMatchType[]
-}
-
-function NoMatches({seasonSelection}: {seasonSelection: SeasonSelection}) {
-  return <CompletedMatchesOther seasonSelection={seasonSelection} />
 }
 
 function EmptyCompletedMessage() {
@@ -115,7 +109,7 @@ export default function CompletedHome() {
         const res = (await league.GetCompletedMatchesByTeamId(
           teams,
         )) as ApiResponse
-        setMatches(res.data)
+        setMatches(res.data ?? [])
       } catch (error) {
         console.error('Failed to fetch matches:', error)
       } finally {
@@ -136,9 +130,12 @@ export default function CompletedHome() {
     return <MiniLeagueCompleted miniLeagueId={state.competition.id} />
   }
 
-  // Team-based results only cover current-season teams; past seasons list
-  // every completed match for that season.
-  if (seasonSelection.pastSeasonId != null) {
+  // Team results only cover finalized matches for the user's teams. With none
+  // (or a past season), show every fixture by week — including unfinished.
+  if (
+    seasonSelection.pastSeasonId != null ||
+    (isMounted && matches.length === 0)
+  ) {
     return <CompletedMatchesOther seasonSelection={seasonSelection} />
   }
 
@@ -156,7 +153,7 @@ export default function CompletedHome() {
         contentContainerClassName="py-4"
         contentContainerStyle={listContentStyle}
         ListHeaderComponent={
-          isMounted && matches.length > 0 ? (
+          isMounted ? (
             <>
               <View style={{paddingHorizontal: 16}}>
                 <MiniSeasonChips
@@ -171,11 +168,7 @@ export default function CompletedHome() {
           ) : null
         }
         ListEmptyComponent={
-          !isMounted ? null : matches.length === 0 ? (
-            <NoMatches seasonSelection={seasonSelection} />
-          ) : (
-            <EmptyCompletedMessage />
-          )
+          !isMounted ? null : <EmptyCompletedMessage />
         }
         ListFooterComponent={<View className="h-4" />}
       />
