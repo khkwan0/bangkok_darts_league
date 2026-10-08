@@ -337,13 +337,24 @@ export default function MatchCardOld({
     }
   }, [isMounted])
 
-  function ShowLocation(lat: number | undefined, long: number | undefined) {
-    if (typeof lat === 'number' && typeof long === 'number') {
-      showLocation({
-        latitude: lat,
-        longitude: long,
-      })
-    }
+  function ShowLocation(
+    lat: number | undefined,
+    long: number | undefined,
+    address?: string,
+  ) {
+    // react-native-map-link treats 0 as missing: !(latitude && longitude)
+    const hasCoords =
+      typeof lat === 'number' &&
+      typeof long === 'number' &&
+      lat !== 0 &&
+      long !== 0
+    const trimmedAddress = address?.trim()
+    if (!hasCoords && !trimmedAddress) return
+
+    void showLocation({
+      ...(hasCoords ? {latitude: lat, longitude: long} : {}),
+      ...(trimmedAddress ? {address: trimmedAddress} : {}),
+    })
   }
 
   async function HandleConfirm() {
@@ -816,7 +827,11 @@ export default function MatchCardOld({
           <Pressable
             onPress={() =>
               showInfo
-                ? ShowLocation(matchInfo.latitude, matchInfo.longitude)
+                ? ShowLocation(
+                    matchInfo.latitude,
+                    matchInfo.longitude,
+                    matchInfo.location ?? matchInfo.name,
+                  )
                 : setShowInfo(true)
             }
             style={styles.venueHeaderMain}
@@ -896,7 +911,11 @@ export default function MatchCardOld({
               {(matchInfo.latitude !== 0 || matchInfo.longitude !== 0) && (
                 <Pressable
                   onPress={() =>
-                    ShowLocation(matchInfo.latitude, matchInfo.longitude)
+                    ShowLocation(
+                      matchInfo.latitude,
+                      matchInfo.longitude,
+                      matchInfo.location ?? matchInfo.name,
+                    )
                   }
                   style={({pressed}) => [
                     styles.toolBtn,

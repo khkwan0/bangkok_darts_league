@@ -254,13 +254,24 @@ export default function MatchCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMounted, user?.id, matchInfo?.home_team_id, matchInfo?.away_team_id])
 
-  function ShowLocation(lat: number | undefined, long: number | undefined) {
-    if (typeof lat === 'number' && typeof long === 'number') {
-      showLocation({
-        latitude: lat,
-        longitude: long,
-      })
-    }
+  function ShowLocation(
+    lat: number | undefined,
+    long: number | undefined,
+    address?: string,
+  ) {
+    // react-native-map-link treats 0 as missing: !(latitude && longitude)
+    const hasCoords =
+      typeof lat === 'number' &&
+      typeof long === 'number' &&
+      lat !== 0 &&
+      long !== 0
+    const trimmedAddress = address?.trim()
+    if (!hasCoords && !trimmedAddress) return
+
+    void showLocation({
+      ...(hasCoords ? {latitude: lat, longitude: long} : {}),
+      ...(trimmedAddress ? {address: trimmedAddress} : {}),
+    })
   }
 
   async function HandleConfirm() {
@@ -550,7 +561,11 @@ export default function MatchCard({
 
               <Pressable
                 onPress={() =>
-                  ShowLocation(matchInfo.latitude, matchInfo.longitude)
+                  ShowLocation(
+                    matchInfo.latitude,
+                    matchInfo.longitude,
+                    matchInfo.location ?? matchInfo.name,
+                  )
                 }
                 style={styles.venueCard}>
                 <View style={styles.venueTitleRow}>
