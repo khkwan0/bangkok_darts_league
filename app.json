@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bangkok Darts League",
     "slug": "bangkok_darts_league",
-    "version": "1.01",
+    "version": "1.02",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "bangkokdartsleague",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bangkok-darts-league",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
       "associatedDomains": [
@@ -41,7 +41,7 @@
     },
     "android": {
       "package": "com.bangkok_darts_league",
-      "versionCode": 5,
+      "versionCode": 6,
       "googleServicesFile": "./firebase.google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#111111",
@@ -101,8 +101,8 @@
             "forceStaticLinking": ["RNFBApp", "RNFBMessaging"]
           },
           "android": {
-            "enableMinifyInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
+            "enableMinifyInReleaseBuilds": false,
+            "enableShrinkResourcesInReleaseBuilds": false
           }
         }
       ],

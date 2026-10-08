@@ -19,6 +19,9 @@ const SECTION_ICONS: Record<string, string> = {
   '8 Ball': 'numeric-8-circle',
   '9 Ball': 'numeric-9-circle',
   Cricket: 'bullseye-arrow',
+  '301': 'numeric-3-circle',
+  '501': 'numeric-5-circle',
+  // Legacy section names (pre-rename)
   '307': 'numeric-3-circle',
   '507': 'numeric-5-circle',
   'Doubles Play': 'account-multiple',
@@ -28,8 +31,11 @@ const SECTION_TITLE_KEYS: Record<string, string> = {
   '8 Ball': 'eight_ball_rules',
   '9 Ball': 'nine_ball_rules',
   Cricket: 'cricket_rules',
-  '307': 'three_oh_seven_rules',
-  '507': 'five_oh_seven_rules',
+  '301': 'three_oh_one_rules',
+  '501': 'five_oh_one_rules',
+  // Legacy section names (pre-rename)
+  '307': 'three_oh_one_rules',
+  '507': 'five_oh_one_rules',
   'Doubles Play': 'doubles_play_rules',
 }
 
