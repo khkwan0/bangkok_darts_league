@@ -54,33 +54,39 @@ function ShowAllMatches() {
   const colors = useStatColors()
   return (
     <View style={{paddingHorizontal: 16, paddingBottom: 20}}>
-    <Pressable
-      accessibilityRole="button"
-      onPress={() =>
-        router.push({pathname: '/completed/all', params: {from: pathname}})
-      }
-      style={({pressed}) => ({
-        opacity: pressed ? 0.75 : 1,
-      })}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 10,
-          backgroundColor: colors.card,
-          borderColor: colors.border,
-          borderWidth: 1,
-          borderRadius: 16,
-          paddingHorizontal: 14,
-          paddingVertical: 12,
-        }}>
-        <Ionicons name="list-outline" size={18} color={colors.accent} />
-        <Text style={{flex: 1, fontSize: 15, fontWeight: '600', color: colors.text}}>
-          {t('show_all_matches')}
-        </Text>
-        <Ionicons name="chevron-forward" size={16} color={colors.muted} />
-      </View>
-    </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() =>
+          router.push({pathname: '/completed/all', params: {from: pathname}})
+        }
+        style={({pressed}) => ({
+          opacity: pressed ? 0.75 : 1,
+        })}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            borderWidth: 1,
+            borderRadius: 16,
+            paddingHorizontal: 14,
+            paddingVertical: 12,
+          }}>
+          <Ionicons name="list-outline" size={18} color={colors.accent} />
+          <Text
+            style={{
+              flex: 1,
+              fontSize: 15,
+              fontWeight: '600',
+              color: colors.text,
+            }}>
+            {t('show_all_matches')}
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+        </View>
+      </Pressable>
     </View>
   )
 }
@@ -94,7 +100,8 @@ export default function CompletedHome() {
   const [refreshing, setRefreshing] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
   const listContentStyle = useTabListContentContainerStyle()
-  const pageBg = Colors[useColorScheme() === 'dark' ? 'dark' : 'light'].background
+  const pageBg =
+    Colors[useColorScheme() === 'dark' ? 'dark' : 'light'].background
   const seasonSelection = useLeagueSeasonSelection()
 
   const filteredMatches = useMemo(
@@ -130,12 +137,8 @@ export default function CompletedHome() {
     return <MiniLeagueCompleted miniLeagueId={state.competition.id} />
   }
 
-  // Team results only cover finalized matches for the user's teams. With none
-  // (or a past season), show every fixture by week — including unfinished.
-  if (
-    seasonSelection.pastSeasonId != null ||
-    (isMounted && matches.length === 0)
-  ) {
+  // Past seasons have no team-scoped results — show the full season list.
+  if (seasonSelection.pastSeasonId != null) {
     return <CompletedMatchesOther seasonSelection={seasonSelection} />
   }
 
@@ -167,9 +170,7 @@ export default function CompletedHome() {
             </>
           ) : null
         }
-        ListEmptyComponent={
-          !isMounted ? null : <EmptyCompletedMessage />
-        }
+        ListEmptyComponent={!isMounted ? null : <EmptyCompletedMessage />}
         ListFooterComponent={<View className="h-4" />}
       />
     </View>
