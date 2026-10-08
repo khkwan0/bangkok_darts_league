@@ -431,6 +431,7 @@
   "postpone_indefinitely": "Put Off For Good",
   "postpone_match": "How would you like to put this match off?",
   "postponed": "Put off",
+  "postponed_count": "{{count}} put off",
   "preferences": "Preferences",
   "privacy_policy": "Privacy Policy",
   "promote": "Promote",

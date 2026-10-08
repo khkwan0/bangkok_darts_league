@@ -431,6 +431,7 @@
   "postpone_indefinitely": "Postpone Indefinitely",
   "postpone_match": "How would you like to reschedule this match?",
   "postponed": "Postponed",
+  "postponed_count": "{{count}} postponed",
   "preferences": "Preferences",
   "privacy_policy": "Privacy Policy",
   "promote": "Promote",
