@@ -381,12 +381,15 @@ export default function MatchCard({
     matchInfo.home_confirmed > 0 && matchInfo.away_confirmed > 0
   const dateLabel = formatMatchDate(getMatchDisplayDate(matchInfo))
 
+  // Cap sizes for tablets — width-based sizing alone overflows fixed lineHeight on iPad
   const teamNameSize = (name: string) => {
     const len = name.length
-    if (len > 12) return Math.max(15, width * 0.042)
-    if (len > 8) return Math.max(16, width * 0.048)
-    return Math.max(18, width * 0.052)
+    if (len > 12) return Math.min(17, Math.max(15, width * 0.042))
+    if (len > 8) return Math.min(19, Math.max(16, width * 0.048))
+    return Math.min(22, Math.max(18, width * 0.052))
   }
+  const homeNameSize = teamNameSize(matchInfo.home_team_short_name)
+  const awayNameSize = teamNameSize(matchInfo.away_team_short_name)
 
   return (
     <ScrollView
@@ -483,7 +486,10 @@ export default function MatchCard({
                   <Text
                     style={[
                       styles.teamName,
-                      {fontSize: teamNameSize(matchInfo.home_team_short_name)},
+                      {
+                        fontSize: homeNameSize,
+                        lineHeight: Math.round(homeNameSize * 1.25),
+                      },
                     ]}
                     numberOfLines={2}>
                     {matchInfo.home_team_short_name}
@@ -522,7 +528,10 @@ export default function MatchCard({
                   <Text
                     style={[
                       styles.teamName,
-                      {fontSize: teamNameSize(matchInfo.away_team_short_name)},
+                      {
+                        fontSize: awayNameSize,
+                        lineHeight: Math.round(awayNameSize * 1.25),
+                      },
                     ]}
                     numberOfLines={2}>
                     {matchInfo.away_team_short_name}
@@ -782,7 +791,6 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontWeight: '800',
     textAlign: 'center',
-    lineHeight: 22,
   },
   record: {
     marginTop: 8,

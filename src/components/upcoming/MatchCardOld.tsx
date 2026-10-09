@@ -478,12 +478,15 @@ export default function MatchCardOld({
     !matchInfo.home_confirmed &&
     matchInfo.player_team_id === matchInfo.away_team_id
 
+  // Cap sizes for tablets — width-based sizing alone overflows fixed lineHeight on iPad
   const teamNameSize = (name: string) => {
     const len = name.length
-    if (len > 12) return Math.max(13, width * 0.034)
-    if (len > 8) return Math.max(14, width * 0.038)
-    return Math.max(15, width * 0.042)
+    if (len > 12) return Math.min(16, Math.max(13, width * 0.034))
+    if (len > 8) return Math.min(17, Math.max(14, width * 0.038))
+    return Math.min(19, Math.max(15, width * 0.042))
   }
+  const homeNameSize = teamNameSize(matchInfo.home_team_short_name ?? '')
+  const awayNameSize = teamNameSize(matchInfo.away_team_short_name ?? '')
 
   function renderCaptainActions(isHome: boolean) {
     const reviewProposal =
@@ -710,9 +713,8 @@ export default function MatchCardOld({
                     styles.teamName,
                     {
                       color: theme.text,
-                      fontSize: teamNameSize(
-                        matchInfo.home_team_short_name ?? '',
-                      ),
+                      fontSize: homeNameSize,
+                      lineHeight: Math.round(homeNameSize * 1.25),
                     },
                   ]}
                   numberOfLines={2}>
@@ -763,9 +765,8 @@ export default function MatchCardOld({
                     styles.teamName,
                     {
                       color: theme.text,
-                      fontSize: teamNameSize(
-                        matchInfo.away_team_short_name ?? '',
-                      ),
+                      fontSize: awayNameSize,
+                      lineHeight: Math.round(awayNameSize * 1.25),
                     },
                   ]}
                   numberOfLines={2}>
@@ -1150,7 +1151,6 @@ const styles = StyleSheet.create({
   teamName: {
     fontWeight: '800',
     textAlign: 'center',
-    lineHeight: 20,
   },
   record: {
     marginTop: 6,
