@@ -98,7 +98,8 @@
         {
           "ios": {
             "useFrameworks": "static",
-            "forceStaticLinking": ["RNFBApp", "RNFBMessaging"]
+            "forceStaticLinking": ["RNFBApp", "RNFBMessaging"],
+            "enableSceneSupport": true
           },
           "android": {
             "enableMinifyInReleaseBuilds": false,
