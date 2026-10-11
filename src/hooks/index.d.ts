@@ -116,6 +116,19 @@ export interface Teams {
     short_name?: string
     very_short_name?: string
   }>
+  GetTeamLogoHistory(teamId: number): Promise<{
+    status: string
+    error?: string
+    data?: {current: string | null; history: string[]}
+  }>
+  UploadTeamLogo(
+    teamId: number,
+    path: string,
+  ): Promise<{status: string; error?: string; filename?: string}>
+  RestoreTeamLogo(
+    teamId: number,
+    filename: string,
+  ): Promise<{status: string; error?: string; filename?: string}>
 }
 
 export interface Account {

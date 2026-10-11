@@ -1,6 +1,7 @@
 import Row from '@/components/Row'
 import {ThemedText as Text} from '@/components/ThemedText'
 import TeamNameEdit from '@/components/Teams/TeamNameEdit'
+import TeamLogoEdit from '@/components/Teams/TeamLogoEdit'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import config from '@/config'
 import {LeagueContextType, useLeagueContext} from '@/context/LeagueContext'
@@ -35,6 +36,7 @@ type TeamType = {
   captains: PlayerType[]
   assistants: PlayerType[]
   players: PlayerType[]
+  logo?: string | null
   venue_logo?: string
   name: string
   short_name?: string
@@ -42,6 +44,16 @@ type TeamType = {
   id: number
   season_id?: number
   is_current_season?: boolean
+}
+
+function resolveTeamLogoUri(
+  logo?: string | null,
+  venueLogo?: string | null,
+): string | null {
+  const pick = logo?.trim() || venueLogo?.trim() || ''
+  if (!pick) return null
+  if (/^https?:\/\//i.test(pick)) return pick
+  return config.logoUrl + pick
 }
 
 type LineageEntry = {
@@ -509,9 +521,14 @@ export default function TeamMembers({teamId, seasonId}: TeamMembersProps) {
               </View>
             ) : null}
             <View className="items-center mb-6">
-              {teamData.venue_logo ? (
+              {resolveTeamLogoUri(teamData.logo, teamData.venue_logo) ? (
                 <Image
-                  source={{uri: config.logoUrl + teamData.venue_logo}}
+                  source={{
+                    uri: resolveTeamLogoUri(
+                      teamData.logo,
+                      teamData.venue_logo,
+                    )!,
+                  }}
                   className="w-24 h-24 mb-2"
                   resizeMode="contain"
                 />
@@ -580,20 +597,33 @@ export default function TeamMembers({teamId, seasonId}: TeamMembersProps) {
               </Pressable>
             </View>
             {isCurrentSeason && (isCaptain || isAdmin) && (
-              <TeamNameEdit
-                teamId={_teamId}
-                initialName={teamData.name || ''}
-                initialShortName={teamData.short_name || ''}
-                initialVeryShortName={teamData.very_short_name || ''}
-                onSaved={names => {
-                  setTeamData(prev => ({
-                    ...prev,
-                    name: names.name,
-                    short_name: names.short_name,
-                    very_short_name: names.very_short_name,
-                  }))
-                }}
-              />
+              <>
+                <TeamNameEdit
+                  teamId={_teamId}
+                  initialName={teamData.name || ''}
+                  initialShortName={teamData.short_name || ''}
+                  initialVeryShortName={teamData.very_short_name || ''}
+                  onSaved={names => {
+                    setTeamData(prev => ({
+                      ...prev,
+                      name: names.name,
+                      short_name: names.short_name,
+                      very_short_name: names.very_short_name,
+                    }))
+                  }}
+                />
+                <TeamLogoEdit
+                  teamId={_teamId}
+                  initialLogo={teamData.logo ?? null}
+                  venueLogo={teamData.venue_logo ?? null}
+                  onSaved={nextLogo => {
+                    setTeamData(prev => ({
+                      ...prev,
+                      logo: nextLogo,
+                    }))
+                  }}
+                />
+              </>
             )}
             {isCurrentSeason && (isOnTeam || isAdmin) && (
               <Pressable

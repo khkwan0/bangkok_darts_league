@@ -1,5 +1,10 @@
 import {useNetwork} from '@/hooks/useNetwork'
 import {useStatsScope} from '@/context/StatsScopeContext'
+import config from '@/config'
+import {leagueRequestHeaders} from '@/lib/leagueRequest'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import {File} from 'expo-file-system'
+import {manipulateAsync, SaveFormat} from 'expo-image-manipulator'
 
 export const useTeams = () => {
   const {Get, Post, Patch} = useNetwork()
@@ -101,6 +106,86 @@ export const useTeams = () => {
     }
   }
 
+  const GetTeamLogoHistory = async teamId => {
+    try {
+      if (!teamId) {
+        return {status: 'error', error: 'invalid_paramters'}
+      }
+      return await Get(`/team/${teamId}/logo`)
+    } catch (e) {
+      console.log(e)
+      return {status: 'error', error: 'server_error'}
+    }
+  }
+
+  const UploadTeamLogo = async (teamId, path) => {
+    try {
+      if (!teamId || !path) {
+        return {status: 'error', error: 'invalid_paramters'}
+      }
+      const token = await AsyncStorage.getItem('jwt')
+      if (!token) {
+        return {status: 'error', error: 'unauthorized'}
+      }
+
+      let apiDomain = (config.apiUrl || '').replace(/\/$/, '')
+      try {
+        const saved = await AsyncStorage.getItem('api_url')
+        if (saved && saved.trim()) {
+          apiDomain = saved.replace(/\/$/, '')
+        }
+      } catch {
+        // ignore
+      }
+
+      const jpeg = await manipulateAsync(path, [], {
+        compress: 0.9,
+        format: SaveFormat.JPEG,
+      })
+      const data = new FormData()
+      data.append('logo', new File(jpeg.uri))
+
+      const res = await fetch(apiDomain + `/team/${teamId}/logo/upload`, {
+        method: 'POST',
+        body: data,
+        headers: {
+          ...leagueRequestHeaders(),
+          Authorization: 'Bearer ' + token,
+        },
+      })
+      const json = await res.json().catch(() => ({
+        status: 'error',
+        error: 'invalid_response',
+      }))
+      if (!res.ok && !json?.status) {
+        return {
+          status: 'error',
+          error: json?.error || 'request_failed',
+          httpStatus: res.status,
+        }
+      }
+      return json
+    } catch (e) {
+      console.log(e)
+      return {
+        status: 'error',
+        error: e?.message || 'server_error',
+      }
+    }
+  }
+
+  const RestoreTeamLogo = async (teamId, filename) => {
+    try {
+      if (!teamId || !filename) {
+        return {status: 'error', error: 'invalid_paramters'}
+      }
+      return await Post(`/team/${teamId}/logo/restore`, {filename})
+    } catch (e) {
+      console.log(e)
+      return {status: 'error', error: 'server_error'}
+    }
+  }
+
   const GetTeamStats = async teamId => {
     try {
       if (teamId) {
@@ -121,6 +206,9 @@ export const useTeams = () => {
     GetTeamInternalStats,
     GetTeamInfo,
     UpdateTeamNames,
+    GetTeamLogoHistory,
+    UploadTeamLogo,
+    RestoreTeamLogo,
     GetTeamStats,
   }
 }
