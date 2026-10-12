@@ -10,7 +10,7 @@ import {useForumActivitySync} from '@/hooks/useForumActivity'
 import {useSupportTickets} from '@/hooks/useSupportTickets'
 import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
 import {useHasNewForumPosts} from '@/lib/forumActivity'
-import {refreshSupportUnread} from '@/lib/supportUnread'
+import {refreshSupportUnread, useHasSupportActivity} from '@/lib/supportUnread'
 import {refreshAdminSupportUnread} from '@/lib/adminSupportUnread'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import {
@@ -114,8 +114,10 @@ export function CustomTabBar({state, descriptors, navigation}: BottomTabBarProps
   const {getUnreadCount: getSupportUnreadCount} = useSupportTickets()
   const {getUnreadCount: getAdminSupportUnreadCount} = useAdminSupportTickets()
   const hasNewForumPosts = useHasNewForumPosts()
+  const hasSupportActivity = useHasSupportActivity()
   const showForumFabBadge =
     (leagueState.showForumFabBadge ?? true) && hasNewForumPosts
+  const showFabBadge = showForumFabBadge || hasSupportActivity
   const messageBadge =
     leagueState.messageCount > 0 ? String(leagueState.messageCount) : undefined
   const canonical = isCanonicalCompetition(leagueState.competition)
@@ -250,9 +252,13 @@ export function CustomTabBar({state, descriptors, navigation}: BottomTabBarProps
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              showForumFabBadge
-                ? t('forums_quick_actions_new_posts')
-                : t('quick_actions')
+              showForumFabBadge && hasSupportActivity
+                ? t('quick_actions_forum_and_support')
+                : showForumFabBadge
+                  ? t('forums_quick_actions_new_posts')
+                  : hasSupportActivity
+                    ? t('support_quick_actions_unread')
+                    : t('quick_actions')
             }
             onPress={openSheet}
             style={({pressed}) => [
@@ -275,7 +281,7 @@ export function CustomTabBar({state, descriptors, navigation}: BottomTabBarProps
                 />
               </View>
             </View>
-            {showForumFabBadge ? (
+            {showFabBadge ? (
               <View
                 style={styles.fabBadge}
                 accessibilityElementsHidden

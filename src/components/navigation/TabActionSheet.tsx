@@ -5,7 +5,7 @@ import config from '@/config.js'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useHasNewForumPosts} from '@/lib/forumActivity'
 import {useHasUnreadAnnouncements} from '@/lib/announcementUnread'
-import {useHasUnreadSupport} from '@/lib/supportUnread'
+import {useHasSupportActivity, useHasUnreadSupport} from '@/lib/supportUnread'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import {
   BottomSheetModal,
@@ -103,6 +103,7 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
     const hasNewForumPosts = useHasNewForumPosts()
     const hasUnreadAnnouncements = useHasUnreadAnnouncements()
     const hasUnreadSupport = useHasUnreadSupport()
+    const hasSupportActivity = useHasSupportActivity()
     const competition = state.competition
     // Cap height so short phones (SE, etc.) always get scrollable overflow.
     const snapPoints = React.useMemo(() => {
@@ -239,6 +240,8 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
                 ? 'rgba(255, 255, 255, 0.12)'
                 : 'rgba(10, 126, 164, 0.12)'
             }
+            showBadge={hasSupportActivity}
+            badgeLabel={t('support_new')}
             onPress={() => navigate('/Settings')}
           />
           <QuickActionItem

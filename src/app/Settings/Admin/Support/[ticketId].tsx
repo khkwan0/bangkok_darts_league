@@ -29,8 +29,11 @@ import {useTranslation} from 'react-i18next'
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
+  Keyboard,
   Linking,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -190,6 +193,14 @@ export default function AdminSupportTicketDetailScreen() {
     [],
   )
   const [sending, setSending] = React.useState(false)
+  const [keyboardHeight, setKeyboardHeight] = React.useState(0)
+  const scrollRef = React.useRef<ScrollView>(null)
+  const notesRef = React.useRef<React.ComponentRef<typeof RNView>>(null)
+  const replyRef = React.useRef<React.ComponentRef<typeof RNView>>(null)
+  const scrollY = React.useRef(0)
+  const keyboardHeightRef = React.useRef(0)
+  const focusedSection = React.useRef<'notes' | 'reply' | null>(null)
+  const revealTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   React.useEffect(() => {
     if (!isLeagueAdmin(state.user)) {
@@ -232,6 +243,85 @@ export default function AdminSupportTicketDetailScreen() {
   React.useEffect(() => {
     void loadTicket()
   }, [loadTicket])
+
+  const revealFocusedSection = React.useCallback((keyboard: number) => {
+    const section = focusedSection.current
+    const scroll = scrollRef.current
+    const node = section === 'reply' ? replyRef.current : notesRef.current
+    if (!section || !scroll || !node || keyboard <= 0) return
+    const scrollFrame = scroll as unknown as {
+      measureInWindow: (
+        callback: (
+          x: number,
+          y: number,
+          width: number,
+          height: number,
+        ) => void,
+      ) => void
+    }
+    if (typeof scrollFrame.measureInWindow !== 'function') return
+
+    scrollFrame.measureInWindow((_sx, scrollTop, _sw, scrollHeight) => {
+      node.measureInWindow((_x, y, _width, height) => {
+        const windowHeight = Dimensions.get('window').height
+        const visibleBottom = Math.min(
+          scrollTop + scrollHeight,
+          windowHeight - keyboard,
+        )
+        const available = visibleBottom - scrollTop
+        const overlap = y + height + 24 - visibleBottom
+        if (overlap <= 1) return
+        const maxScroll = Math.max(y - scrollTop - 8, 0)
+        const delta =
+          height <= available ? overlap : Math.min(overlap, maxScroll)
+        if (delta <= 1) return
+        scroll.scrollTo({
+          y: scrollY.current + delta,
+          animated: true,
+        })
+      })
+    })
+  }, [])
+
+  const scheduleReveal = React.useCallback(() => {
+    if (revealTimer.current) clearTimeout(revealTimer.current)
+    revealTimer.current = setTimeout(() => {
+      revealFocusedSection(keyboardHeightRef.current)
+      revealTimer.current = setTimeout(() => {
+        revealFocusedSection(keyboardHeightRef.current)
+      }, 220)
+    }, 60)
+  }, [revealFocusedSection])
+
+  React.useEffect(() => {
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const showSubscription = Keyboard.addListener(showEvent, event => {
+      const {height, screenY} = event.endCoordinates
+      const fromScreen =
+        screenY > 0 ? Dimensions.get('window').height - screenY : 0
+      const nextHeight = height > 0 ? height : fromScreen
+      keyboardHeightRef.current = nextHeight
+      setKeyboardHeight(nextHeight)
+      scheduleReveal()
+    })
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      keyboardHeightRef.current = 0
+      setKeyboardHeight(0)
+    })
+    return () => {
+      showSubscription.remove()
+      hideSubscription.remove()
+      if (revealTimer.current) clearTimeout(revealTimer.current)
+    }
+  }, [scheduleReveal])
+
+  function focusSection(section: 'notes' | 'reply') {
+    focusedSection.current = section
+    scheduleReveal()
+  }
 
   async function handleAttach() {
     if (attachments.length >= MAX_ATTACHMENTS) {
@@ -368,9 +458,18 @@ export default function AdminSupportTicketDetailScreen() {
 
   return (
     <ScrollView
+      ref={scrollRef}
       className="flex-1"
-      contentContainerStyle={{padding: 16, paddingBottom: 40}}
+      contentContainerStyle={{
+        padding: 16,
+        paddingBottom: 40 + keyboardHeight,
+      }}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      onScroll={event => {
+        scrollY.current = event.nativeEvent.contentOffset.y
+      }}
+      scrollEventThrottle={16}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -493,18 +592,26 @@ export default function AdminSupportTicketDetailScreen() {
             })}
           </RNView>
 
-          <Text className="mb-1 text-sm font-semibold">
-            {t('admin_support_notes')}
-          </Text>
-          <TextInput
-            value={adminNotes}
-            onChangeText={setAdminNotes}
-            placeholder={t('admin_support_notes_placeholder')}
-            multiline
-            numberOfLines={4}
-            style={{minHeight: 100, textAlignVertical: 'top'}}
-            editable={!saving}
-          />
+          <RNView ref={notesRef}>
+            <Text className="mb-1 text-sm font-semibold">
+              {t('admin_support_notes')}
+            </Text>
+            <TextInput
+              value={adminNotes}
+              onChangeText={setAdminNotes}
+              onFocus={() => focusSection('notes')}
+              onBlur={() => {
+                if (focusedSection.current === 'notes') {
+                  focusedSection.current = null
+                }
+              }}
+              placeholder={t('admin_support_notes_placeholder')}
+              multiline
+              numberOfLines={4}
+              style={{minHeight: 100, textAlignVertical: 'top'}}
+              editable={!saving}
+            />
+          </RNView>
           <Pressable
             onPress={() => void handleSave()}
             disabled={saving}
@@ -522,10 +629,17 @@ export default function AdminSupportTicketDetailScreen() {
             )}
           </Pressable>
 
+          <RNView ref={replyRef}>
           <Text className="mb-2 mt-6 font-bold">{t('support_add_reply')}</Text>
           <TextInput
             value={reply}
             onChangeText={setReply}
+            onFocus={() => focusSection('reply')}
+            onBlur={() => {
+              if (focusedSection.current === 'reply') {
+                focusedSection.current = null
+              }
+            }}
             placeholder={t('support_message_placeholder')}
             multiline
             numberOfLines={4}
@@ -591,6 +705,7 @@ export default function AdminSupportTicketDetailScreen() {
               </Text>
             )}
           </Pressable>
+          </RNView>
         </>
       )}
 

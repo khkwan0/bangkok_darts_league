@@ -1,8 +1,13 @@
+import {useLeagueContext} from '@/context/LeagueContext'
 import {useNetwork} from '@/hooks/useNetwork'
 import {
+  configureForumReadsSession,
+  hydrateForumReadsFromServer,
   latestForumPostAt,
+  parseForumReadState,
   refreshForumActivity,
   syncGlobalForumBadge,
+  type ForumReadPush,
 } from '@/lib/forumActivity'
 import type {ForumCategoryWithForums} from '@/types/forums'
 import React from 'react'
@@ -22,12 +27,41 @@ function activityFromResponse(res: {
 }
 
 export function useForumActivitySync() {
-  const {Get} = useNetwork()
+  const {Get, Post} = useNetwork()
+  const {state} = useLeagueContext()
+  const playerId = state.user?.id ?? null
   const getRef = React.useRef(Get)
-  getRef.current = Get
+  const postRef = React.useRef(Post)
+
+  React.useEffect(() => {
+    getRef.current = Get
+    postRef.current = Post
+  })
+
+  React.useEffect(() => {
+    configureForumReadsSession(
+      playerId,
+      playerId
+        ? {
+            fetchState: async () => {
+              const res = await getRef.current('/forums/reads')
+              if (res?.status !== 'ok') return null
+              return parseForumReadState(res.data)
+            },
+            pushState: async (body: ForumReadPush) => {
+              const res = await postRef.current('/forums/reads', body)
+              if (res?.status !== 'ok') {
+                throw new Error(res?.error || 'request_failed')
+              }
+            },
+          }
+        : null,
+    )
+  }, [playerId])
 
   const refresh = React.useCallback(async () => {
     try {
+      await hydrateForumReadsFromServer({force: true})
       const forums = await getRef.current('/forums')
       if (forums?.status === 'ok' && Array.isArray(forums.data)) {
         await syncGlobalForumBadge(forums.data)
@@ -56,7 +90,7 @@ export function useForumActivitySync() {
       }
     })
     return () => subscription.remove()
-  }, [refresh])
+  }, [refresh, playerId])
 
   return {refreshForumActivity: refresh}
 }

@@ -47,6 +47,8 @@ export default function CustomTextInput({
   error,
   disabled,
   multiline,
+  onFocus,
+  onBlur,
   ...props
 }: CustomTextInputProps) {
   const colorScheme = useColorScheme()
@@ -121,8 +123,14 @@ export default function CustomTextInput({
         textAlignVertical={multiline ? 'top' : 'center'}
         style={[defaultInputStyle, inputStyle, style]}
         placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onFocus={event => {
+          setIsFocused(true)
+          onFocus?.(event)
+        }}
+        onBlur={event => {
+          setIsFocused(false)
+          onBlur?.(event)
+        }}
         {...props}
       />
       {RightIcon && (

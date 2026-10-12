@@ -22,10 +22,15 @@ import React, {useEffect, useState} from 'react'
 import {useColorScheme} from 'react-native'
 import {useAccount} from '@/hooks/useAccount'
 import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
+import {useSupportTickets} from '@/hooks/useSupportTickets'
 import {
   refreshAdminSupportUnread,
   useAdminSupportUnreadCount,
 } from '@/lib/adminSupportUnread'
+import {
+  refreshSupportUnread,
+  useSupportUnreadCount,
+} from '@/lib/supportUnread'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import {isReanimated3} from 'react-native-reanimated'
 import {useFocusEffect} from 'expo-router'
@@ -54,6 +59,8 @@ export default function Settings() {
   const account = useAccount()
   const {getUnreadCount: getAdminSupportUnread} = useAdminSupportTickets()
   const adminSupportUnread = useAdminSupportUnreadCount()
+  const {getUnreadCount: getSupportUnread} = useSupportTickets()
+  const supportUnread = useSupportUnreadCount()
 
   useEffect(() => {
     navigation.setOptions({
@@ -68,11 +75,14 @@ export default function Settings() {
 
   useFocusEffect(
     React.useCallback(() => {
+      if (user?.id) {
+        void refreshSupportUnread(getSupportUnread)
+      }
       if (!isLeagueAdmin(user)) {
         return
       }
       void refreshAdminSupportUnread(getAdminSupportUnread)
-    }, [getAdminSupportUnread, user]),
+    }, [getAdminSupportUnread, getSupportUnread, user]),
   )
 
   async function ToggleTheme(value: boolean) {
@@ -192,6 +202,7 @@ export default function Settings() {
           url={'/Settings/Support'}
           iconColor="#0EA5E9"
           iconBackground="rgba(14, 165, 233, 0.15)"
+          messageCount={supportUnread}
         />
 
         {/* League Management */}

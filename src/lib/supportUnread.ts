@@ -1,3 +1,4 @@
+import {useAdminSupportUnreadCount} from '@/lib/adminSupportUnread'
 import {useSyncExternalStore} from 'react'
 
 type Listener = () => void
@@ -43,6 +44,13 @@ export function useSupportUnreadCount() {
 
 export function useHasUnreadSupport() {
   return useSupportUnreadCount() > 0
+}
+
+/** Member staff replies, or admin-side new tickets and member replies. */
+export function useHasSupportActivity() {
+  const hasMemberUnread = useHasUnreadSupport()
+  const adminUnread = useAdminSupportUnreadCount()
+  return hasMemberUnread || adminUnread > 0
 }
 
 export async function refreshSupportUnread(

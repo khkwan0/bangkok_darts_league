@@ -23,8 +23,11 @@ import {
   presentRemoteNotification,
   setAppBadgeCount,
 } from '@/lib/notifications'
-import {refreshSupportUnread} from '@/lib/supportUnread'
-import {refreshAdminSupportUnread} from '@/lib/adminSupportUnread'
+import {refreshSupportUnread, setSupportUnreadCount} from '@/lib/supportUnread'
+import {
+  refreshAdminSupportUnread,
+  setAdminSupportUnreadCount,
+} from '@/lib/adminSupportUnread'
 import {useSupportTickets} from '@/hooks/useSupportTickets'
 import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
@@ -335,6 +338,29 @@ export default function TabLayout() {
     }
     setAppBadgeCount(state.messageCount)
   }, [state.messageCount, isMounted])
+
+  // Load support unread on startup so menu and quick-action badges are current.
+  React.useEffect(() => {
+    if (!isMounted) {
+      return
+    }
+    if (!state.user?.id) {
+      setSupportUnreadCount(0)
+      setAdminSupportUnreadCount(0)
+      return
+    }
+    void refreshSupportUnread(getSupportUnreadCount)
+    if (isLeagueAdmin(state.user)) {
+      void refreshAdminSupportUnread(getAdminSupportUnreadCount)
+    } else {
+      setAdminSupportUnreadCount(0)
+    }
+  }, [
+    isMounted,
+    state.user,
+    getSupportUnreadCount,
+    getAdminSupportUnreadCount,
+  ])
 
   // Refresh unread whenever the app returns to foreground
   React.useEffect(() => {

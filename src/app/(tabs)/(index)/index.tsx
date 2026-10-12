@@ -6,6 +6,12 @@ import AdSpot from '@/components/upcoming/AdSpot'
 import LiveScores from '@/components/upcoming/LiveScores'
 import MatchCard from '@/components/upcoming/MatchCard'
 import MatchCardOld from '@/components/upcoming/MatchCardOld'
+import MatchesCalendar from '@/components/upcoming/MatchesCalendar'
+import {
+  loadHomeMatchesView,
+  saveHomeMatchesView,
+  type HomeMatchesView,
+} from '@/lib/homeMatchesView'
 import {MiniLeagueHome} from '@/components/mini-leagues/MiniLeagueHome'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {isMiniCompetition} from '@/types/competition'
@@ -54,6 +60,9 @@ export default function UpcomingMatches(props: any) {
   const [showPostponed, setShowPostponed] = React.useState(false)
   const [seasonNumber, setSeasonNumber] = React.useState('')
   const [showFilters, setShowFilters] = React.useState(false)
+  const [matchesView, setMatchesView] = React.useState<HomeMatchesView | null>(
+    null,
+  )
   const filterHeight = React.useRef(new Animated.Value(0)).current
   const fetchIdRef = React.useRef(0)
   const hasLoadedOnce = React.useRef(false)
@@ -312,6 +321,25 @@ export default function UpcomingMatches(props: any) {
     HandleGetPostponedOption()
   }, [])
 
+  React.useEffect(() => {
+    let cancelled = false
+    loadHomeMatchesView().then(view => {
+      if (!cancelled) setMatchesView(view)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function changeMatchesView(next: HomeMatchesView) {
+    setMatchesView(next)
+    try {
+      await saveHomeMatchesView(next)
+    } catch (e) {
+      console.log(e)
+    }
+  }
+
   const renderItem = React.useCallback(
     ({item, index}: {item: any; index: number}) => {
       if (typeof item.ad_spot !== 'undefined' && item.ad_spot) {
@@ -386,14 +414,14 @@ export default function UpcomingMatches(props: any) {
           flex: 1,
           backgroundColor: screenBg,
         }}>
-        {initialLoading && (
+        {(initialLoading || matchesView == null) && (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         )}
-        {!initialLoading && (
+        {!initialLoading && matchesView != null && (
           <View className="flex-1">
-            <View>
+            <View style={{flexShrink: 0}}>
               {!user.id && (
                 <View className="my-4 mx-6">
                   <Button
@@ -417,6 +445,44 @@ export default function UpcomingMatches(props: any) {
                     </Text>
                   </View>
                 )}
+              <View
+                className="mx-4 mb-2 flex-row rounded-lg p-1"
+                style={{
+                  backgroundColor:
+                    colorScheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
+                  borderWidth: colorScheme === 'dark' ? 0 : 1,
+                  borderColor: '#E0E0E0',
+                }}>
+                {(['list', 'calendar'] as const).map(mode => {
+                  const active = matchesView === mode
+                  const labelColor = active
+                    ? '#FFFFFF'
+                    : colorScheme === 'dark'
+                      ? '#FFFFFF'
+                      : '#37003C'
+                  return (
+                    <Pressable
+                      key={mode}
+                      accessibilityRole="button"
+                      accessibilityState={{selected: active}}
+                      onPress={() => changeMatchesView(mode)}
+                      className="flex-1 flex-row items-center justify-center rounded-md py-2"
+                      style={{
+                        backgroundColor: active ? '#37003C' : 'transparent',
+                      }}>
+                      <MaterialIcons
+                        name={mode === 'list' ? 'view-list' : 'calendar-today'}
+                        size={18}
+                        color={labelColor}
+                        style={{marginRight: 6}}
+                      />
+                      <Text className="font-semibold" style={{color: labelColor}}>
+                        {mode === 'list' ? t('list_view') : t('calendar')}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
+              </View>
               <View className="mx-4 mb-2">
                 <Pressable
                   accessibilityRole="button"
@@ -521,8 +587,18 @@ export default function UpcomingMatches(props: any) {
                 </View>
               </Animated.View>
             </View>
+            {matchesView === 'calendar' ? (
+              <MatchesCalendar
+                fixtures={fixtures}
+                onOpenMatch={HandlePress}
+                refreshing={refreshing}
+                onRefresh={() => RefreshMatches('pull')}
+                onScrollBeginDrag={closeFilters}
+                contentContainerStyle={listContentStyle}
+              />
+            ) : (
             <View
-              style={{height: '100%', overflow: 'hidden', marginHorizontal: 0}}>
+              style={{flex: 1, overflow: 'hidden', marginHorizontal: 0}}>
               {DEBUG_HIDE_MATCH_FLATLIST ? (
                 <View className="flex-1 items-center justify-center px-4">
                   <Text style={{textAlign: 'center', opacity: 0.6}}>
@@ -589,6 +665,7 @@ export default function UpcomingMatches(props: any) {
                 />
               )}
             </View>
+            )}
           </View>
         )}
         {needsUpdate && (
