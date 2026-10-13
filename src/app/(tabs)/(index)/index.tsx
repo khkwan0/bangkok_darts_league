@@ -4,6 +4,7 @@ import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import AdSpot from '@/components/upcoming/AdSpot'
 import LiveScores from '@/components/upcoming/LiveScores'
+import WeeklyHighlightsCard from '@/components/upcoming/WeeklyHighlightsCard'
 import MatchCard from '@/components/upcoming/MatchCard'
 import MatchCardOld from '@/components/upcoming/MatchCardOld'
 import MatchesCalendar from '@/components/upcoming/MatchesCalendar'
@@ -437,6 +438,7 @@ export default function UpcomingMatches(props: any) {
               )}
               {(typeof state.showLiveScores === 'undefined' ||
                 state.showLiveScores) && <LiveScores />}
+              <WeeklyHighlightsCard />
               {(typeof user?.teams === 'undefined' || user.teams.length < 1) &&
                 user.id && (
                   <View className="my-2 mx-2">

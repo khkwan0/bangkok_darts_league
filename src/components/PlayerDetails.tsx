@@ -1,12 +1,15 @@
 import React from 'react'
 import {View, Image, ActivityIndicator, ScrollView} from 'react-native'
 import {useLeague} from '@/hooks/useLeague'
+import {useAchievements} from '@/hooks/useAchievements'
 import {ThemedText as Text} from '@/components/ThemedText'
+import PlayerAchievementsCard from '@/components/PlayerAchievementsCard'
 import Row from '@/components/Row'
 import config from '@/config'
 import {router} from 'expo-router'
 import Button from '@/components/Button'
 import {useNavigation} from "expo-router/react-navigation"
+import type {PlayerAchievements} from '@/types/achievements'
 
 interface PlayerDetailsProps {
   playerId: number
@@ -14,7 +17,10 @@ interface PlayerDetailsProps {
 
 export default function PlayerDetails({playerId}: PlayerDetailsProps) {
   const league = useLeague()
+  const {getPlayerAchievements} = useAchievements()
   const [playerInfo, setPlayerInfo] = React.useState<any>(null)
+  const [achievements, setAchievements] =
+    React.useState<PlayerAchievements | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState('')
   const navigation = useNavigation()
@@ -23,8 +29,12 @@ export default function PlayerDetails({playerId}: PlayerDetailsProps) {
     async function fetchPlayerInfo() {
       try {
         setIsLoading(true)
-        const info = await league.GetPlayerStatsInfo(playerId)
+        const [info, achievementData] = await Promise.all([
+          league.GetPlayerStatsInfo(playerId),
+          getPlayerAchievements(playerId),
+        ])
         setPlayerInfo(info)
+        setAchievements(achievementData)
       } catch (e) {
         setError('Failed to load player information')
         console.error(e)
@@ -151,6 +161,8 @@ export default function PlayerDetails({playerId}: PlayerDetailsProps) {
           />
         </View>
       </Row>
+
+      <PlayerAchievementsCard data={achievements} />
 
       {playerInfo.currentTeams && playerInfo.currentTeams.length > 0 && (
         <View style={{marginTop: 20}}>

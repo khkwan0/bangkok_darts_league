@@ -54,6 +54,15 @@ const SHORTCUTS: Shortcut[] = [
     icon: 'podium',
     color: '#7c3aed',
   },
+  {
+    key: 'highlights',
+    href: '/statistics/highlights',
+    labelKey: 'highlights',
+    shortKey: 'highlights',
+    hintKey: 'stats_home_highlights_hint',
+    icon: 'sparkles',
+    color: '#db2777',
+  },
 ]
 
 function tint(hex: string, alpha: number) {
