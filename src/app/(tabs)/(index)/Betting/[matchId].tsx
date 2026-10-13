@@ -380,6 +380,19 @@ export default function MatchBettingScreen() {
     </View>
   )
 
+  if (!state.bettingEnabled) {
+    return (
+      <>
+        <View style={{flex: 1, justifyContent: 'center', padding: 24}}>
+          <Text style={{textAlign: 'center', color: muted}}>
+            {t('betting_disabled_body')}
+          </Text>
+        </View>
+        {infoModal}
+      </>
+    )
+  }
+
   if (!state.bettingOptedIn) {
     return (
       <>

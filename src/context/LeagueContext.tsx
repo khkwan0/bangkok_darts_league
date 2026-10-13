@@ -58,6 +58,11 @@ interface LeagueState {
   bettingOptedIn: boolean
   /** Local-only hide for betting UI (does not clear server opt-in). */
   hideBettingUi: boolean
+  /**
+   * League-level switch from /branding. When false, hide odds/wagering UI.
+   * Defaults false until branding explicitly enables it.
+   */
+  bettingEnabled: boolean
   bettingBalance: number
   /** Display style for posted decimal odds. */
   bettingOddsFormat: 'european' | 'american'
@@ -103,6 +108,7 @@ const initialState: LeagueState = {
   showForumFabBadge: true,
   bettingOptedIn: false,
   hideBettingUi: false,
+  bettingEnabled: false,
   bettingBalance: 0,
   bettingOddsFormat: 'european',
   refreshUpcoming: false,
@@ -284,6 +290,12 @@ const LeagueReducer = (state: any, action: any) => {
       return {
         ...state,
         hideBettingUi: Boolean(action.payload),
+      }
+    }
+    case 'SET_BETTING_ENABLED': {
+      return {
+        ...state,
+        bettingEnabled: Boolean(action.payload),
       }
     }
     case 'SET_BETTING_BALANCE': {
@@ -543,6 +555,10 @@ export const LeagueProvider = ({children}: any) => {
                 ? null
                 : null,
           },
+        })
+        dispatch({
+          type: 'SET_BETTING_ENABLED',
+          payload: json?.data?.betting_enabled === true,
         })
         applyScoreUnitToI18n(normalized)
       } catch (e) {

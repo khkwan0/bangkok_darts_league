@@ -797,6 +797,7 @@
   "betting_opt_in_confirm": "Unlock",
   "betting_opt_in_cancel": "Cancel",
   "betting_opt_in_failed": "Could not unlock betting. Try again later.",
+  "betting_disabled_body": "Betting is not available for this league right now.",
   "betting_balance": "{count} coins",
   "betting_remaining": "Remaining: {count}",
   "betting_settings": "Betting",

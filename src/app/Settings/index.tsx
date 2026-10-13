@@ -93,7 +93,7 @@ export default function Settings() {
   )
 
   function HandleBuildTap() {
-    if (!user?.id || state.bettingOptedIn) return
+    if (!user?.id || state.bettingOptedIn || !state.bettingEnabled) return
     const ref = buildTapRef.current
     if (ref.timer) clearTimeout(ref.timer)
     ref.count += 1
@@ -347,7 +347,7 @@ export default function Settings() {
           iconColor="#F59E0B"
           iconBackground="rgba(245, 158, 11, 0.15)"
         />
-        {state.bettingOptedIn ? (
+        {state.bettingEnabled && state.bettingOptedIn ? (
           <NavDest
             icon="chart-line"
             text={t('betting_settings')}

@@ -87,7 +87,10 @@ export default function MatchBettingRow({
   const [loading, setLoading] = React.useState(true)
 
   const showBetting =
-    state.bettingOptedIn && !state.hideBettingUi && !!state.user?.id
+    state.bettingEnabled &&
+    state.bettingOptedIn &&
+    !state.hideBettingUi &&
+    !!state.user?.id
 
   const oddsFormat = state.bettingOddsFormat ?? 'european'
   const formatOdds = React.useCallback(

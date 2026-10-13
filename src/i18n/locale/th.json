@@ -793,6 +793,7 @@
   "betting_opt_in_confirm": "เปิดใช้",
   "betting_opt_in_cancel": "ยกเลิก",
   "betting_opt_in_failed": "เปิดเดิมพันไม่สำเร็จ ลองใหม่อีกครั้ง",
+  "betting_disabled_body": "ขณะนี้ลีกนี้ยังไม่เปิดให้เดิมพัน",
   "betting_balance": "{count} เหรียญ",
   "betting_remaining": "คงเหลือ: {count}",
   "betting_settings": "เดิมพัน",
