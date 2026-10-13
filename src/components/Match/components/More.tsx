@@ -4,7 +4,13 @@ import {useTranslation} from 'react-i18next'
 import {Pressable, Text} from 'react-native'
 import {useScoresheetTheme} from './scoresheetTheme'
 
-export default function More({matchId}: {matchId: number}) {
+export default function More({
+  matchId,
+  pathname = '/history',
+}: {
+  matchId: number
+  pathname?: string
+}) {
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
 
@@ -12,7 +18,7 @@ export default function More({matchId}: {matchId: number}) {
     <Pressable
       onPress={() =>
         router.push({
-          pathname: '/Match/History',
+          pathname: pathname as any,
           params: {params: JSON.stringify({match_id: matchId})},
         })
       }
@@ -32,7 +38,7 @@ export default function More({matchId}: {matchId: number}) {
       }}>
       <MCI name="history" size={18} color={theme.muted} />
       <Text style={{color: theme.text, fontSize: 15, fontWeight: '700'}}>
-        {t('more')}
+        {t('history')}
       </Text>
       <MCI name="chevron-right" size={18} color={theme.muted} />
     </Pressable>

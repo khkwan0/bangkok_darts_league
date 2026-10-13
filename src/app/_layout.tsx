@@ -335,6 +335,10 @@ function RootLayout() {
                       headerShown: false,
                     }}
                   />
+                  <Stack.Screen
+                    name="history"
+                    options={{title: t('history')}}
+                  />
                 </Stack>
               </MatchProvider>
             </LeagueProvider>

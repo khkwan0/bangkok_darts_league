@@ -1,3 +1,4 @@
+import More from '@/components/Match/components/More'
 import {
   useScoresheetTheme,
   type SidePalette,
@@ -524,6 +525,8 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
         )}
         </View>
       </View>
+
+      <More matchId={matchId} />
 
       <FlatList
         style={{flex: 1}}
