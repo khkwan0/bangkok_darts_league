@@ -1,5 +1,6 @@
 import AppSwitch from '@/components/AppSwitch'
 import {
+  Alert,
   Appearance,
   Image,
   Platform,
@@ -21,6 +22,7 @@ import NavDest from '@/components/NavDest'
 import React, {useEffect, useState} from 'react'
 import {useColorScheme} from 'react-native'
 import {useAccount} from '@/hooks/useAccount'
+import {useBetting} from '@/hooks/useBetting'
 import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
 import {useSupportTickets} from '@/hooks/useSupportTickets'
 import {
@@ -57,10 +59,14 @@ export default function Settings() {
   const router = useRouter()
   const {t} = useTranslation()
   const account = useAccount()
+  const {refreshAccount, optIn} = useBetting()
   const {getUnreadCount: getAdminSupportUnread} = useAdminSupportTickets()
   const adminSupportUnread = useAdminSupportUnreadCount()
   const {getUnreadCount: getSupportUnread} = useSupportTickets()
   const supportUnread = useSupportUnreadCount()
+  const buildTapRef = React.useRef({count: 0, timer: null as ReturnType<
+    typeof setTimeout
+  > | null})
 
   useEffect(() => {
     navigation.setOptions({
@@ -77,13 +83,43 @@ export default function Settings() {
     React.useCallback(() => {
       if (user?.id) {
         void refreshSupportUnread(getSupportUnread)
+        void refreshAccount()
       }
       if (!isLeagueAdmin(user)) {
         return
       }
       void refreshAdminSupportUnread(getAdminSupportUnread)
-    }, [getAdminSupportUnread, getSupportUnread, user]),
+    }, [refreshAccount, getAdminSupportUnread, getSupportUnread, user]),
   )
+
+  function HandleBuildTap() {
+    if (!user?.id || state.bettingOptedIn) return
+    const ref = buildTapRef.current
+    if (ref.timer) clearTimeout(ref.timer)
+    ref.count += 1
+    ref.timer = setTimeout(() => {
+      ref.count = 0
+      ref.timer = null
+    }, 2000)
+    if (ref.count < 5) return
+    ref.count = 0
+    if (ref.timer) {
+      clearTimeout(ref.timer)
+      ref.timer = null
+    }
+    Alert.alert(t('betting_opt_in_title'), t('betting_opt_in_body'), [
+      {text: t('betting_opt_in_cancel'), style: 'cancel'},
+      {
+        text: t('betting_opt_in_confirm'),
+        onPress: async () => {
+          const res = await optIn()
+          if (res && 'error' in res) {
+            Alert.alert(t('betting_opt_in_failed'))
+          }
+        },
+      },
+    ])
+  }
 
   async function ToggleTheme(value: boolean) {
     try {
@@ -130,15 +166,22 @@ export default function Settings() {
         {/* App Info & Theme Section */}
         <View className="bg-gray-800/20 dark:bg-gray-200/20 rounded-xl p-4 mb-4">
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-sm opacity-75">
-              {t('build')} {config.build}
-            </Text>
+            <Pressable onPress={HandleBuildTap} hitSlop={8}>
+              <Text className="text-sm opacity-75">
+                {t('build')} {config.build}
+              </Text>
+            </Pressable>
             <View className="flex-row items-center space-x-4 gap-x-2 bg-gray-800/30 rounded-lg p-2">
               <Feather name="sun" color={colors.text} size={18} />
               <AppSwitch value={isDark} onValueChange={ToggleTheme} />
               <MCI name="weather-night" color={colors.text} size={18} />
             </View>
           </View>
+          {state.bettingOptedIn && !state.hideBettingUi ? (
+            <Text className="text-sm opacity-75 mt-1">
+              {t('betting_balance', {count: state.bettingBalance})}
+            </Text>
+          ) : null}
         </View>
 
         {/* User Section */}

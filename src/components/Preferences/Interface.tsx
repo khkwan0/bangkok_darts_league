@@ -75,6 +75,18 @@ const Interface = () => {
     }
   }
 
+  const handleHideBettingToggle = async (value: boolean) => {
+    try {
+      dispatch({type: 'SET_HIDE_BETTING_UI', payload: value})
+      await AsyncStorage.setItem(
+        'hide_betting_ui',
+        JSON.stringify({hide: value}),
+      )
+    } catch (error) {
+      console.error('Error saving hide betting preference:', error)
+    }
+  }
+
   return (
     <View style={{padding: 16}}>
       {/* Match Card Design Section */}
@@ -162,6 +174,35 @@ const Interface = () => {
           onValueChange={handleForumFabBadgeToggle}
         />
       </View>
+
+      {state.bettingOptedIn ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 16,
+          }}>
+          <View style={{flex: 1, paddingRight: 12}}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: 'bold',
+                color: colors.text,
+                marginBottom: 4,
+              }}>
+              {t('betting_hide_ui')}
+            </Text>
+            <Text style={{color: colors.text, opacity: 0.7}}>
+              {t('betting_hide_ui_description')}
+            </Text>
+          </View>
+          <AppSwitch
+            value={state.hideBettingUi ?? false}
+            onValueChange={handleHideBettingToggle}
+          />
+        </View>
+      ) : null}
 
       {!state.isNewMatchCard && (
         <View

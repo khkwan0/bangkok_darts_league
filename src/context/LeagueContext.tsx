@@ -54,6 +54,11 @@ interface LeagueState {
   isNewMatchCard: boolean
   showLiveScores: boolean
   showForumFabBadge: boolean
+  /** Server opt-in for virtual betting. */
+  bettingOptedIn: boolean
+  /** Local-only hide for betting UI (does not clear server opt-in). */
+  hideBettingUi: boolean
+  bettingBalance: number
   refreshUpcoming: boolean
   competition: Competition
   competitionPickerOpen: boolean
@@ -94,6 +99,9 @@ const initialState: LeagueState = {
   isNewMatchCard: false,
   showLiveScores: true,
   showForumFabBadge: true,
+  bettingOptedIn: false,
+  hideBettingUi: false,
+  bettingBalance: 0,
   refreshUpcoming: false,
   competition: CANONICAL_COMPETITION,
   competitionPickerOpen: false,
@@ -115,6 +123,8 @@ const LeagueReducer = (state: any, action: any) => {
       return {
         ...state,
         user: {},
+        bettingOptedIn: false,
+        bettingBalance: 0,
       }
     }
     case 'SET_SEASON': {
@@ -259,6 +269,24 @@ const LeagueReducer = (state: any, action: any) => {
       return {
         ...state,
         showForumFabBadge: action.payload,
+      }
+    }
+    case 'SET_BETTING_OPTED_IN': {
+      return {
+        ...state,
+        bettingOptedIn: Boolean(action.payload),
+      }
+    }
+    case 'SET_HIDE_BETTING_UI': {
+      return {
+        ...state,
+        hideBettingUi: Boolean(action.payload),
+      }
+    }
+    case 'SET_BETTING_BALANCE': {
+      return {
+        ...state,
+        bettingBalance: Number(action.payload) || 0,
       }
     }
     case 'SET_REFRESH_UPCOMING': {
@@ -414,9 +442,23 @@ export const LeagueProvider = ({children}: any) => {
         console.error(e)
       }
     }
+    const getHideBettingUi = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('hide_betting_ui')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (typeof parsed?.hide === 'boolean') {
+            dispatch({type: 'SET_HIDE_BETTING_UI', payload: parsed.hide})
+          }
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
     getMatchCardDesign()
     getShowLiveScores()
     getShowForumFabBadge()
+    getHideBettingUi()
   }, [])
 
   useEffect(() => {

@@ -11,10 +11,12 @@ import {useWebsocket} from './useWebsocket'
 import {useThemeColor} from './useThemeColor'
 import {useColorScheme} from './useColorScheme'
 import {useAd} from './useAd'
+import {useBetting} from './useBetting'
 
 export {
   useAccount,
   useAd,
+  useBetting,
   useColorScheme,
   useDisclose,
   useLeague,
