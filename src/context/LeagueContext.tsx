@@ -59,6 +59,8 @@ interface LeagueState {
   /** Local-only hide for betting UI (does not clear server opt-in). */
   hideBettingUi: boolean
   bettingBalance: number
+  /** Display style for posted decimal odds. */
+  bettingOddsFormat: 'european' | 'american'
   refreshUpcoming: boolean
   competition: Competition
   competitionPickerOpen: boolean
@@ -102,6 +104,7 @@ const initialState: LeagueState = {
   bettingOptedIn: false,
   hideBettingUi: false,
   bettingBalance: 0,
+  bettingOddsFormat: 'european',
   refreshUpcoming: false,
   competition: CANONICAL_COMPETITION,
   competitionPickerOpen: false,
@@ -289,6 +292,13 @@ const LeagueReducer = (state: any, action: any) => {
         bettingBalance: Number(action.payload) || 0,
       }
     }
+    case 'SET_BETTING_ODDS_FORMAT': {
+      return {
+        ...state,
+        bettingOddsFormat:
+          action.payload === 'american' ? 'american' : 'european',
+      }
+    }
     case 'SET_REFRESH_UPCOMING': {
       return {
         ...state,
@@ -455,10 +465,27 @@ export const LeagueProvider = ({children}: any) => {
         console.error(e)
       }
     }
+    const getBettingOddsFormat = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('betting_odds_format')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (parsed?.format === 'american' || parsed?.format === 'european') {
+            dispatch({
+              type: 'SET_BETTING_ODDS_FORMAT',
+              payload: parsed.format,
+            })
+          }
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
     getMatchCardDesign()
     getShowLiveScores()
     getShowForumFabBadge()
     getHideBettingUi()
+    getBettingOddsFormat()
   }, [])
 
   useEffect(() => {

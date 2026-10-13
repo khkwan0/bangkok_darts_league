@@ -1,23 +1,16 @@
 import {
   useBetting,
   type BettingMarket,
-  type BettingMarketType,
-  type BettingSelectionKey,
 } from '@/hooks/useBetting'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {formatBettingOdds} from '@/lib/bettingOddsFormat'
 import {ThemedText as Text} from '@/components/ThemedText'
+import MCI from '@expo/vector-icons/MaterialCommunityIcons'
+import {LinearGradient} from 'expo-linear-gradient'
+import {useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
-import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  Pressable,
-  useColorScheme,
-  View,
-} from 'react-native'
-
-const STAKE_CHIPS = [50, 100, 250, 500, 1000]
+import {ActivityIndicator, Pressable, View} from 'react-native'
 
 type Props = {
   matchId: number
@@ -26,44 +19,81 @@ type Props = {
   accent?: string
 }
 
-function formatOdds(n: number) {
-  return Number(n).toFixed(2)
+function mixHex(hex: string, toward: string, amount: number) {
+  const parse = (h: string) => {
+    const n = h.replace('#', '')
+    const full =
+      n.length === 3
+        ? n
+            .split('')
+            .map(c => c + c)
+            .join('')
+        : n
+    return [
+      parseInt(full.slice(0, 2), 16),
+      parseInt(full.slice(2, 4), 16),
+      parseInt(full.slice(4, 6), 16),
+    ] as const
+  }
+  try {
+    const [r1, g1, b1] = parse(hex)
+    const [r2, g2, b2] = parse(toward)
+    const r = Math.round(r1 + (r2 - r1) * amount)
+    const g = Math.round(g1 + (g2 - g1) * amount)
+    const b = Math.round(b1 + (b2 - b1) * amount)
+    return `rgb(${r},${g},${b})`
+  } catch {
+    return hex
+  }
 }
 
-function formatLine(market: BettingMarket) {
-  if (market.line == null) return ''
-  const line = Number(market.line)
-  if (market.market_type === 'spread') {
-    const sign = line > 0 ? '+' : ''
-    return `${sign}${line}`
-  }
-  return String(line)
+function moneylineLabel(
+  markets: BettingMarket[],
+  formatOdds: (n: number) => string,
+) {
+  const ml = markets.find(m => m.market_type === 'moneyline')
+  if (!ml) return null
+  const home = ml.selections.find(s => s.selection_key === 'home')?.odds
+  const away = ml.selections.find(s => s.selection_key === 'away')?.odds
+  if (home == null || away == null) return null
+  return `${formatOdds(home)} / ${formatOdds(away)}`
+}
+
+function spreadLabel(
+  markets: BettingMarket[],
+  formatOdds: (n: number) => string,
+) {
+  const spread = markets.find(m => m.market_type === 'spread')
+  if (!spread || spread.line == null) return null
+  const home = spread.selections.find(s => s.selection_key === 'home')?.odds
+  const away = spread.selections.find(s => s.selection_key === 'away')?.odds
+  if (home == null || away == null) return null
+  const line = Number(spread.line)
+  const homeLine = `${line > 0 ? '+' : ''}${line}`
+  const awayLineNum = -line
+  const awayLine = `${awayLineNum > 0 ? '+' : ''}${awayLineNum}`
+  return `${homeLine} ${formatOdds(home)} / ${awayLine} ${formatOdds(away)}`
 }
 
 export default function MatchBettingRow({
   matchId,
-  homeShort = 'Home',
-  awayShort = 'Away',
   accent = '#3B82F6',
 }: Props) {
   const {t} = useTranslation()
-  const colorScheme = useColorScheme()
-  const isDark = colorScheme === 'dark'
+  const router = useRouter()
   const {state} = useLeagueContext()
   const betting = useBetting()
   const [markets, setMarkets] = React.useState<BettingMarket[]>([])
   const [loading, setLoading] = React.useState(true)
-  const [sheet, setSheet] = React.useState<{
-    marketType: BettingMarketType
-    selectionKey: BettingSelectionKey
-    odds: number
-    label: string
-  } | null>(null)
-  const [stake, setStake] = React.useState(100)
-  const [submitting, setSubmitting] = React.useState(false)
 
   const showBetting =
     state.bettingOptedIn && !state.hideBettingUi && !!state.user?.id
+
+  const oddsFormat = state.bettingOddsFormat ?? 'european'
+  const formatOdds = React.useCallback(
+    (n: number) => formatBettingOdds(n, oddsFormat),
+    [oddsFormat],
+  )
 
   React.useEffect(() => {
     if (!showBetting || !matchId) return
@@ -72,7 +102,7 @@ export default function MatchBettingRow({
       setLoading(true)
       try {
         const data = await betting.getMarkets(matchId)
-        if (!cancelled) setMarkets(data)
+        if (!cancelled) setMarkets(data.markets)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -82,266 +112,114 @@ export default function MatchBettingRow({
     }
   }, [showBetting, matchId])
 
-  if (!showBetting) return null
+  if (!showBetting || !matchId) return null
 
-  const locked = markets.some(m => m.status !== 'open') && markets.length > 0
-  const allClosed =
-    markets.length > 0 && markets.every(m => m.status !== 'open')
-
-  const openSheet = (
-    market: BettingMarket,
-    selectionKey: BettingSelectionKey,
-    label: string,
-  ) => {
-    if (market.status !== 'open') return
-    const sel = market.selections.find(s => s.selection_key === selectionKey)
-    if (!sel) return
-    setStake(100)
-    setSheet({
-      marketType: market.market_type,
-      selectionKey,
-      odds: sel.odds,
-      label,
-    })
-  }
-
-  const submit = async () => {
-    if (!sheet) return
-    setSubmitting(true)
-    try {
-      const res = await betting.placeBet({
-        matchId,
-        marketType: sheet.marketType,
-        selectionKey: sheet.selectionKey,
-        stake,
-      })
-      if (res.ok) {
-        setSheet(null)
-        Alert.alert(t('betting_success'))
-        const data = await betting.getMarkets(matchId)
-        setMarkets(data)
-      } else {
-        Alert.alert(t('betting_failed'), res.error)
-      }
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const ml = markets.find(m => m.market_type === 'moneyline')
-  const spread = markets.find(m => m.market_type === 'spread')
-  const total = markets.find(m => m.market_type === 'total')
-
-  const chipBg = isDark ? 'rgba(148,163,184,0.18)' : 'rgba(15,23,42,0.06)'
-  const textColor = isDark ? '#F8FAFC' : '#0F172A'
-  const muted = isDark ? 'rgba(226,232,240,0.65)' : 'rgba(51,65,85,0.75)'
-
-  const OddChip = ({
-    label,
-    odds,
-    onPress,
-    disabled,
-  }: {
-    label: string
-    odds: number
-    onPress: () => void
-    disabled?: boolean
-  }) => (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={({pressed}) => ({
-        flex: 1,
-        paddingVertical: 8,
-        paddingHorizontal: 6,
-        borderRadius: 8,
-        backgroundColor: chipBg,
-        opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
-        alignItems: 'center',
-      })}>
-      <Text style={{fontSize: 11, color: muted}} numberOfLines={1}>
-        {label}
-      </Text>
-      <Text style={{fontSize: 14, fontWeight: '700', color: accent}}>
-        {formatOdds(odds)}
-      </Text>
-    </Pressable>
-  )
+  const start = mixHex(accent, '#000000', 0.15)
+  const end = mixHex(accent, '#ffffff', 0.2)
+  const mlText = moneylineLabel(markets, formatOdds)
+  const spText = spreadLabel(markets, formatOdds)
 
   return (
-    <View style={{marginTop: 10, gap: 8}}>
-      {loading ? (
-        <ActivityIndicator size="small" color={accent} />
-      ) : allClosed ? (
-        <Text style={{fontSize: 12, color: muted}}>{t('betting_locked')}</Text>
-      ) : (
-        <>
-          {ml ? (
-            <View style={{flexDirection: 'row', gap: 6}}>
-              <OddChip
-                label={homeShort}
-                odds={
-                  ml.selections.find(s => s.selection_key === 'home')?.odds ??
-                  0
-                }
-                disabled={ml.status !== 'open'}
-                onPress={() => openSheet(ml, 'home', homeShort)}
-              />
-              <OddChip
-                label={awayShort}
-                odds={
-                  ml.selections.find(s => s.selection_key === 'away')?.odds ??
-                  0
-                }
-                disabled={ml.status !== 'open'}
-                onPress={() => openSheet(ml, 'away', awayShort)}
-              />
-            </View>
-          ) : null}
-          {spread ? (
-            <View style={{flexDirection: 'row', gap: 6, alignItems: 'center'}}>
-              <Text style={{fontSize: 11, color: muted, width: 52}}>
-                {t('betting_spread')}
-              </Text>
-              <OddChip
-                label={`${homeShort} ${formatLine(spread)}`}
-                odds={
-                  spread.selections.find(s => s.selection_key === 'home')
-                    ?.odds ?? 0
-                }
-                disabled={spread.status !== 'open'}
-                onPress={() =>
-                  openSheet(
-                    spread,
-                    'home',
-                    `${homeShort} ${formatLine(spread)}`,
-                  )
-                }
-              />
-              <OddChip
-                label={awayShort}
-                odds={
-                  spread.selections.find(s => s.selection_key === 'away')
-                    ?.odds ?? 0
-                }
-                disabled={spread.status !== 'open'}
-                onPress={() => openSheet(spread, 'away', awayShort)}
-              />
-            </View>
-          ) : null}
-          {total ? (
-            <View style={{flexDirection: 'row', gap: 6, alignItems: 'center'}}>
-              <Text style={{fontSize: 11, color: muted, width: 52}}>
-                {t('betting_total')} {formatLine(total)}
-              </Text>
-              <OddChip
-                label={t('betting_over')}
-                odds={
-                  total.selections.find(s => s.selection_key === 'over')
-                    ?.odds ?? 0
-                }
-                disabled={total.status !== 'open'}
-                onPress={() =>
-                  openSheet(total, 'over', `${t('betting_over')} ${formatLine(total)}`)
-                }
-              />
-              <OddChip
-                label={t('betting_under')}
-                odds={
-                  total.selections.find(s => s.selection_key === 'under')
-                    ?.odds ?? 0
-                }
-                disabled={total.status !== 'open'}
-                onPress={() =>
-                  openSheet(
-                    total,
-                    'under',
-                    `${t('betting_under')} ${formatLine(total)}`,
-                  )
-                }
-              />
-            </View>
-          ) : null}
-          {locked && !allClosed ? (
-            <Text style={{fontSize: 11, color: muted}}>
-              {t('betting_locked')}
-            </Text>
-          ) : null}
-        </>
-      )}
-
-      <Modal
-        visible={!!sheet}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSheet(null)}>
-        <Pressable
+    <View style={{marginTop: 10}}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('betting_odds')}
+        onPress={() =>
+          router.push({
+            pathname: '/Betting/[matchId]' as any,
+            params: {matchId: String(matchId)},
+          })
+        }
+        style={({pressed}) => ({
+          borderRadius: 14,
+          overflow: 'hidden',
+          opacity: pressed ? 0.9 : 1,
+          transform: [{scale: pressed ? 0.98 : 1}],
+        })}>
+        <LinearGradient
+          colors={[start, accent, end]}
+          locations={[0, 0.55, 1]}
+          start={{x: 0, y: 0.5}}
+          end={{x: 1, y: 0.5}}
           style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            justifyContent: 'flex-end',
-          }}
-          onPress={() => setSheet(null)}>
-          <Pressable
-            onPress={e => e.stopPropagation()}
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            borderRadius: 14,
+            minHeight: 52,
+          }}>
+          <View
             style={{
-              backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              padding: 20,
-              gap: 12,
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 8,
+              paddingRight: 10,
             }}>
-            <Text style={{fontSize: 16, fontWeight: '700', color: textColor}}>
-              {sheet?.label}
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '800',
+                color: '#FFFFFF',
+                letterSpacing: 0.2,
+              }}>
+              {t('betting_odds')}
             </Text>
-            <Text style={{color: muted}}>
-              @{formatOdds(sheet?.odds ?? 0)} · {t('betting_balance', {
-                count: state.bettingBalance,
-              })}
-            </Text>
-            <Text style={{color: muted, fontSize: 12}}>{t('betting_stake')}</Text>
-            <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 8}}>
-              {STAKE_CHIPS.map(chip => (
-                <Pressable
-                  key={chip}
-                  onPress={() => setStake(chip)}
-                  style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 8,
-                    borderRadius: 8,
-                    backgroundColor:
-                      stake === chip ? accent : chipBg,
-                  }}>
+            {loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                {mlText ? (
                   <Text
                     style={{
-                      color: stake === chip ? '#fff' : textColor,
-                      fontWeight: '600',
-                    }}>
-                    {String(chip)}
+                      fontSize: 13,
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.92)',
+                    }}
+                    numberOfLines={1}>
+                    {mlText}
                   </Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={{color: textColor}}>
-              {`${t('betting_stake')}: ${stake} → ${Math.floor(stake * (sheet?.odds ?? 1))}`}
-            </Text>
-            <Pressable
-              onPress={submit}
-              disabled={submitting}
-              style={{
-                backgroundColor: accent,
-                paddingVertical: 14,
-                borderRadius: 10,
-                alignItems: 'center',
-                opacity: submitting ? 0.7 : 1,
-              }}>
-              <Text style={{color: '#fff', fontWeight: '700'}}>
-                {t('betting_place')}
-              </Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+                ) : null}
+                {mlText && spText ? (
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '600',
+                      color: 'rgba(255,255,255,0.55)',
+                    }}>
+                    ·
+                  </Text>
+                ) : null}
+                {spText ? (
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.92)',
+                    }}
+                    numberOfLines={1}>
+                    {spText}
+                  </Text>
+                ) : null}
+              </>
+            )}
+          </View>
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: 'rgba(255,255,255,0.22)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+            <MCI name="arrow-right" size={20} color="#FFFFFF" />
+          </View>
+        </LinearGradient>
+      </Pressable>
     </View>
   )
 }

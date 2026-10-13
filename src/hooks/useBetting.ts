@@ -21,6 +21,54 @@ export type BettingMarket = {
   selections: BettingSelection[]
 }
 
+export type BettingMatchup = {
+  match_id: number
+  home_team_id: number
+  away_team_id: number
+  home_team_name: string
+  away_team_name: string
+  home_team_short_name: string
+  away_team_short_name: string
+  home_logo: string | null
+  away_logo: string | null
+  date: string | null
+  home: {
+    wins: number
+    losses: number
+    ties: number
+    frames_for: number
+    frames_against: number
+  }
+  away: {
+    wins: number
+    losses: number
+    ties: number
+    frames_for: number
+    frames_against: number
+  }
+}
+
+export type BettingBetStatus = 'pending' | 'won' | 'lost' | 'push' | 'void'
+
+export type BettingBet = {
+  id: number
+  match_id: number
+  market_id: number
+  match_date: string | null
+  home_team_short_name: string
+  away_team_short_name: string
+  market_type: BettingMarketType | string
+  line: number | null
+  selection_key: BettingSelectionKey | string
+  stake: number
+  odds: number
+  potential_payout: number
+  status: BettingBetStatus
+  payout: number
+  placed_at: string
+  settled_at: string | null
+}
+
 export function useBetting() {
   const network = useNetwork()
   const {dispatch} = useLeagueContext()
@@ -68,10 +116,13 @@ export function useBetting() {
     const res = await networkRef.current.Get(
       `/betting/markets?matchId=${matchId}`,
     )
-    if (res?.status === 'ok' && res.data?.markets) {
-      return res.data.markets as BettingMarket[]
+    if (res?.status === 'ok' && res.data) {
+      return {
+        markets: (res.data.markets ?? []) as BettingMarket[],
+        matchup: (res.data.matchup ?? null) as BettingMatchup | null,
+      }
     }
-    return [] as BettingMarket[]
+    return {markets: [] as BettingMarket[], matchup: null as BettingMatchup | null}
   }, [])
 
   const placeBet = React.useCallback(
@@ -107,11 +158,37 @@ export function useBetting() {
     return []
   }, [])
 
+  const listBets = React.useCallback(
+    async (options?: {
+      status?: BettingBetStatus | 'all'
+      limit?: number
+    }): Promise<{items: BettingBet[]; error?: string}> => {
+      const params = new URLSearchParams({
+        limit: String(options?.limit ?? 50),
+      })
+      if (options?.status && options.status !== 'all') {
+        params.set('status', options.status)
+      }
+      const res = await networkRef.current.Get(
+        `/betting/bets?${params.toString()}`,
+      )
+      if (res?.status === 'ok' && Array.isArray(res.data)) {
+        return {items: res.data as BettingBet[]}
+      }
+      return {
+        items: [],
+        error: String(res?.error ?? 'list_bets_failed'),
+      }
+    },
+    [],
+  )
+
   return {
     refreshAccount,
     optIn,
     getMarkets,
     placeBet,
     getLeaderboard,
+    listBets,
   }
 }

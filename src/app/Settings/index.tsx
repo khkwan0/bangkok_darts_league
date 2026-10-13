@@ -101,7 +101,7 @@ export default function Settings() {
       ref.count = 0
       ref.timer = null
     }, 2000)
-    if (ref.count < 5) return
+    if (ref.count < 8) return
     ref.count = 0
     if (ref.timer) {
       clearTimeout(ref.timer)
@@ -177,38 +177,6 @@ export default function Settings() {
               <MCI name="weather-night" color={colors.text} size={18} />
             </View>
           </View>
-          {state.bettingOptedIn ? (
-            <View className="mt-3 pt-3 border-t border-gray-600/40">
-              <Text className="text-sm opacity-75 mb-3">
-                {t('betting_balance', {count: state.bettingBalance})}
-              </Text>
-              <View className="flex-row items-center justify-between">
-                <View className="flex-1 pr-3">
-                  <Text className="text-sm font-semibold">
-                    {t('betting_show_ui')}
-                  </Text>
-                  <Text className="text-xs opacity-60 mt-0.5">
-                    {t('betting_show_ui_description')}
-                  </Text>
-                </View>
-                <AppSwitch
-                  value={!state.hideBettingUi}
-                  onValueChange={async value => {
-                    const hide = !value
-                    dispatch({type: 'SET_HIDE_BETTING_UI', payload: hide})
-                    try {
-                      await AsyncStorage.setItem(
-                        'hide_betting_ui',
-                        JSON.stringify({hide}),
-                      )
-                    } catch (e) {
-                      console.error(e)
-                    }
-                  }}
-                />
-              </View>
-            </View>
-          ) : null}
         </View>
 
         {/* User Section */}
@@ -379,6 +347,15 @@ export default function Settings() {
           iconColor="#F59E0B"
           iconBackground="rgba(245, 158, 11, 0.15)"
         />
+        {state.bettingOptedIn ? (
+          <NavDest
+            icon="chart-line"
+            text={t('betting_settings')}
+            url={'/Settings/Betting'}
+            iconColor="#10B981"
+            iconBackground="rgba(16, 185, 129, 0.15)"
+          />
+        ) : null}
         <NavDest
           icon="cog"
           text={t('preferences')}

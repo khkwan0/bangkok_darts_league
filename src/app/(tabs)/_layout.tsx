@@ -7,6 +7,7 @@ import {TabBarIcon} from '@/components/navigation/TabBarIcon'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useAccount} from '@/hooks/useAccount'
 import {useAnnouncements} from '@/hooks/useAnnouncements'
+import {useBetting} from '@/hooks/useBetting'
 import i18n from '@/i18n'
 import {syncAnnouncementUnreadFromList} from '@/lib/announcementUnread'
 import {
@@ -47,6 +48,7 @@ export default function TabLayout() {
   const {t, i18n} = useTranslation()
   const {state, dispatch} = useLeagueContext()
   const account = useAccount()
+  const {refreshAccount} = useBetting()
   const {markRead, syncReads, getAnnouncements, getAnnouncement} =
     useAnnouncements()
   const {getUnreadCount: getSupportUnreadCount} = useSupportTickets()
@@ -87,6 +89,12 @@ export default function TabLayout() {
       getAnnouncement,
     }
   })
+
+  // Restore betting opt-in / balance from DB after login or reinstall.
+  React.useEffect(() => {
+    if (!state.user?.id) return
+    void refreshAccount()
+  }, [state.user?.id, refreshAccount])
 
   React.useEffect(() => {
     visibleAnnouncementIdRef.current = showAnnouncementDialog

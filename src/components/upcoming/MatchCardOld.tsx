@@ -1,3 +1,4 @@
+import MatchBettingRow from '@/components/betting/MatchBettingRow'
 import {MatchInfoDataType} from '@/components/Match/types'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {useLeagueContext} from '@/context/LeagueContext'
@@ -808,6 +809,15 @@ export default function MatchCardOld({
             ) : null}
           </Pressable>
         </Link>
+
+        <View style={{paddingHorizontal: 10, marginTop: 4}}>
+          <MatchBettingRow
+            matchId={Number(matchInfo.match_id ?? 0)}
+            homeShort={matchInfo.home_team_short_name}
+            awayShort={matchInfo.away_team_short_name}
+            accent={accent}
+          />
+        </View>
 
         <View
           style={[

@@ -1,20 +1,40 @@
 import {Stack} from 'expo-router'
 import {CompetitionSwitcher} from '@/components/navigation/CompetitionSwitcher'
 import {SettingsButton} from '@/components/navigation/SettingsButton'
+import {useTranslation} from 'react-i18next'
 
 export default function MatchLayout() {
+  const {t} = useTranslation()
+
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        headerBackTitle: t('back'),
+      }}>
       <Stack.Screen
         name="index"
         options={{
+          // String title is what iOS uses for the back button when headerTitle is custom.
+          title: t('back'),
           headerRight: () => <SettingsButton />,
           headerTitle: () => <CompetitionSwitcher />,
+          headerBackTitle: t('back'),
         }}
       />
       <Stack.Screen
         name="Match/index"
-        options={{headerRight: () => <SettingsButton />}}
+        options={{
+          headerRight: () => <SettingsButton />,
+          headerBackTitle: t('back'),
+        }}
+      />
+      <Stack.Screen
+        name="Betting/[matchId]"
+        options={{
+          title: 'Betting',
+          headerRight: () => <SettingsButton />,
+          headerBackTitle: t('back'),
+        }}
       />
       <Stack.Screen
         name="PostponeScreen/index"
