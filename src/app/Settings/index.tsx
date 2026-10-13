@@ -177,10 +177,37 @@ export default function Settings() {
               <MCI name="weather-night" color={colors.text} size={18} />
             </View>
           </View>
-          {state.bettingOptedIn && !state.hideBettingUi ? (
-            <Text className="text-sm opacity-75 mt-1">
-              {t('betting_balance', {count: state.bettingBalance})}
-            </Text>
+          {state.bettingOptedIn ? (
+            <View className="mt-3 pt-3 border-t border-gray-600/40">
+              <Text className="text-sm opacity-75 mb-3">
+                {t('betting_balance', {count: state.bettingBalance})}
+              </Text>
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1 pr-3">
+                  <Text className="text-sm font-semibold">
+                    {t('betting_show_ui')}
+                  </Text>
+                  <Text className="text-xs opacity-60 mt-0.5">
+                    {t('betting_show_ui_description')}
+                  </Text>
+                </View>
+                <AppSwitch
+                  value={!state.hideBettingUi}
+                  onValueChange={async value => {
+                    const hide = !value
+                    dispatch({type: 'SET_HIDE_BETTING_UI', payload: hide})
+                    try {
+                      await AsyncStorage.setItem(
+                        'hide_betting_ui',
+                        JSON.stringify({hide}),
+                      )
+                    } catch (e) {
+                      console.error(e)
+                    }
+                  }}
+                />
+              </View>
+            </View>
           ) : null}
         </View>
 
