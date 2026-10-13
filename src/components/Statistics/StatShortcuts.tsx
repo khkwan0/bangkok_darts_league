@@ -56,7 +56,7 @@ const SHORTCUTS: Shortcut[] = [
   },
   {
     key: 'highlights',
-    href: '/statistics/highlights',
+    href: '/statistics/Highlights',
     labelKey: 'highlights',
     shortKey: 'highlights',
     hintKey: 'stats_home_highlights_hint',

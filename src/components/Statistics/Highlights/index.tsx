@@ -297,12 +297,7 @@ export default function HighlightsExplorer() {
         />
       }>
       <View className="mx-4 mb-3" style={{backgroundColor: 'transparent'}}>
-        <Text style={{fontSize: 22, fontWeight: '800', color: primary}}>
-          {t('highlights')}
-        </Text>
-        <Text style={{marginTop: 4, color: muted}}>
-          {t('highlights_subtitle')}
-        </Text>
+        <Text style={{color: muted}}>{t('highlights_subtitle')}</Text>
       </View>
 
       <View
