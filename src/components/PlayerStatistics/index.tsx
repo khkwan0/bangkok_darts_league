@@ -11,14 +11,18 @@ import {
   winRateColor,
   winRatePercent,
 } from '@/components/PlayerStatistics/statUi'
+import PlayerAchievementsList from '@/components/PlayerAchievementsList'
 import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import config from '@/config'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useStatsScope} from '@/context/StatsScopeContext'
+import {useAchievements} from '@/hooks/useAchievements'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
 import {useSeason} from '@/hooks/useSeason'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
+import type {PlayerAchievements} from '@/types/achievements'
+import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import {
   PANEL_I18N_KEY,
   PANEL_STATS_KEY,
@@ -75,6 +79,10 @@ export default function PlayerStatistics({
   const [isMatchPerformanceLoading, setIsMatchPerformanceLoading] =
     useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [achievements, setAchievements] = useState<PlayerAchievements | null>(
+    null,
+  )
+  const {getPlayerAchievements} = useAchievements()
   const {t, i18n} = useTranslation()
   const colors = useStatColors()
   const listContentStyle = useTabListContentContainerStyle({
@@ -184,6 +192,26 @@ export default function PlayerStatistics({
     })()
   }, [playerInfo.player_id, isRefreshing, pastSeasonId, scope])
 
+  React.useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (!playerInfo.player_id) {
+        setAchievements(null)
+        return
+      }
+      try {
+        const res = await getPlayerAchievements(playerInfo.player_id)
+        if (!cancelled) setAchievements(res)
+      } catch (e) {
+        console.log(e)
+        if (!cancelled) setAchievements(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [playerInfo.player_id, getPlayerAchievements, isRefreshing])
+
   const nationalityName =
     (i18n.language?.startsWith('th')
       ? playerInfo.nationality?.th
@@ -264,16 +292,43 @@ export default function PlayerStatistics({
             ) : null}
             <RNView
               style={{
-                alignSelf: 'flex-start',
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                gap: 6,
                 marginTop: 8,
-                borderRadius: 999,
-                backgroundColor: colors.chip,
-                paddingHorizontal: 10,
-                paddingVertical: 4,
               }}>
-              <RNText style={{fontSize: 12, fontWeight: '600', color: colors.text}}>
-                {`${t('player_id')} ${playerInfo.player_id}`}
-              </RNText>
+              <RNView
+                style={{
+                  borderRadius: 999,
+                  backgroundColor: colors.chip,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                }}>
+                <RNText style={{fontSize: 12, fontWeight: '600', color: colors.text}}>
+                  {`${t('player_id')} ${playerInfo.player_id}`}
+                </RNText>
+              </RNView>
+              {achievements ? (
+                <RNView
+                  style={{
+                    borderRadius: 999,
+                    backgroundColor: 'rgba(234, 179, 8, 0.18)',
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}>
+                  <MCI name="trophy-variant" size={13} color="#EAB308" />
+                  <RNText
+                    style={{fontSize: 12, fontWeight: '700', color: colors.text}}>
+                    {t('achievements_hero_count', {
+                      count: achievements.counts.total,
+                      available: achievements.counts.available,
+                    })}
+                  </RNText>
+                </RNView>
+              ) : null}
             </RNView>
             {teams.length > 0 ? (
               <RNView
@@ -351,6 +406,20 @@ export default function PlayerStatistics({
       ) : (
         <EmptyNote label="no_matches_this_season" />
       )}
+
+      {achievements ? (
+        <>
+          <SectionTitle label="achievements" />
+          <Surface style={{padding: 16, marginBottom: 8}}>
+            <PlayerAchievementsList
+              data={achievements}
+              mutedColor={colors.muted}
+              textColor={colors.text}
+              showHeader={false}
+            />
+          </Surface>
+        </>
+      ) : null}
 
       <Surface style={{padding: 16, marginTop: 8}}>
         <RNText
