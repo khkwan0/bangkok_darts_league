@@ -40,6 +40,20 @@ const Interface = () => {
         const {show} = JSON.parse(storedForumFabBadge)
         dispatch({type: 'SET_FORUM_FAB_BADGE', payload: show})
       }
+
+      const storedPredictions = await AsyncStorage.getItem(
+        'show_predictions_on_match_cards',
+      )
+      if (storedPredictions !== null) {
+        const {show} = JSON.parse(storedPredictions)
+        dispatch({type: 'SET_SHOW_PREDICTIONS_ON_MATCH_CARDS', payload: show})
+      }
+
+      const storedPotw = await AsyncStorage.getItem('show_player_of_the_week')
+      if (storedPotw !== null) {
+        const {show} = JSON.parse(storedPotw)
+        dispatch({type: 'SET_SHOW_PLAYER_OF_THE_WEEK', payload: show})
+      }
     } catch (error) {
       console.error('Error loading preferences:', error)
     }
@@ -72,6 +86,30 @@ const Interface = () => {
       )
     } catch (error) {
       console.error('Error saving forum badge preference:', error)
+    }
+  }
+
+  const handlePredictionsOnMatchCardsToggle = async (value: boolean) => {
+    try {
+      dispatch({type: 'SET_SHOW_PREDICTIONS_ON_MATCH_CARDS', payload: value})
+      await AsyncStorage.setItem(
+        'show_predictions_on_match_cards',
+        JSON.stringify({show: value}),
+      )
+    } catch (error) {
+      console.error('Error saving predictions on match cards preference:', error)
+    }
+  }
+
+  const handlePlayerOfTheWeekToggle = async (value: boolean) => {
+    try {
+      dispatch({type: 'SET_SHOW_PLAYER_OF_THE_WEEK', payload: value})
+      await AsyncStorage.setItem(
+        'show_player_of_the_week',
+        JSON.stringify({show: value}),
+      )
+    } catch (error) {
+      console.error('Error saving Player of the Week preference:', error)
     }
   }
 
@@ -160,6 +198,62 @@ const Interface = () => {
         <AppSwitch
           value={state.showForumFabBadge ?? true}
           onValueChange={handleForumFabBadgeToggle}
+        />
+      </View>
+
+      {/* Predictions on match cards */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+        }}>
+        <View style={{flex: 1, paddingRight: 12}}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: 'bold',
+              color: colors.text,
+              marginBottom: 4,
+            }}>
+            {t('show_predictions_on_match_cards')}
+          </Text>
+          <Text style={{color: colors.text, opacity: 0.7}}>
+            {t('show_predictions_on_match_cards_description')}
+          </Text>
+        </View>
+        <AppSwitch
+          value={state.showPredictionsOnMatchCards ?? true}
+          onValueChange={handlePredictionsOnMatchCardsToggle}
+        />
+      </View>
+
+      {/* Player of the Week on home */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+        }}>
+        <View style={{flex: 1, paddingRight: 12}}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: 'bold',
+              color: colors.text,
+              marginBottom: 4,
+            }}>
+            {t('show_player_of_the_week')}
+          </Text>
+          <Text style={{color: colors.text, opacity: 0.7}}>
+            {t('show_player_of_the_week_description')}
+          </Text>
+        </View>
+        <AppSwitch
+          value={state.showPlayerOfTheWeek ?? true}
+          onValueChange={handlePlayerOfTheWeekToggle}
         />
       </View>
 

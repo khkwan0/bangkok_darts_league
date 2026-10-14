@@ -14,12 +14,14 @@ import {useAd} from './useAd'
 import {useBetting} from './useBetting'
 import {useWeeklyHighlights} from './useWeeklyHighlights'
 import {useAchievements} from './useAchievements'
+import {usePredictions} from './usePredictions'
 
 export {
   useAccount,
   useAchievements,
   useAd,
   useBetting,
+  usePredictions,
   useColorScheme,
   useDisclose,
   useLeague,

@@ -438,7 +438,8 @@ export default function UpcomingMatches(props: any) {
               )}
               {(typeof state.showLiveScores === 'undefined' ||
                 state.showLiveScores) && <LiveScores />}
-              <WeeklyHighlightsCard />
+              {(typeof state.showPlayerOfTheWeek === 'undefined' ||
+                state.showPlayerOfTheWeek) && <WeeklyHighlightsCard />}
               {(typeof user?.teams === 'undefined' || user.teams.length < 1) &&
                 user.id && (
                   <View className="my-2 mx-2">

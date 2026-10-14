@@ -22,6 +22,13 @@ export default function MatchLayout() {
         }}
       />
       <Stack.Screen
+        name="Player/index"
+        options={{
+          title: t('player_statistics'),
+          headerBackTitle: t('back'),
+        }}
+      />
+      <Stack.Screen
         name="Match/index"
         options={{
           headerRight: () => <SettingsButton />,
@@ -32,6 +39,14 @@ export default function MatchLayout() {
         name="Betting/[matchId]"
         options={{
           title: 'Betting',
+          headerRight: () => <SettingsButton />,
+          headerBackTitle: t('back'),
+        }}
+      />
+      <Stack.Screen
+        name="Predictions/[matchId]"
+        options={{
+          title: t('predictions_title'),
           headerRight: () => <SettingsButton />,
           headerBackTitle: t('back'),
         }}

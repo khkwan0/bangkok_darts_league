@@ -228,6 +228,13 @@ export default function Settings() {
         )}
 
         <NavDest
+          icon="trophy-variant"
+          text={t('achievements')}
+          url={'/Settings/Achievements'}
+          iconColor="#EAB308"
+          iconBackground="rgba(234, 179, 8, 0.15)"
+        />
+        <NavDest
           icon="robot-outline"
           text={t('ai_assistant')}
           url={'/Settings/CueChat'}
@@ -354,6 +361,15 @@ export default function Settings() {
             url={'/Settings/Betting'}
             iconColor="#10B981"
             iconBackground="rgba(16, 185, 129, 0.15)"
+          />
+        ) : null}
+        {state.predictionsEnabled ? (
+          <NavDest
+            icon="crystal-ball"
+            text={t('predictions_settings')}
+            url={'/Settings/Predictions'}
+            iconColor="#0EA5E9"
+            iconBackground="rgba(14, 165, 233, 0.15)"
           />
         ) : null}
         <NavDest

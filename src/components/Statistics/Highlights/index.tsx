@@ -65,7 +65,7 @@ function medalFor(index: number): string | null {
 function openPlayer(playerId: number) {
   router.push({
     pathname: '/statistics/PlayerStatistics/Player' as any,
-    params: {params: JSON.stringify({playerId})},
+    params: {playerId: String(playerId)},
   })
 }
 

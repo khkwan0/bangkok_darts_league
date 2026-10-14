@@ -107,7 +107,7 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
     const competition = state.competition
     // Cap height so short phones (SE, etc.) always get scrollable overflow.
     const snapPoints = React.useMemo(() => {
-      const estimatedContentHeight = 840 + Math.max(insets.bottom, 16)
+      const estimatedContentHeight = 900 + Math.max(insets.bottom, 16)
       const minOpenRatio = 0.65
       const maxOpenRatio = windowHeight < 700 ? 0.82 : 0.88
       const ratio = Math.min(
@@ -223,6 +223,13 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
             showBadge={hasNewForumPosts}
             badgeLabel={t('forums_new_posts')}
             onPress={() => navigate('/Settings/Forums')}
+          />
+          <QuickActionItem
+            icon="trophy-variant"
+            label={t('achievements')}
+            iconColor="#EAB308"
+            iconBackground="rgba(234, 179, 8, 0.15)"
+            onPress={() => navigate('/Settings/Achievements')}
           />
           <QuickActionItem
             icon="robot-outline"

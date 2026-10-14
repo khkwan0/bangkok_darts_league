@@ -54,6 +54,18 @@ export default function StatisticsLayout() {
             title: t('highlights'),
           }}
         />
+        <Stack.Screen
+          name="PlayerStatistics/Player/index"
+          options={{
+            title: t('player_statistics'),
+          }}
+        />
+        <Stack.Screen
+          name="Player/index"
+          options={{
+            title: t('player_statistics'),
+          }}
+        />
       </Stack>
     </StatsScopeProvider>
   )
