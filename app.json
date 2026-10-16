@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bangkok Darts League",
     "slug": "bangkok_darts_league",
-    "version": "1.02",
+    "version": "1.03",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "bangkokdartsleague",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bangkok-darts-league",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
       "associatedDomains": [
@@ -41,7 +41,7 @@
     },
     "android": {
       "package": "com.bangkok_darts_league",
-      "versionCode": 6,
+      "versionCode": 7,
       "googleServicesFile": "./firebase.google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#111111",
@@ -98,10 +98,12 @@
           },
           "android": {
             "enableMinifyInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "-keep class expo.modules.gl.** { *; }\n-keepclassmembers class expo.modules.gl.** { *; }\n-dontwarn expo.modules.gl.**"
           }
         }
       ],
+      "./plugins/withAndroidKeepCoinFlipResources",
       [
         "expo-notifications",
         {

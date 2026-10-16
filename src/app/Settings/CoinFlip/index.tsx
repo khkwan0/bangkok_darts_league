@@ -39,8 +39,14 @@ export default function CoinFlipScreen() {
     <View className="flex-1">
       <Stack.Screen options={{title: t('coin_flip')}} />
       <RNView
-        style={{flex: 1, minHeight: 320, marginHorizontal: 16, marginTop: 8}}
-        className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+        collapsable={false}
+        style={[
+          styles.canvasFrame,
+          Platform.OS === 'android'
+            ? styles.canvasFrameAndroid
+            : styles.canvasFrameClip,
+        ]}
+        className="border border-slate-200 dark:border-slate-700">
         <CoinFlipScene
           ref={coinRef}
           onFlipStart={() => setFlipping(true)}
@@ -86,6 +92,20 @@ export default function CoinFlipScreen() {
 }
 
 const styles = StyleSheet.create({
+  canvasFrame: {
+    flex: 1,
+    minHeight: 320,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 16,
+  },
+  // iOS can clip GL safely; Android TextureView + overflow:hidden often paints black in release.
+  canvasFrameClip: {
+    overflow: 'hidden',
+  },
+  canvasFrameAndroid: {
+    overflow: 'visible',
+  },
   resultBadge: {
     position: 'absolute',
     bottom: 28,

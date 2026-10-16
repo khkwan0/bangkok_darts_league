@@ -66,6 +66,7 @@
     "react-dom": "19.3.0",
     "react-i18next": "^17.0.12",
     "react-native": "0.88.0",
+    "react-native-css-interop": "0.2.7",
     "react-native-gesture-handler": "~3.3.0",
     "react-native-map-link": "^3.13.0",
     "react-native-markdown-display": "^7.0.2",

@@ -194,8 +194,10 @@ function toFileUri(uri: string) {
 }
 
 /**
- * Android release packs require()'d PNGs as drawables. Their localUri is then
- * schema-less / asset://, which expo-gl cannot upload — copy to cache first.
+ * Android release packs require()'d PNGs as drawables / android_res URIs.
+ * expo-gl texImage2D only accepts real filesystem file:// paths — always
+ * materialize a cache copy on Android (skipping "already file://" is unsafe:
+ * file:///android_res/... still fails native upload).
  */
 async function resolveGlReadableUri(asset: Asset) {
   const sourceUri = asset.localUri ?? asset.uri
@@ -203,9 +205,7 @@ async function resolveGlReadableUri(asset: Asset) {
     throw new Error('Coin texture asset missing uri')
   }
 
-  const alreadyFile =
-    sourceUri.startsWith('file:') || sourceUri.startsWith('file:/')
-  if (alreadyFile || Platform.OS !== 'android') {
+  if (Platform.OS !== 'android') {
     return toFileUri(sourceUri)
   }
 
@@ -729,29 +729,34 @@ export const CoinFlipScene = React.forwardRef<
 
     const renderLoop = (now: number) => {
       frameRef.current = requestAnimationFrame(renderLoop)
-      syncViewport()
+      try {
+        syncViewport()
 
-      const last = lastFrameMsRef.current ?? now
-      lastFrameMsRef.current = now
-      let dt = (now - last) / 1000
-      dt = Math.min(0.033, Math.max(0, dt))
+        const last = lastFrameMsRef.current ?? now
+        lastFrameMsRef.current = now
+        let dt = (now - last) / 1000
+        dt = Math.min(0.033, Math.max(0, dt))
 
-      const toss = tossRef.current
-      if (toss?.active && !toss.settled) {
-        const subDt = dt / PHYSICS_SUBSTEPS
-        for (let i = 0; i < PHYSICS_SUBSTEPS; i++) {
-          stepPhysics(toss, subDt)
-          if (trySettle(toss)) {
-            break
+        const toss = tossRef.current
+        if (toss?.active && !toss.settled) {
+          const subDt = dt / PHYSICS_SUBSTEPS
+          for (let i = 0; i < PHYSICS_SUBSTEPS; i++) {
+            stepPhysics(toss, subDt)
+            if (trySettle(toss)) {
+              break
+            }
+          }
+          if (toss.active) {
+            applyCoinTransform(toss)
           }
         }
-        if (toss.active) {
-          applyCoinTransform(toss)
-        }
-      }
 
-      renderer.render(scene, camera)
-      gl.endFrameEXP()
+        renderer.render(scene, camera)
+        gl.endFrameEXP()
+      } catch (error) {
+        // A bad texture upload must not kill the felt/coin solid-color fallback.
+        console.warn('[CoinFlip] Frame render failed', error)
+      }
     }
 
     frameRef.current = requestAnimationFrame(renderLoop)
@@ -794,6 +799,8 @@ export const CoinFlipScene = React.forwardRef<
 
   return (
     <View
+      // Android TextureView can collapse out of the hierarchy without this.
+      collapsable={false}
       style={[styles.container, {backgroundColor: canvasBackground}]}
       onLayout={onLayout}>
       {layout.width > 0 && layout.height > 0 ? (
@@ -801,6 +808,7 @@ export const CoinFlipScene = React.forwardRef<
           // Remount only on theme change — resizing from result text must not
           // tear down an in-flight toss (that left the Flip button stuck).
           key={`coin-gl-${colorScheme}`}
+          collapsable={false}
           style={{
             width: layout.width,
             height: layout.height,
