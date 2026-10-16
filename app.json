@@ -63,10 +63,6 @@
     "androidStatusBar": {
       "backgroundColor": "#F5F5F5"
     },
-    "androidNavigationBar": {
-      "backgroundColor": "#F5F5F5",
-      "barStyle": "dark-content"
-    },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png",
@@ -98,12 +94,11 @@
         {
           "ios": {
             "useFrameworks": "static",
-            "forceStaticLinking": ["RNFBApp", "RNFBMessaging"],
-            "enableSceneSupport": true
+            "forceStaticLinking": ["RNFBApp", "RNFBMessaging"]
           },
           "android": {
-            "enableMinifyInReleaseBuilds": false,
-            "enableShrinkResourcesInReleaseBuilds": false
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
           }
         }
       ],
@@ -125,7 +120,7 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
-      "@xmartlabs/react-native-line",
+      "./plugins/withLineSDK",
       "expo-web-browser",
       "expo-font",
       "expo-image",
