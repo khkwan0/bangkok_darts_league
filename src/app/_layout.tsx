@@ -22,7 +22,7 @@ import {DarkTheme, DefaultTheme, ThemeProvider} from "expo-router/react-navigati
 import * as Sentry from '@sentry/react-native'
 import {useFonts} from 'expo-font'
 import * as Notifications from 'expo-notifications'
-import {router, Stack} from 'expo-router'
+import {enableLegacyHeaderAppearance, router, Stack} from 'expo-router'
 import {useEffect} from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -35,6 +35,9 @@ import {
 import {GestureHandlerRootView} from 'react-native-gesture-handler'
 import {SafeAreaProvider} from 'react-native-safe-area-context'
 import '../../global.css'
+
+// SDK 58 defaults to transparent Liquid Glass headers on iOS 26+; restore opaque.
+enableLegacyHeaderAppearance()
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN
 

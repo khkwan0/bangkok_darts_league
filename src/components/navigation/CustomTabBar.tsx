@@ -103,7 +103,12 @@ function TabBarItem({
   )
 }
 
-export function CustomTabBar({state, descriptors, navigation}: BottomTabBarProps) {
+export function CustomTabBar({
+  state,
+  descriptors,
+  emitter,
+  navigateToTab,
+}: BottomTabBarProps) {
   const insets = useSafeAreaInsets()
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
@@ -176,19 +181,20 @@ export function CustomTabBar({state, descriptors, navigation}: BottomTabBarProps
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
       }
 
-      const event = navigation.emit({
+      // SDK 58 tabBar props: emitter + navigateToTab (navigation removed).
+      const event = emitter.emit({
         type: 'tabPress',
         target: route.key,
         canPreventDefault: true,
       })
 
       if (!isFocused && !event.defaultPrevented) {
-        navigation.navigate(route.name, route.params)
+        navigateToTab(route.key)
       }
     }
 
     const onLongPress = () => {
-      navigation.emit({
+      emitter.emit({
         type: 'tabLongPress',
         target: route.key,
       })

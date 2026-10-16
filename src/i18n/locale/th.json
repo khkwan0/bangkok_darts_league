@@ -583,7 +583,6 @@
   "step": "ขั้นตอน",
   "success": "สำเร็จ",
   "successfully_registered": "ลงทะเบียนเรียบร้อยแล้ว",
-  "team": "ทีม",
   "team_created": "ส่งทีมแล้ว ทีมต้องได้รับการอนุมัติจากผู้ดูแลระบบ และจะไม่แสดงในรายชื่อทีมจนกว่าจะได้รับการอนุมัติ",
   "team_requires_admin_approval": "ทีมใหม่ต้องได้รับการอนุมัติจากผู้ดูแลระบบ และจะไม่แสดงในรายชื่อทีมจนกว่าจะได้รับการอนุมัติ",
   "team_id": "รหัสทีม",
@@ -759,7 +758,7 @@
   "home_panels_use_league_default": "Use league default",
   "home_panels_reset_sport_default": "Reset to sport default",
   "hide": "Hide",
-  "expand": "Expand",
+  "expand": "ขยาย",
   "total": "Total",
   "format_gold_silver_bronze": "ทอง / เงิน / ทองแดง",
   "cups_gold": "ถ้วยทอง",
@@ -926,12 +925,13 @@
   "highlight_week_board_hint": "ผู้เล่นเด่นตามตัวกรองที่เลือก",
   "stats_home_highlights_hint": "นักกีฬาแห่งสัปดาห์และไฮไลต์รายสัปดาห์",
   "unattached": "ไม่มีทีม",
-  "expand": "ขยาย",
   "weekly_spotlight_hot_hand": "มือร้อน",
   "weekly_spotlight_perfect_night": "คืนเพอร์เฟกต์",
   "weekly_spotlight_iron_man": "ไอรอนแมน",
   "weekly_spotlight_doubles_star": "ดาวคู่",
   "weekly_spotlight_ton_machine": "เครื่องตัน",
   "weekly_spotlight_closer": "คลอสเซอร์",
-  "weekly_spotlight_golden_break": "โกลเดนเบรค"
+  "weekly_spotlight_golden_break": "โกลเดนเบรค",
+  "signing_you_in": "กำลังเข้าสู่ระบบ…",
+  "signing_you_in_hint": "กำลังยืนยันกับเซิร์ฟเวอร์ อาจใช้เวลาสักครู่"
 }

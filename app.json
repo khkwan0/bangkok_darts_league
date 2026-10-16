@@ -120,6 +120,7 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
+      "./plugins/withFirebaseAppDelegate",
       "./plugins/withLineSDK",
       "expo-web-browser",
       "expo-font",

@@ -68,6 +68,7 @@ export default function AdSpot(props: any) {
         margin: 10,
         padding: 16,
         borderRadius: 16,
+        backgroundColor: colorScheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
         shadowColor: '#000',
         shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.1,

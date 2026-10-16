@@ -569,7 +569,6 @@
   "step": "Step",
   "success": "Success",
   "successfully_registered": "You 'ave successfully registered your account, me old china!",
-  "team": "Team",
   "team_created": "Team sent in. Needs the admin's say-so and won't show in the teams list till it's approved.",
   "team_requires_admin_approval": "New teams need the admin's say-so and won't show in the teams list till they're approved.",
   "tournaments": "Tournaments",
@@ -782,5 +781,7 @@
   "admin_support_delete_confirm_body": "Soft-deletes it. Members won't see it; admins can still find it under Deleted.",
   "admin_support_delete_failed": "Couldn't bin this ticket. Have another go.",
   "admin_support_deleted_badge": "Deleted",
-  "admin_support_deleted_at": "Deleted {date}"
+  "admin_support_deleted_at": "Deleted {date}",
+  "signing_you_in": "Signin' you in…",
+  "signing_you_in_hint": "Finishin' login with the server. Might take a mo."
 }

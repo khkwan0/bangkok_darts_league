@@ -4,12 +4,21 @@ import {
   AppleButton,
   appleAuth,
 } from '@invertase/react-native-apple-authentication'
-import {useNavigation} from "expo-router/react-navigation"
+import {useNavigation} from 'expo-router/react-navigation'
 import Line from '@xmartlabs/react-native-line'
-import { router, useLocalSearchParams } from 'expo-router';
+import {router, useLocalSearchParams} from 'expo-router'
 import React, {useEffect} from 'react'
 import {useTranslation} from 'react-i18next'
-import {Dimensions, Image, Pressable, ScrollView, View} from 'react-native'
+import {
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native'
 // import {AccessToken, LoginManager} from 'react-native-fbsdk-next'
 
 import config from '@/config'
@@ -22,15 +31,16 @@ interface StatusType {
 
 export default function AuthHome() {
   const [err, setErr] = React.useState('')
-  const [lineSuccess, setLineSuccess] = React.useState(true)
-  const [loading, setLoading] = React.useState(false)
-  const {SocialLogin, UserLogin, Logout} = useAccount()
+  /** True while finishing SocialLogin with the backend after OAuth returns. */
+  const [completingLogin, setCompletingLogin] = React.useState(false)
+  const {SocialLogin} = useAccount()
   const [disabledLoginButton, setDisabledLoginButton] = React.useState(false)
   const colorScheme = useColorScheme()
   const width = Dimensions.get('window').width
   const {t} = useTranslation()
   const {from} = useLocalSearchParams()
   const navigation = useNavigation()
+  const busy = disabledLoginButton || completingLogin
 
   useEffect(() => {
     navigation.setOptions({
@@ -49,7 +59,8 @@ export default function AuthHome() {
       setDisabledLoginButton(true)
       const lineRes = await Line.login({})
       if (typeof lineRes.accessToken !== 'undefined') {
-        setLineSuccess(true)
+        // OAuth UI is gone — show progress while the server finishes login.
+        setCompletingLogin(true)
         const res: StatusType = (await SocialLogin('line', lineRes))!
         if (typeof res?.status !== 'undefined' && res.status === 'ok') {
           router.back()
@@ -81,7 +92,7 @@ export default function AuthHome() {
         setErr(message || 'Unable to Login with LINE')
       }
     } finally {
-      setLoading(false)
+      setCompletingLogin(false)
       setDisabledLoginButton(false)
     }
   }
@@ -97,6 +108,7 @@ export default function AuthHome() {
       }
       const data = await AccessToken.getCurrentAccessToken()
       if (data) {
+        setCompletingLogin(true)
         const res: StatusType = (await SocialLogin('facebook', data))!
         if (typeof res.status !== 'undefined' && res.status === 'ok') {
           router.back()
@@ -105,7 +117,7 @@ export default function AuthHome() {
     } catch (e) {
       setErr('Unable to Login')
     } finally {
-      setLoading(false)
+      setCompletingLogin(false)
       setDisabledLoginButton(false)
     }
   }
@@ -115,7 +127,6 @@ export default function AuthHome() {
     try {
       setErr('')
       setDisabledLoginButton(true)
-      setLoading(true)
 
       // performs login request
       const appleAuthRequestResponse = await appleAuth.performRequest({
@@ -132,6 +143,7 @@ export default function AuthHome() {
 
       // use credentialState response to ensure the user is authenticated
       if (credentialState === appleAuth.State.AUTHORIZED) {
+        setCompletingLogin(true)
         const res: StatusType = (await SocialLogin(
           'apple',
           appleAuthRequestResponse,
@@ -164,54 +176,59 @@ export default function AuthHome() {
         setErr('Unable to sign in with Apple. Please try again.')
       }
     } finally {
-      setLoading(false)
+      setCompletingLogin(false)
       setDisabledLoginButton(false)
     }
   }
 
   return (
-    <ScrollView className="flex-1 bg-white dark:bg-gray-900">
-      <View className="flex-1 justify-center items-center my-16">
-        <Image
-          source={require('@/assets/logo.png')}
-          className="w-32 h-32 mb-8"
-          resizeMode="contain"
-        />
-        <Text type="title" className="text-center text-2xl mb-2">
-          Bangkok Darts League
-        </Text>
-        <Text className="text-center text-gray-600 dark:text-gray-400 mb-12">
-          Sign in to access your account
-        </Text>
+    <View className="flex-1 bg-white dark:bg-gray-900">
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={completingLogin ? styles.dimmedContent : undefined}
+        pointerEvents={busy ? 'none' : 'auto'}>
+        <View className="flex-1 justify-center items-center my-16">
+          <Image
+            source={require('@/assets/logo.png')}
+            className="w-32 h-32 mb-8"
+            resizeMode="contain"
+          />
+          <Text type="title" className="text-center text-2xl mb-2">
+            Bangkok Darts League
+          </Text>
+          <Text className="text-center text-gray-600 dark:text-gray-400 mb-12">
+            Sign in to access your account
+          </Text>
 
-        {err ? (
-          <View className="bg-red-100 dark:bg-red-900/30 px-6 py-4 rounded-xl mb-6 border border-red-200 dark:border-red-800">
-            <Text className="text-red-600 dark:text-red-400 text-center font-medium">
-              {err}
-            </Text>
-          </View>
-        ) : null}
-
-        <View className="w-full px-6 space-y-4 my-4">
-          <Pressable
-            disabled={disabledLoginButton}
-            onPress={() => HandleLineLogin()}
-            className="bg-[#06c755] rounded-[8px] overflow-hidden my-1">
-            <View className="flex-row items-center justify-center h-[48px] px-4">
-              <Image
-                source={require('@/assets/social/line/btn_base.png')}
-                className="w-12 h-12"
-                style={{marginRight: 12}}
-              />
-              <Text className="text-white font-medium text-[18px]">
-                {t('continue_with_line')}
+          {err ? (
+            <View className="bg-red-100 dark:bg-red-900/30 px-6 py-4 rounded-xl mb-6 border border-red-200 dark:border-red-800">
+              <Text className="text-red-600 dark:text-red-400 text-center font-medium">
+                {err}
               </Text>
             </View>
-          </Pressable>
+          ) : null}
 
-          {/*
+          <View className="w-full px-6 space-y-4 my-4">
+            <Pressable
+              disabled={busy}
+              onPress={() => HandleLineLogin()}
+              className="bg-[#06c755] rounded-[8px] overflow-hidden my-1"
+              style={busy ? styles.buttonDisabled : undefined}>
+              <View className="flex-row items-center justify-center h-[48px] px-4">
+                <Image
+                  source={require('@/assets/social/line/btn_base.png')}
+                  className="w-12 h-12"
+                  style={{marginRight: 12}}
+                />
+                <Text className="text-white font-medium text-[18px]">
+                  {t('continue_with_line')}
+                </Text>
+              </View>
+            </Pressable>
+
+            {/*
           <Pressable
-            disabled={disabledLoginButton}
+            disabled={busy}
             onPress={() => HandleFacebookLogin()}
             className="bg-[#1877f2] rounded-[8px] overflow-hidden my-1">
             <View className="flex-row items-center justify-center h-[48px] px-4">
@@ -226,44 +243,108 @@ export default function AuthHome() {
             </View>
           </Pressable>
           */}
-          {Platform.OS !== 'android' && Platform.OS !== 'web' && (
-            <View className="my-1">
-              <AppleButton
-                buttonStyle={
-                  colorScheme === 'dark'
-                    ? AppleButton.Style.WHITE
-                    : AppleButton.Style.BLACK
-                }
-                buttonType={AppleButton.Type.SIGN_IN}
-                style={{
-                  width: '100%',
-                  height: 48,
-                  borderRadius: 12,
-                }}
-                onPress={() => HandleAppleSignIn()}
-              />
-            </View>
-          )}
+            {Platform.OS !== 'android' && Platform.OS !== 'web' && (
+              <View
+                className="my-1"
+                style={busy ? styles.buttonDisabled : undefined}
+                pointerEvents={busy ? 'none' : 'auto'}>
+                <AppleButton
+                  buttonStyle={
+                    colorScheme === 'dark'
+                      ? AppleButton.Style.WHITE
+                      : AppleButton.Style.BLACK
+                  }
+                  buttonType={AppleButton.Type.SIGN_IN}
+                  style={{
+                    width: width - 48,
+                    height: 48,
+                    borderRadius: 12,
+                  }}
+                  onPress={() => HandleAppleSignIn()}
+                />
+              </View>
+            )}
 
-          <Pressable
-            onPress={() =>
-              router.push({pathname: '/Auth/Email', params: {from: from}})
-            }
-            className="bg-gray-100 dark:bg-gray-800 rounded-[8px] overflow-hidden my-1">
-            <View className="flex-row items-center justify-center h-[48px] px-4">
-              <MaterialCommunityIcons
-                name="email-outline"
-                size={24}
-                style={{marginRight: 12}}
-                color={colorScheme === 'dark' ? '#fff' : '#000'}
-              />
-              <Text className="font-medium text-[18px] text-gray-900 dark:text-white">
-                {t('continue_with_email')}
-              </Text>
-            </View>
-          </Pressable>
+            <Pressable
+              disabled={busy}
+              onPress={() =>
+                router.push({pathname: '/Auth/Email', params: {from: from}})
+              }
+              className="bg-gray-100 dark:bg-gray-800 rounded-[8px] overflow-hidden my-1"
+              style={busy ? styles.buttonDisabled : undefined}>
+              <View className="flex-row items-center justify-center h-[48px] px-4">
+                <MaterialCommunityIcons
+                  name="email-outline"
+                  size={24}
+                  style={{marginRight: 12}}
+                  color={colorScheme === 'dark' ? '#fff' : '#000'}
+                />
+                <Text className="font-medium text-[18px] text-gray-900 dark:text-white">
+                  {t('continue_with_email')}
+                </Text>
+              </View>
+            </Pressable>
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+
+      <Modal
+        visible={completingLogin}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {}}>
+        <View
+          style={styles.overlay}
+          accessibilityRole="progressbar"
+          accessibilityLabel={t('signing_you_in')}>
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor:
+                  colorScheme === 'dark' ? '#1f2937' : '#ffffff',
+              },
+            ]}>
+            <ActivityIndicator
+              size="large"
+              color={colorScheme === 'dark' ? '#fff' : '#111827'}
+            />
+            <Text
+              type="defaultSemiBold"
+              className="text-center text-lg mt-4 text-gray-900 dark:text-white">
+              {t('signing_you_in')}
+            </Text>
+            <Text className="text-center text-gray-600 dark:text-gray-400 mt-2">
+              {t('signing_you_in_hint')}
+            </Text>
+          </View>
+        </View>
+      </Modal>
+    </View>
   )
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 32,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  dimmedContent: {
+    opacity: 0.55,
+  },
+  buttonDisabled: {
+    opacity: 0.55,
+  },
+})

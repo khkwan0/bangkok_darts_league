@@ -1,9 +1,18 @@
-const { withAppDelegate, withInfoPlist, withPlugins } =
-  require('expo/config-plugins')
+const {
+  withAppDelegate,
+  withInfoPlist,
+  withPlugins,
+  withXcodeProject,
+} = require('expo/config-plugins')
 const generateCode = require('@expo/config-plugins/build/utils/generateCode')
+const {
+  createBuildSourceFile,
+} = require('@expo/config-plugins/build/ios/XcodeProjectFile')
+const {getProjectName} = require('@expo/config-plugins/build/ios/utils/Xcodeproj')
 
 const LINE_URL_SCHEME = 'line3rdp.$(PRODUCT_BUNDLE_IDENTIFIER)'
 const LINE_QUERY_SCHEME = 'lineauth2'
+const SCENE_DELEGATE_CLASS = '$(PRODUCT_MODULE_NAME).SceneDelegate'
 
 const OLD_OPEN_URL_ANCHOR =
   /return\s+super\.application\(\s*app,\s*open:\s*url,\s*options:\s*options\s*\)\s*\|\|\s*RCTLinkingManager\.application\(\s*app,\s*open:\s*url,\s*options:\s*options\s*\)/
@@ -23,17 +32,58 @@ const LINE_OPEN_URL_METHOD = `  public override func application(
     return super.application(app, open: url, options: options)
   }`
 
+const SCENE_DELEGATE_CONTENTS = `internal import Expo
+import react_native_line
+
+@objc(SceneDelegate)
+class SceneDelegate: ExpoAppSceneDelegate {
+  // LINE Login returns via line3rdp.<bundle-id>://…
+  // SDK 58's scene forwarder still notifies RCTLinking after AppDelegate
+  // handles the URL, so Expo Router opens +not-found. Consume LINE URLs here
+  // and do not forward them to super / Expo Router.
+  public override func scene(
+    _ scene: UIScene,
+    openURLContexts URLContexts: Set<UIOpenURLContext>
+  ) {
+    var passthrough = Set<UIOpenURLContext>()
+    for context in URLContexts {
+      var options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+      if let sourceApplication = context.options.sourceApplication {
+        options[.sourceApplication] = sourceApplication
+      }
+      if let annotation = context.options.annotation {
+        options[.annotation] = annotation
+      }
+      options[.openInPlace] = context.options.openInPlace
+
+      if LineLogin.application(
+        UIApplication.shared,
+        open: context.url,
+        options: options
+      ) {
+        continue
+      }
+      passthrough.insert(context)
+    }
+    if !passthrough.isEmpty {
+      super.scene(scene, openURLContexts: passthrough)
+    }
+  }
+}
+`
+
 /**
  * @xmartlabs/react-native-line's config plugin still anchors on the pre–SDK 58
  * AppDelegate linking return. SDK 58's scene-based template no longer has that
- * method, so prebuild fails. This local plugin keeps the Info.plist URL schemes
- * and injects a full openURL override that Expo forwards from SceneDelegate.
+ * method, so prebuild fails. This local plugin keeps the Info.plist URL schemes,
+ * injects AppDelegate openURL for LineLogin, and overrides SceneDelegate so LINE
+ * callbacks are not also delivered to Expo Router.
  */
 function withLineAppDelegate(config) {
   return withAppDelegate(config, (config) => {
     if (config.modResults.language !== 'swift') {
       throw new Error(
-        'withLineSDK: only Swift AppDelegate is supported (Expo SDK 58+).'
+        'withLineSDK: only Swift AppDelegate is supported (Expo SDK 58+).',
       )
     }
 
@@ -50,7 +100,7 @@ function withLineAppDelegate(config) {
       })
       if (!withImport.didMerge) {
         throw new Error(
-          'withLineSDK: failed to add import react_native_line to AppDelegate.swift'
+          'withLineSDK: failed to add import react_native_line to AppDelegate.swift',
         )
       }
       contents = withImport.contents
@@ -69,7 +119,7 @@ function withLineAppDelegate(config) {
         })
         if (!withOpenUrl.didMerge) {
           throw new Error(
-            'withLineSDK: failed to inject LineLogin into existing openURL handler'
+            'withLineSDK: failed to inject LineLogin into existing openURL handler',
           )
         }
         contents = withOpenUrl.contents
@@ -85,7 +135,7 @@ function withLineAppDelegate(config) {
         })
         if (!withMethod.didMerge) {
           throw new Error(
-            'withLineSDK: failed to add application(_:open:options:) for LineLogin (SDK 58 AppDelegate template changed?)'
+            'withLineSDK: failed to add application(_:open:options:) for LineLogin (SDK 58 AppDelegate template changed?)',
           )
         }
         contents = withMethod.contents
@@ -97,16 +147,30 @@ function withLineAppDelegate(config) {
   })
 }
 
+function withLineSceneDelegate(config) {
+  return withXcodeProject(config, (config) => {
+    const projectName = getProjectName(config.modRequest.projectRoot)
+    config.modResults = createBuildSourceFile({
+      project: config.modResults,
+      nativeProjectRoot: config.modRequest.platformProjectRoot,
+      filePath: `${projectName}/SceneDelegate.swift`,
+      fileContents: SCENE_DELEGATE_CONTENTS,
+      overwrite: true,
+    })
+    return config
+  })
+}
+
 function withLineInfoPlist(config) {
   return withInfoPlist(config, (config) => {
     const urlTypes = config.modResults.CFBundleURLTypes ?? []
     const hasLineScheme = urlTypes.some((entry) =>
-      (entry.CFBundleURLSchemes ?? []).includes(LINE_URL_SCHEME)
+      (entry.CFBundleURLSchemes ?? []).includes(LINE_URL_SCHEME),
     )
     if (!hasLineScheme) {
       config.modResults.CFBundleURLTypes = [
         ...urlTypes,
-        { CFBundleURLSchemes: [LINE_URL_SCHEME] },
+        {CFBundleURLSchemes: [LINE_URL_SCHEME]},
       ]
     }
 
@@ -118,10 +182,23 @@ function withLineInfoPlist(config) {
       ]
     }
 
+    // Point the scene at our SceneDelegate so LINE callbacks are not forwarded
+    // to Expo Router via EXExpoAppSceneDelegate / SceneEventForwarder.
+    const sceneConfigs =
+      config.modResults.UIApplicationSceneManifest?.UISceneConfigurations
+        ?.UIWindowSceneSessionRoleApplication
+    if (Array.isArray(sceneConfigs) && sceneConfigs[0]) {
+      sceneConfigs[0].UISceneDelegateClassName = SCENE_DELEGATE_CLASS
+    }
+
     return config
   })
 }
 
 module.exports = function withLineSDK(config) {
-  return withPlugins(config, [withLineAppDelegate, withLineInfoPlist])
+  return withPlugins(config, [
+    withLineAppDelegate,
+    withLineSceneDelegate,
+    withLineInfoPlist,
+  ])
 }
