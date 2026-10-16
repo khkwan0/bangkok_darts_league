@@ -269,16 +269,16 @@ PLAY_TRACK=beta npm run archive_android
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `MAX_CPUS` | `4` | Gradle workers / Xcode `-jobs` |
-| `MAX_HEAP_MB` | `2048` | Gradle daemon heap |
+| `MAX_CPUS` | `2` | Gradle workers / Xcode `-jobs` |
+| `MAX_HEAP_MB` | `4096` | Gradle daemon heap (R8 minify needs ~4g) |
 | `MAX_METASPACE_MB` | `768` | Gradle metaspace |
-| `KOTLIN_HEAP_MB` | `1024` | Kotlin daemon heap |
+| `KOTLIN_HEAP_MB` | `768` | Kotlin daemon heap |
 | `NODE_HEAP_MB` | `1536` | Metro bundler (`NODE_OPTIONS`) |
 
-Example:
+Example (tighter on a low-RAM machine — may still OOM during R8):
 
 ```bash
-MAX_CPUS=2 MAX_HEAP_MB=2048 npm run archive_android
+MAX_CPUS=2 MAX_HEAP_MB=3072 npm run archive_android
 ```
 
 ### Local secrets

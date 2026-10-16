@@ -2,17 +2,17 @@
 # Sourced by archive_android.sh / deploy_android.sh after `expo prebuild`.
 #
 # Env overrides:
-#   MAX_CPUS          default 4
-#   MAX_HEAP_MB       Gradle daemon heap (default 2048)
+#   MAX_CPUS          default 2 (leave RAM for R8 on 8GB Macs)
+#   MAX_HEAP_MB       Gradle daemon heap (default 4096; R8 minify needs ~4g)
 #   MAX_METASPACE_MB  Gradle MaxMetaspaceSize (default 768)
-#   KOTLIN_HEAP_MB    Kotlin daemon heap (default 1024)
+#   KOTLIN_HEAP_MB    Kotlin daemon heap (default 768)
 #   NODE_HEAP_MB      Metro/React Native bundler heap (default 1536)
 
 apply_android_gradle_limits() {
-  MAX_CPUS="${MAX_CPUS:-4}"
-  MAX_HEAP_MB="${MAX_HEAP_MB:-2048}"
+  MAX_CPUS="${MAX_CPUS:-2}"
+  MAX_HEAP_MB="${MAX_HEAP_MB:-4096}"
   MAX_METASPACE_MB="${MAX_METASPACE_MB:-768}"
-  KOTLIN_HEAP_MB="${KOTLIN_HEAP_MB:-1024}"
+  KOTLIN_HEAP_MB="${KOTLIN_HEAP_MB:-768}"
   NODE_HEAP_MB="${NODE_HEAP_MB:-1536}"
 
   local props="android/gradle.properties"
