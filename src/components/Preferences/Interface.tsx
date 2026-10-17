@@ -6,7 +6,6 @@ import {useTheme} from "expo-router/react-navigation"
 import {useLeagueContext} from '../../context/LeagueContext'
 import {useAccount} from '@/hooks/useAccount'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import HomePanelsPreference from '@/components/Preferences/HomePanelsPreference'
 
 const Interface = () => {
@@ -21,13 +20,6 @@ const Interface = () => {
 
   const loadPreferences = async () => {
     try {
-      // Load match card preference
-      const storedMatchCard = await AsyncStorage.getItem('opt_into_new')
-      if (storedMatchCard !== null) {
-        const {optIn} = JSON.parse(storedMatchCard)
-        dispatch({type: 'SET_MATCH_CARD_DESIGN', payload: optIn})
-      }
-
       // Load live scores preference
       const storedLiveScores = await AsyncStorage.getItem('show_live_scores')
       if (storedLiveScores !== null) {
@@ -58,15 +50,6 @@ const Interface = () => {
       }
     } catch (error) {
       console.error('Error loading preferences:', error)
-    }
-  }
-
-  const handleMatchCardToggle = async (value: boolean) => {
-    try {
-      dispatch({type: 'SET_MATCH_CARD_DESIGN', payload: value})
-      await AsyncStorage.setItem('opt_into_new', JSON.stringify({optIn: value}))
-    } catch (error) {
-      console.error('Error saving match card preference:', error)
     }
   }
 
@@ -125,36 +108,6 @@ const Interface = () => {
 
   return (
     <View style={{padding: 16}}>
-      {/* Match Card Design Section */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 16,
-        }}>
-        <View style={{flex: 1}}>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: 'bold',
-              color: colors.text,
-              marginBottom: 4,
-            }}>
-            {t('match_card_design')}
-          </Text>
-          <Text style={{color: colors.text, opacity: 0.7}}>
-            {state.isNewMatchCard
-              ? t('new_match_card_description')
-              : t('old_match_card_description')}
-          </Text>
-        </View>
-        <AppSwitch
-          value={state.isNewMatchCard}
-          onValueChange={handleMatchCardToggle}
-        />
-      </View>
-
       {/* Live Scores Section */}
       <View
         style={{
@@ -294,28 +247,6 @@ const Interface = () => {
           onValueChange={handleOtaAutoReloadToggle}
         />
       </View>
-
-      {!state.isNewMatchCard && (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: colors.card,
-            padding: 12,
-            borderRadius: 8,
-            marginTop: 8,
-          }}>
-          <MCI
-            name="information-outline"
-            size={20}
-            color={colors.text}
-            style={{marginRight: 8}}
-          />
-          <Text style={{color: colors.text, flex: 1}}>
-            {t('old_match_card')}
-          </Text>
-        </View>
-      )}
 
       <HomePanelsPreference />
     </View>

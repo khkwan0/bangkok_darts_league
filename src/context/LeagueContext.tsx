@@ -457,19 +457,7 @@ export const LeagueProvider = ({children}: any) => {
   }, [])
 
   useEffect(() => {
-    const getMatchCardDesign = async () => {
-      try {
-        const _design = await AsyncStorage.getItem('opt_into_new')
-        if (_design) {
-          const design = JSON.parse(_design)
-          if (typeof design?.optIn === 'boolean') {
-            dispatch({type: 'SET_MATCH_CARD_DESIGN', payload: design.optIn})
-          }
-        }
-      } catch (e) {
-        console.error(e)
-      }
-    }
+    // Match card design: always use the old card for now (isNewMatchCard defaults to false)
     const getShowLiveScores = async () => {
       try {
         const _showLiveScores = await AsyncStorage.getItem('show_live_scores')
@@ -559,7 +547,6 @@ export const LeagueProvider = ({children}: any) => {
         console.error(e)
       }
     }
-    getMatchCardDesign()
     getShowLiveScores()
     getShowForumFabBadge()
     getHideBettingUi()
