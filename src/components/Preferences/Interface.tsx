@@ -1,8 +1,9 @@
 import AppSwitch from '@/components/AppSwitch'
 import React, {useEffect} from 'react'
-import {View, Text} from 'react-native'
+import {View, Text, ScrollView} from 'react-native'
 import {useTranslation} from 'react-i18next'
 import {useTheme} from "expo-router/react-navigation"
+import {useSafeAreaInsets} from 'react-native-safe-area-context'
 import {useLeagueContext} from '../../context/LeagueContext'
 import {useAccount} from '@/hooks/useAccount'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -11,6 +12,7 @@ import HomePanelsPreference from '@/components/Preferences/HomePanelsPreference'
 const Interface = () => {
   const {t} = useTranslation()
   const {colors} = useTheme()
+  const insets = useSafeAreaInsets()
   const {state, dispatch} = useLeagueContext()
   const account = useAccount()
 
@@ -107,7 +109,13 @@ const Interface = () => {
   }
 
   return (
-    <View style={{padding: 16}}>
+    <ScrollView
+      style={{flex: 1}}
+      contentContainerStyle={{
+        padding: 16,
+        paddingBottom: insets.bottom + 24,
+      }}
+      keyboardShouldPersistTaps="handled">
       {/* Live Scores Section */}
       <View
         style={{
@@ -249,7 +257,7 @@ const Interface = () => {
       </View>
 
       <HomePanelsPreference />
-    </View>
+    </ScrollView>
   )
 }
 
