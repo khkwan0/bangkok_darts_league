@@ -608,6 +608,25 @@ export const useAccount = () => {
     }
   }
 
+  async function SetOtaAutoReload(enabled) {
+    try {
+      const next = Boolean(enabled)
+      const preferences = {
+        ...(state.user?.preferences || {}),
+        ota_auto_reload: next,
+      }
+      dispatch({
+        type: 'SET_PREFERENCES',
+        payload: {ota_auto_reload: next},
+      })
+      await SavePreferences(preferences)
+      return {status: 'ok'}
+    } catch (e) {
+      console.error(e)
+      return {status: 'error'}
+    }
+  }
+
   async function ToggleFavoriteVenue(venueId) {
     try {
       const id = Number(venueId)
@@ -712,6 +731,7 @@ export const useAccount = () => {
     SetSoundNotifications,
     SetFavoriteVenues,
     SetFabQuickActions,
+    SetOtaAutoReload,
     ToggleFavoriteVenue,
     SetUpEmail,
     SaveLanguage,

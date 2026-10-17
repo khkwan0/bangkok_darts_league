@@ -72,7 +72,14 @@ function DartChip({
 }
 
 /** Per-game first dart selector (darts scoresheet rows). */
-export default function FirstDart({frameIndex}: {frameIndex: number}) {
+export default function FirstDart({
+  frameIndex,
+  /** When set, only that side’s chip (ledger / chips panels). Omit for classic side-by-side row. */
+  side,
+}: {
+  frameIndex: number
+  side?: 'home' | 'away'
+}) {
   const {state, UpdateFirstDart}: any = useMatchContext()
   const {state: leagueState}: any = useLeagueContext()
   const user = leagueState.user
@@ -129,6 +136,30 @@ export default function FirstDart({frameIndex}: {frameIndex: number}) {
   const homeId = state.matchInfo.home_team_id
   const awayId = state.matchInfo.away_team_id
 
+  function chipFor(which: 'home' | 'away') {
+    const teamId = which === 'home' ? homeId : awayId
+    const palette = which === 'home' ? theme.home : theme.away
+    return (
+      <DartChip
+        selected={liveFirstDart === teamId}
+        accent={palette.button}
+        border={theme.divider}
+        muted={theme.muted}
+        label={
+          loading && liveFirstDart !== teamId
+            ? t('updating')
+            : t('first_break')
+        }
+        onSelect={() => HandleFirstDart(teamId)}
+        onClear={HandleClearFirstDart}
+      />
+    )
+  }
+
+  if (side) {
+    return <View style={{alignSelf: 'flex-start'}}>{chipFor(side)}</View>
+  }
+
   return (
     <View
       style={{
@@ -138,37 +169,9 @@ export default function FirstDart({frameIndex}: {frameIndex: number}) {
         paddingBottom: 8,
         gap: 8,
       }}>
-      <View style={{flex: 1, alignItems: 'center'}}>
-        <DartChip
-          selected={liveFirstDart === homeId}
-          accent={theme.home.button}
-          border={theme.divider}
-          muted={theme.muted}
-          label={
-            loading && liveFirstDart !== homeId
-              ? t('updating')
-              : t('first_break')
-          }
-          onSelect={() => HandleFirstDart(homeId)}
-          onClear={HandleClearFirstDart}
-        />
-      </View>
+      <View style={{flex: 1, alignItems: 'center'}}>{chipFor('home')}</View>
       <View style={{width: 28}} />
-      <View style={{flex: 1, alignItems: 'center'}}>
-        <DartChip
-          selected={liveFirstDart === awayId}
-          accent={theme.away.button}
-          border={theme.divider}
-          muted={theme.muted}
-          label={
-            loading && liveFirstDart !== awayId
-              ? t('updating')
-              : t('first_break')
-          }
-          onSelect={() => HandleFirstDart(awayId)}
-          onClear={HandleClearFirstDart}
-        />
-      </View>
+      <View style={{flex: 1, alignItems: 'center'}}>{chipFor('away')}</View>
     </View>
   )
 }

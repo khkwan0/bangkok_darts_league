@@ -1,6 +1,6 @@
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import {useLeagueContext} from '@/context/LeagueContext'
 import * as Updates from 'expo-updates'
 import {useEffect, useRef, useState} from 'react'
 import {useTranslation} from 'react-i18next'
@@ -13,30 +13,26 @@ import {
   Platform,
 } from 'react-native'
 
-const OTA_AUTO_RELOAD_KEY = 'ota_auto_reload'
-
-async function readAutoReloadPreference(): Promise<boolean> {
-  try {
-    const stored = await AsyncStorage.getItem(OTA_AUTO_RELOAD_KEY)
-    if (!stored) return false
-    const parsed = JSON.parse(stored)
-    return typeof parsed?.enabled === 'boolean' ? parsed.enabled : false
-  } catch {
-    return false
-  }
-}
-
 /**
  * Checks for OTA updates on launch and when returning to foreground.
  * Downloads with a visible modal, then either prompts to restart or
- * auto-reloads when Interface → Silent updates is enabled.
+ * auto-reloads when user preference ota_auto_reload is enabled (default on).
  */
 export default function OTAUpdatePrompt() {
   const {t} = useTranslation()
+  const {state} = useLeagueContext()
   const [downloading, setDownloading] = useState(false)
   const busyRef = useRef(false)
   const dismissedUpdateIdRef = useRef<string | null>(null)
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
+  const autoReloadRef = useRef(
+    state.user?.preferences?.ota_auto_reload !== false,
+  )
+
+  useEffect(() => {
+    autoReloadRef.current =
+      state.user?.preferences?.ota_auto_reload !== false
+  }, [state.user?.preferences?.ota_auto_reload])
 
   useEffect(() => {
     if (Platform.OS === 'web' || __DEV__ || !Updates.isEnabled) {
@@ -61,7 +57,7 @@ export default function OTAUpdatePrompt() {
           return
         }
 
-        const autoReload = await readAutoReloadPreference()
+        const autoReload = autoReloadRef.current
 
         if (!autoReload) {
           setDownloading(true)

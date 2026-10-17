@@ -254,7 +254,10 @@ export default function Frame({
     )
   }
 
-  const cardShell = (children: React.ReactNode) => (
+  const cardShell = (
+    children: React.ReactNode,
+    opts?: {showSharedFirstDart?: boolean},
+  ) => (
     <View
       style={[
         {
@@ -268,7 +271,9 @@ export default function Frame({
         theme.shadow,
       ]}>
       {titleBar()}
-      <FirstDart frameIndex={index} />
+      {opts?.showSharedFirstDart !== false ? (
+        <FirstDart frameIndex={index} />
+      ) : null}
       {children}
     </View>
   )
@@ -306,6 +311,9 @@ export default function Frame({
               {t('home')}
             </Text>
             <View style={{minWidth: 88}}>{winFor('home')}</View>
+          </View>
+          <View style={{marginBottom: 8}}>
+            <FirstDart frameIndex={index} side="home" />
           </View>
           <Player
             teamId={homeTeamId ?? 0}
@@ -356,6 +364,9 @@ export default function Frame({
             </Text>
             <View style={{minWidth: 88}}>{winFor('away')}</View>
           </View>
+          <View style={{marginBottom: 8}}>
+            <FirstDart frameIndex={index} side="away" />
+          </View>
           <Player
             teamId={awayTeamId ?? 0}
             side="away"
@@ -375,6 +386,7 @@ export default function Frame({
           {sideMetaExtras('away')}
         </View>
       </View>,
+      {showSharedFirstDart: false},
     )
   }
 
@@ -393,17 +405,26 @@ export default function Frame({
             borderColor: homeWon ? theme.home.accent : theme.home.border,
             opacity: winner && !homeWon ? 0.72 : 1,
           }}>
-          <Text
+          <View
             style={{
-              color: theme.home.ink,
-              fontWeight: '800',
-              fontSize: 11,
-              letterSpacing: 0.8,
-              textTransform: 'uppercase',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
               marginBottom: 10,
+              gap: 8,
             }}>
-            {t('home')}
-          </Text>
+            <Text
+              style={{
+                color: theme.home.ink,
+                fontWeight: '800',
+                fontSize: 11,
+                letterSpacing: 0.8,
+                textTransform: 'uppercase',
+              }}>
+              {t('home')}
+            </Text>
+            <FirstDart frameIndex={index} side="home" />
+          </View>
           <Player
             teamId={homeTeamId ?? 0}
             side="home"
@@ -453,17 +474,26 @@ export default function Frame({
             borderColor: awayWon ? theme.away.accent : theme.away.border,
             opacity: winner && !awayWon ? 0.72 : 1,
           }}>
-          <Text
+          <View
             style={{
-              color: theme.away.ink,
-              fontWeight: '800',
-              fontSize: 11,
-              letterSpacing: 0.8,
-              textTransform: 'uppercase',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
               marginBottom: 10,
+              gap: 8,
             }}>
-            {t('away')}
-          </Text>
+            <Text
+              style={{
+                color: theme.away.ink,
+                fontWeight: '800',
+                fontSize: 11,
+                letterSpacing: 0.8,
+                textTransform: 'uppercase',
+              }}>
+              {t('away')}
+            </Text>
+            <FirstDart frameIndex={index} side="away" />
+          </View>
           <Player
             teamId={awayTeamId ?? 0}
             side="away"
@@ -486,6 +516,7 @@ export default function Frame({
           {winFor('away')}
         </View>
       </View>,
+      {showSharedFirstDart: false},
     )
   }
 

@@ -4,6 +4,7 @@ import {View, Text} from 'react-native'
 import {useTranslation} from 'react-i18next'
 import {useTheme} from "expo-router/react-navigation"
 import {useLeagueContext} from '../../context/LeagueContext'
+import {useAccount} from '@/hooks/useAccount'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import HomePanelsPreference from '@/components/Preferences/HomePanelsPreference'
@@ -12,6 +13,7 @@ const Interface = () => {
   const {t} = useTranslation()
   const {colors} = useTheme()
   const {state, dispatch} = useLeagueContext()
+  const account = useAccount()
 
   useEffect(() => {
     loadPreferences()
@@ -53,12 +55,6 @@ const Interface = () => {
       if (storedPotw !== null) {
         const {show} = JSON.parse(storedPotw)
         dispatch({type: 'SET_SHOW_PLAYER_OF_THE_WEEK', payload: show})
-      }
-
-      const storedOtaAutoReload = await AsyncStorage.getItem('ota_auto_reload')
-      if (storedOtaAutoReload !== null) {
-        const {enabled} = JSON.parse(storedOtaAutoReload)
-        dispatch({type: 'SET_OTA_AUTO_RELOAD', payload: enabled})
       }
     } catch (error) {
       console.error('Error loading preferences:', error)
@@ -121,11 +117,7 @@ const Interface = () => {
 
   const handleOtaAutoReloadToggle = async (value: boolean) => {
     try {
-      dispatch({type: 'SET_OTA_AUTO_RELOAD', payload: value})
-      await AsyncStorage.setItem(
-        'ota_auto_reload',
-        JSON.stringify({enabled: value}),
-      )
+      await account.SetOtaAutoReload(value)
     } catch (error) {
       console.error('Error saving OTA auto-reload preference:', error)
     }
@@ -298,7 +290,7 @@ const Interface = () => {
           </Text>
         </View>
         <AppSwitch
-          value={state.otaAutoReload ?? false}
+          value={state.user?.preferences?.ota_auto_reload ?? true}
           onValueChange={handleOtaAutoReloadToggle}
         />
       </View>
