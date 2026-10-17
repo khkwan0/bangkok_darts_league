@@ -10,8 +10,10 @@ import {
   ForumPostImage,
 } from '@/components/Forums/ForumImageViewer'
 import {parseForumImageTag, resolveForumImageFullUrl, resolveForumImageUrl} from '@/lib/forumImage'
+import {AnnouncementVideo} from '@/components/Announcements/AnnouncementVideo'
 import {
   isAnnouncementImageUrl,
+  isAnnouncementVideoUrl,
   resolveAnnouncementImageUrl,
 } from '@/lib/announcementContent'
 import {useLeagueContext} from '@/context/LeagueContext'
@@ -29,6 +31,24 @@ const markdownItInstance = MarkdownIt({
 
 const SPAN_CLOSE_RE = /^<\/span>$/i
 const IMG_TAG_RE = /<img\b/i
+const VIDEO_TAG_RE = /<video\b/i
+const VIDEO_SRC_RE = /\bsrc=["']([^"']+)["']/i
+
+function renderVideoHtml(
+  content: string,
+  nodeKey: string,
+  resolveSrc: (src: string) => string,
+): React.ReactNode {
+  if (!VIDEO_TAG_RE.test(content)) {
+    return null
+  }
+  const srcMatch = content.match(VIDEO_SRC_RE)
+  const src = srcMatch?.[1]?.trim()
+  if (!src || !isAnnouncementVideoUrl(src)) {
+    return null
+  }
+  return <AnnouncementVideo key={nodeKey} uri={resolveSrc(src)} />
+}
 
 function renderForumImageHtml(
   content: string,
@@ -62,6 +82,7 @@ type MarkdownRule = (
 
 function createColoredSpanRules(
   onImagePress?: (fullUri: string) => void,
+  resolveMediaUrl?: (src: string) => string,
 ): Record<string, MarkdownRule> {
   const colorStack: string[] = []
 
@@ -70,22 +91,33 @@ function createColoredSpanRules(
     return color ? {color} : null
   }
 
+  const resolveSrc = resolveMediaUrl ?? ((src: string) => src)
+
   return {
     body: (node, children, parent, styles) => {
       colorStack.length = 0
       return defaultRenderRules.body(node, children, parent, styles)
     },
     html_block: node => {
+      const content = node.content?.trim() ?? ''
+      const video = renderVideoHtml(content, node.key, resolveSrc)
+      if (video) {
+        return video
+      }
       if (!onImagePress) {
         return null
       }
-      return renderForumImageHtml(node.content?.trim() ?? '', node.key, onImagePress)
+      return renderForumImageHtml(content, node.key, onImagePress)
     },
     html_inline: node => {
       const content = node.content?.trim() ?? ''
       if (SPAN_CLOSE_RE.test(content)) {
         colorStack.pop()
         return null
+      }
+      const video = renderVideoHtml(content, node.key, resolveSrc)
+      if (video) {
+        return video
       }
       if (onImagePress) {
         const image = renderForumImageHtml(content, node.key, onImagePress)
@@ -442,7 +474,7 @@ export function ChatMarkdown({content, textColor}: ChatMarkdownProps) {
   const renderRules = React.useMemo(
     () => ({
       ...defaultRenderRules,
-      ...createColoredSpanRules(handleImagePress),
+      ...createColoredSpanRules(handleImagePress, resolveImageUrl),
       image: (
         node: {key: string; attributes?: {src?: string; alt?: string}},
         _children: React.ReactNode,
@@ -452,6 +484,9 @@ export function ChatMarkdown({content, textColor}: ChatMarkdownProps) {
         const src = node.attributes?.src
         if (!src) return null
         const displayUri = resolveImageUrl(src)
+        if (isAnnouncementVideoUrl(src) || isAnnouncementVideoUrl(displayUri)) {
+          return <AnnouncementVideo key={node.key} uri={displayUri} />
+        }
         const fullUri = isAnnouncementImageUrl(src)
           ? displayUri
           : resolveForumImageFullUrl(src)

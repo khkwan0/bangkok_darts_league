@@ -246,6 +246,60 @@ export function useAnnouncements() {
     [],
   )
 
+  const adminUploadVideo = React.useCallback(
+    async (
+      originalUri: string,
+      options?: {mimeType?: string | null; fileName?: string | null},
+    ): Promise<AnnouncementImageUploadResult> => {
+      try {
+        const token = await AsyncStorage.getItem('jwt')
+        const mimeType = options?.mimeType?.trim() || 'video/mp4'
+        const extFromName = options?.fileName?.split('.').pop()?.toLowerCase()
+        const extFromMime = mimeType.includes('webm')
+          ? 'webm'
+          : mimeType.includes('quicktime') || mimeType.includes('mov')
+            ? 'mov'
+            : mimeType.includes('m4v')
+              ? 'm4v'
+              : 'mp4'
+        const ext = extFromName && /^[a-z0-9]+$/i.test(extFromName)
+          ? extFromName
+          : extFromMime
+        const data = new FormData()
+        data.append(
+          'image',
+          // React Native FormData file shape for video (no image compress step).
+          {
+            uri: originalUri,
+            name: options?.fileName?.trim() || `announcement.${ext}`,
+            type: mimeType,
+          } as unknown as Blob,
+        )
+        const apiDomain = apiUrlRef.current ?? config.apiUrl
+        const res = await fetch(
+          `${apiDomain}/admin/announcements/gallery/upload`,
+          {
+            method: 'POST',
+            body: data,
+            headers: {
+              ...leagueRequestHeaders(),
+              Authorization: 'Bearer ' + token,
+            },
+          },
+        )
+        const json = await res.json()
+        if (json?.status === 'ok' && json.url) {
+          return {status: 'ok', url: json.url, id: json.id}
+        }
+        return {status: 'error', error: json?.error ?? 'server_error'}
+      } catch (e) {
+        console.error(e)
+        return {status: 'error', error: 'server_error'}
+      }
+    },
+    [],
+  )
+
   return {
     getAnnouncements,
     getAnnouncement,
@@ -261,5 +315,6 @@ export function useAnnouncements() {
     adminDelete,
     adminRestore,
     adminUploadImage,
+    adminUploadVideo,
   }
 }

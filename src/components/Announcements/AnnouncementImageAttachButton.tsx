@@ -1,5 +1,9 @@
 import {ThemedText as Text} from '@/components/ThemedText'
-import {buildAnnouncementImageEmbed} from '@/lib/announcementContent'
+import {
+  ANNOUNCEMENT_MAX_VIDEO_BYTES,
+  buildAnnouncementImageEmbed,
+  buildAnnouncementVideoEmbed,
+} from '@/lib/announcementContent'
 import {useAnnouncements} from '@/hooks/useAnnouncements'
 import {useLeagueContext} from '@/context/LeagueContext'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
@@ -13,12 +17,19 @@ type AnnouncementImageAttachButtonProps = {
   disabled?: boolean
 }
 
+function isVideoAsset(asset: ImagePicker.ImagePickerAsset): boolean {
+  if (asset.type === 'video') return true
+  if (asset.mimeType?.startsWith('video/')) return true
+  const name = (asset.fileName ?? asset.uri).toLowerCase()
+  return /\.(mp4|mov|m4v|webm)(\?|#|$)/i.test(name)
+}
+
 export function AnnouncementImageAttachButton({
   onInsert,
   disabled = false,
 }: AnnouncementImageAttachButtonProps) {
   const {t} = useTranslation()
-  const {adminUploadImage} = useAnnouncements()
+  const {adminUploadImage, adminUploadVideo} = useAnnouncements()
   const {apiUrl} = useLeagueContext()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
@@ -33,13 +44,14 @@ export function AnnouncementImageAttachButton({
       if (!permission.granted) {
         Alert.alert(
           t('forums_image_permission_title'),
-          t('forums_image_permission_body'),
+          t('announcements_media_permission_body'),
         )
         return
       }
 
+      // Pick from Photos / Gallery — includes OS screen recordings after you save them.
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ['images', 'videos'],
         quality: 1,
         allowsEditing: false,
       })
@@ -48,18 +60,47 @@ export function AnnouncementImageAttachButton({
         return
       }
 
-      setUploading(true)
-      const upload = await adminUploadImage(result.assets[0].uri)
+      const asset = result.assets[0]
+      const isVideo = isVideoAsset(asset)
 
-      if (upload.status === 'ok' && upload.url) {
-        onInsert(buildAnnouncementImageEmbed(apiUrl, upload.url))
+      if (
+        isVideo &&
+        typeof asset.fileSize === 'number' &&
+        asset.fileSize > ANNOUNCEMENT_MAX_VIDEO_BYTES
+      ) {
+        Alert.alert(t('announcements_video_too_large_title'), t('announcements_video_too_large_body'))
         return
       }
 
-      Alert.alert(t('forums_image_upload_failed'))
+      setUploading(true)
+      const upload = isVideo
+        ? await adminUploadVideo(asset.uri, {
+            mimeType: asset.mimeType,
+            fileName: asset.fileName,
+          })
+        : await adminUploadImage(asset.uri)
+
+      if (upload.status === 'ok' && upload.url) {
+        onInsert(
+          isVideo
+            ? buildAnnouncementVideoEmbed(apiUrl, upload.url)
+            : buildAnnouncementImageEmbed(apiUrl, upload.url),
+        )
+        return
+      }
+
+      if (upload.status === 'error' && upload.error === 'file_too_large') {
+        Alert.alert(
+          t('announcements_video_too_large_title'),
+          t('announcements_video_too_large_body'),
+        )
+        return
+      }
+
+      Alert.alert(t('announcements_media_upload_failed'))
     } catch (e) {
       console.error(e)
-      Alert.alert(t('forums_image_upload_failed'))
+      Alert.alert(t('announcements_media_upload_failed'))
     } finally {
       setUploading(false)
     }
@@ -83,8 +124,8 @@ export function AnnouncementImageAttachButton({
       )}
       <Text className="text-sm font-semibold" style={{color: accent}}>
         {uploading
-          ? t('forums_image_uploading')
-          : t('announcements_insert_image')}
+          ? t('announcements_media_uploading')
+          : t('announcements_insert_media')}
       </Text>
     </Pressable>
   )

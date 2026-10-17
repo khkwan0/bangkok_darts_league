@@ -284,7 +284,7 @@ export default function Player({
             alignItems: 'center',
           }}>
           {Array.from({length: slotCount}, (_, slot) => {
-            const {nickname, filled, slotStat} = slotMeta(slot)
+            const {nickname, filled} = slotMeta(slot)
             const selected = filled && activeFocus === slot
             return (
               <Pressable
@@ -315,34 +315,15 @@ export default function Player({
                   alignItems: 'center',
                 }}>
                 {filled ? (
-                  <>
-                    <Text
-                      numberOfLines={1}
-                      style={{
-                        color: ink,
-                        fontWeight: '800',
-                        fontSize: 14,
-                      }}>
-                      {nickname}
-                    </Text>
-                    {trackStats && !selected ? (
-                      <Text
-                        style={{
-                          color: ink,
-                          opacity: 0.55,
-                          fontSize: 10,
-                          fontWeight: '600',
-                          marginTop: 2,
-                        }}>
-                        {t('stat_abbr_tons')}
-                        {Number(slotStat.tons ?? 0)}{' '}
-                        {t('stat_abbr_heavy')}
-                        {Number(slotStat.heavyTons ?? 0)}{' '}
-                        {t('stat_abbr_closes')}
-                        {Number(slotStat.closes ?? 0)}
-                      </Text>
-                    ) : null}
-                  </>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: ink,
+                      fontWeight: '800',
+                      fontSize: 14,
+                    }}>
+                    {nickname}
+                  </Text>
                 ) : (
                   <Row alignItems="center" style={{gap: 4}}>
                     <MCI name="plus" size={14} color={ink} />

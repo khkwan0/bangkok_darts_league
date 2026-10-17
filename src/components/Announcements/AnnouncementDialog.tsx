@@ -84,7 +84,9 @@ export default function AnnouncementDialog({
               <Text type="subtitle" className="mb-2">
                 {announcement.title}
               </Text>
-              <ChatMarkdown content={content} textColor={textColor} />
+              {visible ? (
+                <ChatMarkdown content={content} textColor={textColor} />
+              ) : null}
             </ScrollView>
             <View className="border-t border-slate-200 px-5 py-4 dark:border-slate-700">
               {submitting ? (

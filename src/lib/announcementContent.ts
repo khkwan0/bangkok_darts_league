@@ -3,11 +3,33 @@ import config from '@/config'
 const ANNOUNCEMENT_IMAGE_RE =
   /announcements(?:\/gallery\/serve|_gallery)|\/api\/api\/announcements/i
 
+const ANNOUNCEMENT_VIDEO_EXT_RE =
+  /\.(mp4|mov|m4v|webm)(?:\?|#|$)/i
+
+/** Keep in sync with backend gallery upload + nginx client_max_body_size. */
+export const ANNOUNCEMENT_MAX_VIDEO_BYTES = 100 * 1024 * 1024
+
 function apiOrigin(apiUrl: string): string {
   return apiUrl.replace(/\/$/, '').replace(/\/api$/i, '')
 }
 
-/** Resolve a single announcement image URL for mobile rendering. */
+/** True when a markdown media URL points at a playable video file. */
+export function isAnnouncementVideoUrl(src: string): boolean {
+  const trimmed = src.trim()
+  if (!trimmed) {
+    return false
+  }
+  try {
+    const path = /^https?:\/\//i.test(trimmed)
+      ? new URL(trimmed).pathname
+      : trimmed.split('?')[0]?.split('#')[0] ?? trimmed
+    return ANNOUNCEMENT_VIDEO_EXT_RE.test(path)
+  } catch {
+    return ANNOUNCEMENT_VIDEO_EXT_RE.test(trimmed)
+  }
+}
+
+/** Resolve a single announcement image/video URL for mobile rendering. */
 export function resolveAnnouncementImageUrl(
   src: string,
   apiUrl?: string,
@@ -98,10 +120,31 @@ export function resolveAnnouncementContent(
     },
   )
 
+  resolved = resolved.replace(
+    /<video\b([^>]*)\bsrc=["']([^"']+)["']([^>]*)>/gi,
+    (match, before, src, after) => {
+      const trimmed = String(src).trim()
+      if (
+        !isAnnouncementImageUrl(trimmed) &&
+        !trimmed.startsWith('/announcements_gallery/') &&
+        !trimmed.startsWith('/api/announcements/')
+      ) {
+        return match
+      }
+      const fixed = resolveAnnouncementImageUrl(trimmed, base)
+      return `<video${before}src="${fixed}"${after}>`
+    },
+  )
+
   return resolved
 }
 
 export function buildAnnouncementImageEmbed(apiUrl: string, path: string): string {
   const url = resolveAnnouncementImageUrl(path, apiUrl)
   return `\n![image](${url})\n`
+}
+
+export function buildAnnouncementVideoEmbed(apiUrl: string, path: string): string {
+  const url = resolveAnnouncementImageUrl(path, apiUrl)
+  return `\n![video](${url})\n`
 }
