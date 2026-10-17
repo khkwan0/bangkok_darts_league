@@ -419,6 +419,8 @@
   "ota_update_failed_message": "ไม่สามารถรีสตาร์ทเป็นเวอร์ชันใหม่ได้ ลองปิดแล้วเปิดแอปใหม่",
   "ota_update_ready_title": "อัปเดตพร้อมแล้ว",
   "ota_update_ready_message": "ดาวน์โหลดเวอร์ชันใหม่แล้ว รีสตาร์ทตอนนี้เพื่อใช้งาน",
+  "ota_auto_reload": "อัปเดตแบบเงียบ",
+  "ota_auto_reload_description": "ดาวน์โหลดและรีสตาร์ทอัตโนมัติโดยไม่ต้องถาม",
   "original_date": "วันที่เดิม",
   "partner": "คู่สมรส",
   "password": "รหัสผ่าน",

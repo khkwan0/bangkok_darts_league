@@ -417,6 +417,8 @@
   "ota_update_failed_message": "Could not restart into the new version. Try closing and reopening the app.",
   "ota_update_ready_title": "Update ready",
   "ota_update_ready_message": "A new version has been downloaded. Restart now to use it.",
+  "ota_auto_reload": "Silent updates",
+  "ota_auto_reload_description": "Download updates and restart automatically without asking",
   "original_date": "Original Date",
   "partner": "Partner",
   "password": "Password",

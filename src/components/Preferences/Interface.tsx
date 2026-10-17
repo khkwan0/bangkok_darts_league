@@ -54,6 +54,12 @@ const Interface = () => {
         const {show} = JSON.parse(storedPotw)
         dispatch({type: 'SET_SHOW_PLAYER_OF_THE_WEEK', payload: show})
       }
+
+      const storedOtaAutoReload = await AsyncStorage.getItem('ota_auto_reload')
+      if (storedOtaAutoReload !== null) {
+        const {enabled} = JSON.parse(storedOtaAutoReload)
+        dispatch({type: 'SET_OTA_AUTO_RELOAD', payload: enabled})
+      }
     } catch (error) {
       console.error('Error loading preferences:', error)
     }
@@ -110,6 +116,18 @@ const Interface = () => {
       )
     } catch (error) {
       console.error('Error saving Player of the Week preference:', error)
+    }
+  }
+
+  const handleOtaAutoReloadToggle = async (value: boolean) => {
+    try {
+      dispatch({type: 'SET_OTA_AUTO_RELOAD', payload: value})
+      await AsyncStorage.setItem(
+        'ota_auto_reload',
+        JSON.stringify({enabled: value}),
+      )
+    } catch (error) {
+      console.error('Error saving OTA auto-reload preference:', error)
     }
   }
 
@@ -254,6 +272,34 @@ const Interface = () => {
         <AppSwitch
           value={state.showPlayerOfTheWeek ?? true}
           onValueChange={handlePlayerOfTheWeekToggle}
+        />
+      </View>
+
+      {/* Silent OTA updates */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+        }}>
+        <View style={{flex: 1, paddingRight: 12}}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: 'bold',
+              color: colors.text,
+              marginBottom: 4,
+            }}>
+            {t('ota_auto_reload')}
+          </Text>
+          <Text style={{color: colors.text, opacity: 0.7}}>
+            {t('ota_auto_reload_description')}
+          </Text>
+        </View>
+        <AppSwitch
+          value={state.otaAutoReload ?? false}
+          onValueChange={handleOtaAutoReloadToggle}
         />
       </View>
 

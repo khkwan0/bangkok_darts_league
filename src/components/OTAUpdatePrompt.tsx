@@ -1,5 +1,6 @@
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Updates from 'expo-updates'
 import {useEffect, useRef, useState} from 'react'
 import {useTranslation} from 'react-i18next'
@@ -12,9 +13,23 @@ import {
   Platform,
 } from 'react-native'
 
+const OTA_AUTO_RELOAD_KEY = 'ota_auto_reload'
+
+async function readAutoReloadPreference(): Promise<boolean> {
+  try {
+    const stored = await AsyncStorage.getItem(OTA_AUTO_RELOAD_KEY)
+    if (!stored) return false
+    const parsed = JSON.parse(stored)
+    return typeof parsed?.enabled === 'boolean' ? parsed.enabled : false
+  } catch {
+    return false
+  }
+}
+
 /**
  * Checks for OTA updates on launch and when returning to foreground.
- * Downloads with a visible modal, then prompts the user to restart.
+ * Downloads with a visible modal, then either prompts to restart or
+ * auto-reloads when Interface → Silent updates is enabled.
  */
 export default function OTAUpdatePrompt() {
   const {t} = useTranslation()
@@ -46,11 +61,22 @@ export default function OTAUpdatePrompt() {
           return
         }
 
-        setDownloading(true)
+        const autoReload = await readAutoReloadPreference()
+
+        if (!autoReload) {
+          setDownloading(true)
+        }
         const fetched = await Updates.fetchUpdateAsync()
-        setDownloading(false)
+        if (!autoReload) {
+          setDownloading(false)
+        }
 
         if (!fetched.isNew) return
+
+        if (autoReload) {
+          await Updates.reloadAsync()
+          return
+        }
 
         Alert.alert(
           t('ota_update_ready_title'),
