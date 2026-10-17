@@ -11,6 +11,8 @@ import {ActivityIndicator, Pressable, View} from 'react-native'
 type Props = {
   matchId: number
   accent?: string
+  /** Route for this screen (Settings stack needs its own path for back nav). */
+  pathname?: string
 }
 
 function mixHex(hex: string, toward: string, amount: number) {
@@ -44,6 +46,7 @@ function mixHex(hex: string, toward: string, amount: number) {
 export default function MatchPredictionRow({
   matchId,
   accent = '#0EA5E9',
+  pathname = '/Predictions/[matchId]',
 }: Props) {
   const {t} = useTranslation()
   const router = useRouter()
@@ -102,7 +105,7 @@ export default function MatchPredictionRow({
         accessibilityLabel={t('predictions_title')}
         onPress={() =>
           router.push({
-            pathname: '/Predictions/[matchId]' as any,
+            pathname: pathname as any,
             params: {matchId: String(matchId)},
           })
         }
