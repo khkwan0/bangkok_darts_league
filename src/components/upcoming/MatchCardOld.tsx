@@ -288,10 +288,13 @@ function AccentButton({
 export default function MatchCardOld({
   matchInfo: propsMatchInfo,
   idx = 0,
+  scoresheetPathname = '/Match',
 }: {
   matchInfo: MatchInfoDataType
   idx?: number
   handlePress?: (idx: number) => void
+  /** Route for the scoresheet Link (Settings stack needs its own path). */
+  scoresheetPathname?: string
 }) {
   const router = useRouter()
   const {t} = useTranslation()
@@ -613,7 +616,7 @@ export default function MatchCardOld({
 
         <Link
           href={{
-            pathname: '/Match',
+            pathname: scoresheetPathname as any,
             params: {params: JSON.stringify(matchInfo)},
           }}
           asChild>

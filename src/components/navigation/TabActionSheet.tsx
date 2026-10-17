@@ -6,6 +6,12 @@ import {useLeagueContext} from '@/context/LeagueContext'
 import {useHasNewForumPosts} from '@/lib/forumActivity'
 import {useHasUnreadAnnouncements} from '@/lib/announcementUnread'
 import {useHasSupportActivity, useHasUnreadSupport} from '@/lib/supportUnread'
+import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
+import {
+  QUICK_ACTION_DEFS,
+  resolveFabQuickActions,
+  type QuickActionId,
+} from '@/lib/quickActions'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import {
   BottomSheetModal,
@@ -96,7 +102,7 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
     const colors = Colors[colorScheme]
     const router = useRouter()
     const {t} = useTranslation()
-    const {state, openCompetitionPicker} = useLeagueContext()
+    const {state, openCompetitionPicker, LogoutUser} = useLeagueContext()
     const insets = useSafeAreaInsets()
     const {height: windowHeight} = useWindowDimensions()
     const user = state.user
@@ -105,9 +111,37 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
     const hasUnreadSupport = useHasUnreadSupport()
     const hasSupportActivity = useHasSupportActivity()
     const competition = state.competition
+    const loggedIn = Boolean(user?.id)
+    const actionIds = React.useMemo(
+      () =>
+        resolveFabQuickActions(state.user?.preferences?.fab_quick_actions),
+      [state.user?.preferences?.fab_quick_actions],
+    )
+
+    const visibleIds = React.useMemo(() => {
+      return actionIds.filter(id => {
+        if (id === 'admin') return isLeagueAdmin(user)
+        if (id === 'betting') {
+          return state.bettingEnabled && state.bettingOptedIn
+        }
+        if (id === 'predictions') return state.predictionsEnabled
+        if (id === 'login') return !loggedIn
+        if (id === 'logout') return loggedIn
+        return true
+      })
+    }, [
+      actionIds,
+      user,
+      state.bettingEnabled,
+      state.bettingOptedIn,
+      state.predictionsEnabled,
+      loggedIn,
+    ])
+
     // Cap height so short phones (SE, etc.) always get scrollable overflow.
     const snapPoints = React.useMemo(() => {
-      const estimatedContentHeight = 900 + Math.max(insets.bottom, 16)
+      const estimatedContentHeight =
+        160 + visibleIds.length * 72 + Math.max(insets.bottom, 16)
       const minOpenRatio = 0.65
       const maxOpenRatio = windowHeight < 700 ? 0.82 : 0.88
       const ratio = Math.min(
@@ -115,7 +149,7 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
         Math.max(minOpenRatio, estimatedContentHeight / windowHeight),
       )
       return [`${Math.round(ratio * 100)}%`]
-    }, [insets.bottom, windowHeight])
+    }, [insets.bottom, windowHeight, visibleIds.length])
     const pendingRouteRef = React.useRef<string | null>(null)
     const navTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(
       null,
@@ -159,6 +193,117 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
       }
     }
 
+    const dismissThen = (fn: () => void) => {
+      pendingRouteRef.current = null
+      if (ref && 'current' in ref && ref.current) {
+        ref.current.dismiss()
+      }
+      if (SHEET_DISMISS_NAV_DELAY_MS > 0) {
+        setTimeout(fn, SHEET_DISMISS_NAV_DELAY_MS)
+      } else {
+        fn()
+      }
+    }
+
+    const onPressAction = (id: QuickActionId) => {
+      switch (id) {
+        case 'support':
+          navigate('/Settings/Support')
+          break
+        case 'announcements':
+          navigate('/Settings/Announcements')
+          break
+        case 'forums':
+          navigate('/Settings/Forums')
+          break
+        case 'achievements':
+          navigate('/Settings/Achievements')
+          break
+        case 'ai_assistant':
+          navigate('/Settings/CueChat')
+          break
+        case 'settings':
+          navigate('/Settings')
+          break
+        case 'admin':
+          navigate('/Settings/Admin')
+          break
+        case 'teams':
+          if (competition?.type === 'mini') {
+            navigate(`/teams/mini-leagues/${competition.id}`)
+          } else {
+            navigate('/teams')
+          }
+          break
+        case 'tournaments':
+          navigate('/(tabs)/(index)/cups')
+          break
+        case 'statistics':
+          navigate('/statistics')
+          break
+        case 'coin_flip':
+          navigate('/Settings/CoinFlip')
+          break
+        case 'change_league':
+          dismissThen(() => openCompetitionPicker())
+          break
+        case 'info_and_guides':
+          navigate('/Settings/Info')
+          break
+        case 'venues':
+          navigate('/Settings/Venues')
+          break
+        case 'players':
+          navigate('/Settings/Players')
+          break
+        case 'betting':
+          navigate('/Settings/Betting')
+          break
+        case 'predictions':
+          navigate('/Settings/Predictions')
+          break
+        case 'preferences':
+          navigate('/Settings/Preferences')
+          break
+        case 'login':
+          navigate('/Auth')
+          break
+        case 'logout':
+          dismissThen(() => LogoutUser())
+          break
+      }
+    }
+
+    const badgeFor = (
+      id: QuickActionId,
+    ): {showBadge?: boolean; badgeLabel?: string} => {
+      if (id === 'support') {
+        return {
+          showBadge: hasUnreadSupport,
+          badgeLabel: t('support_new'),
+        }
+      }
+      if (id === 'announcements') {
+        return {
+          showBadge: hasUnreadAnnouncements,
+          badgeLabel: t('announcements_new'),
+        }
+      }
+      if (id === 'forums') {
+        return {
+          showBadge: hasNewForumPosts,
+          badgeLabel: t('forums_new_posts'),
+        }
+      }
+      if (id === 'settings') {
+        return {
+          showBadge: hasSupportActivity,
+          badgeLabel: t('support_new'),
+        }
+      }
+      return {}
+    }
+
     return (
       <BottomSheetModal
         ref={ref}
@@ -197,112 +342,32 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
                 : '—'}
             </Text>
           </View>
-          <QuickActionItem
-            icon="lifebuoy"
-            label={t('support')}
-            iconColor="#0EA5E9"
-            iconBackground="rgba(14, 165, 233, 0.15)"
-            showBadge={hasUnreadSupport}
-            badgeLabel={t('support_new')}
-            onPress={() => navigate('/Settings/Support')}
-          />
-          <QuickActionItem
-            icon="bullhorn-outline"
-            label={t('announcements')}
-            iconColor="#FF9800"
-            iconBackground="rgba(255, 152, 0, 0.15)"
-            showBadge={hasUnreadAnnouncements}
-            badgeLabel={t('announcements_new')}
-            onPress={() => navigate('/Settings/Announcements')}
-          />
-          <QuickActionItem
-            icon="forum-outline"
-            label={t('forums')}
-            iconColor="#2196F3"
-            iconBackground="rgba(33, 150, 243, 0.15)"
-            showBadge={hasNewForumPosts}
-            badgeLabel={t('forums_new_posts')}
-            onPress={() => navigate('/Settings/Forums')}
-          />
-          <QuickActionItem
-            icon="trophy-variant"
-            label={t('achievements')}
-            iconColor="#EAB308"
-            iconBackground="rgba(234, 179, 8, 0.15)"
-            onPress={() => navigate('/Settings/Achievements')}
-          />
-          <QuickActionItem
-            icon="robot-outline"
-            label={t('ai_assistant')}
-            iconColor="#9C27B0"
-            iconBackground="rgba(156, 39, 176, 0.15)"
-            onPress={() => navigate('/Settings/CueChat')}
-          />
-          <QuickActionItem
-            icon="cog"
-            label={t('settings')}
-            iconColor={colors.tint}
-            iconBackground={
-              colorScheme === 'dark'
-                ? 'rgba(255, 255, 255, 0.12)'
-                : 'rgba(10, 126, 164, 0.12)'
-            }
-            showBadge={hasSupportActivity}
-            badgeLabel={t('support_new')}
-            onPress={() => navigate('/Settings')}
-          />
-          <QuickActionItem
-            icon="account-group"
-            label={t('teams')}
-            iconColor="#4CAF50"
-            iconBackground="rgba(76, 175, 80, 0.15)"
-            onPress={() => {
-              if (competition.type === 'mini') {
-                navigate(`/teams/mini-leagues/${competition.id}`)
-              } else {
-                navigate('/teams')
-              }
-            }}
-          />
-          <QuickActionItem
-            icon="trophy"
-            label={t('tournaments')}
-            iconColor="#B45309"
-            iconBackground="rgba(180, 83, 9, 0.15)"
-            onPress={() => navigate('/(tabs)/(index)/cups')}
-          />
-          <QuickActionItem
-            icon="hand-coin"
-            label={t('coin_flip')}
-            iconColor="#F59E0B"
-            iconBackground="rgba(245, 158, 11, 0.15)"
-            onPress={() => navigate('/Settings/CoinFlip')}
-          />
-          <QuickActionItem
-            icon="trophy-outline"
-            label={t('change_league')}
-            iconColor="#E91E63"
-            iconBackground="rgba(233, 30, 99, 0.15)"
-            onPress={() => {
-              pendingRouteRef.current = null
-              if (ref && 'current' in ref && ref.current) {
-                ref.current.dismiss()
-              }
-              const open = () => openCompetitionPicker()
-              if (SHEET_DISMISS_NAV_DELAY_MS > 0) {
-                setTimeout(open, SHEET_DISMISS_NAV_DELAY_MS)
-              } else {
-                open()
-              }
-            }}
-          />
-          <QuickActionItem
-            icon="information-outline"
-            label={t('info_and_guides')}
-            iconColor="#FF9800"
-            iconBackground="rgba(255, 152, 0, 0.15)"
-            onPress={() => navigate('/Settings/Info')}
-          />
+          {visibleIds.map(id => {
+            const def = QUICK_ACTION_DEFS[id]
+            const badge = badgeFor(id)
+            const iconColor =
+              id === 'settings' || id === 'preferences'
+                ? colors.tint
+                : def.iconColor
+            const iconBackground =
+              id === 'settings' || id === 'preferences'
+                ? colorScheme === 'dark'
+                  ? 'rgba(255, 255, 255, 0.12)'
+                  : 'rgba(10, 126, 164, 0.12)'
+                : def.iconBackground
+            return (
+              <QuickActionItem
+                key={id}
+                icon={def.icon}
+                label={t(def.labelKey)}
+                iconColor={iconColor}
+                iconBackground={iconBackground}
+                showBadge={badge.showBadge}
+                badgeLabel={badge.badgeLabel}
+                onPress={() => onPressAction(id)}
+              />
+            )
+          })}
         </BottomSheetScrollView>
       </BottomSheetModal>
     )

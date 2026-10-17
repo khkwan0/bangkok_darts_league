@@ -557,6 +557,74 @@ export const useAccount = () => {
     }
   }
 
+  async function SetFavoriteVenues(favoriteVenues) {
+    try {
+      const next = Array.isArray(favoriteVenues)
+        ? favoriteVenues.map(Number).filter(id => id > 0)
+        : []
+      const preferences = {
+        ...(state.user?.preferences || {}),
+        favorite_venues: next,
+      }
+      dispatch({
+        type: 'SET_PREFERENCES',
+        payload: {favorite_venues: next},
+      })
+      await SavePreferences(preferences)
+      return {status: 'ok'}
+    } catch (e) {
+      console.error(e)
+      return {status: 'error'}
+    }
+  }
+
+  /**
+   * Persists fab_quick_actions on the player_preferences JSON blob via
+   * POST /user/preferences (full replace). Same last-write-wins race as
+   * SetFavoriteVenues if two saves overlap with different keys — acceptable
+   * for single-device use; not fixed.
+   */
+  async function SetFabQuickActions(fabQuickActions) {
+    try {
+      const next =
+        fabQuickActions == null
+          ? null
+          : Array.isArray(fabQuickActions)
+            ? fabQuickActions
+            : null
+      const preferences = {
+        ...(state.user?.preferences || {}),
+        fab_quick_actions: next,
+      }
+      dispatch({
+        type: 'SET_PREFERENCES',
+        payload: {fab_quick_actions: next},
+      })
+      await SavePreferences(preferences)
+      return {status: 'ok'}
+    } catch (e) {
+      console.error(e)
+      return {status: 'error'}
+    }
+  }
+
+  async function ToggleFavoriteVenue(venueId) {
+    try {
+      const id = Number(venueId)
+      if (!(id > 0)) return {status: 'error'}
+      const current = Array.isArray(state.user?.preferences?.favorite_venues)
+        ? state.user.preferences.favorite_venues.map(Number).filter(n => n > 0)
+        : []
+      const next = current.includes(id)
+        ? current.filter(n => n !== id)
+        : [...current, id]
+      return await SetFavoriteVenues(next)
+    } catch (e) {
+      console.error(e)
+      return {status: 'error'}
+    }
+  }
+
   async function GetUserEmailLogin() {
     try {
       const res = await Get('/user/email/login')
@@ -642,6 +710,9 @@ export const useAccount = () => {
     SetNationality,
     SetPushNotifications,
     SetSoundNotifications,
+    SetFavoriteVenues,
+    SetFabQuickActions,
+    ToggleFavoriteVenue,
     SetUpEmail,
     SaveLanguage,
     SavePreferences,

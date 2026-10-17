@@ -159,7 +159,18 @@ export default function Preferences() {
             route="/Settings/Preferences/Interface"
             iconColor="#9C27B0"
             iconBackground="rgba(156, 39, 176, 0.15)"
+            showDivider={Boolean(user?.id)}
           />
+          {user?.id ? (
+            <PreferenceRow
+              icon="gesture-tap"
+              label={t('fab_quick_actions_settings')}
+              route="/Settings/Preferences/QuickActions"
+              iconColor="#0EA5E9"
+              iconBackground="rgba(14, 165, 233, 0.15)"
+              showDivider={false}
+            />
+          ) : null}
         </View>
       </View>
     </View>

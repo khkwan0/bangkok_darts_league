@@ -57,6 +57,8 @@ type Props = {
   onRefresh: () => void
   onScrollBeginDrag?: () => void
   contentContainerStyle?: StyleProp<ViewStyle>
+  /** Route for match card scoresheet Links (Settings stack needs its own path). */
+  scoresheetPathname?: string
 }
 
 function matchDayKey(match: CalendarFixture): string | null {
@@ -158,6 +160,7 @@ export default function MatchesCalendar({
   onRefresh,
   onScrollBeginDrag,
   contentContainerStyle,
+  scoresheetPathname = '/Match',
 }: Props) {
   const {t, i18n} = useTranslation()
   const {state} = useLeagueContext()
@@ -424,6 +427,7 @@ export default function MatchesCalendar({
           index={item.index}
           isNewMatchCard={state.isNewMatchCard}
           onOpenMatch={onOpenMatch}
+          scoresheetPathname={scoresheetPathname}
         />
       ))}
 
@@ -441,6 +445,7 @@ export default function MatchesCalendar({
               index={item.index}
               isNewMatchCard={state.isNewMatchCard}
               onOpenMatch={onOpenMatch}
+              scoresheetPathname={scoresheetPathname}
             />
           ))}
         </View>
@@ -493,11 +498,13 @@ function DayMatchCard({
   index,
   isNewMatchCard,
   onOpenMatch,
+  scoresheetPathname,
 }: {
   match: CalendarFixture
   index: number
   isNewMatchCard: boolean
   onOpenMatch: (index: number) => void
+  scoresheetPathname: string
 }) {
   const matchInfo = match as MatchInfoDataType
   if (isNewMatchCard) {
@@ -507,6 +514,7 @@ function DayMatchCard({
         idx={index}
         handlePress={onOpenMatch}
         embedded
+        scoresheetPathname={scoresheetPathname}
       />
     )
   }
@@ -515,6 +523,7 @@ function DayMatchCard({
       matchInfo={matchInfo}
       idx={index}
       handlePress={onOpenMatch}
+      scoresheetPathname={scoresheetPathname}
     />
   )
 }

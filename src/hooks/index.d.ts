@@ -69,6 +69,7 @@ export interface League {
   GetCountries(): Promise<{status: string; data: Country[]}>
   GetTeamStats(seasonId?: number | null): Promise<TeamStats>
   GetVenues(): Promise<Venue[]>
+  GetMatchesBySeason(seasonId: number | string): Promise<any>
   RemovePlayerFromTeam(
     playerId: number,
     teamId: number,
@@ -148,6 +149,10 @@ export interface Account {
   ): Promise<{status: string; data: string}>
   SaveAvatar(profilePicture: string): Promise<{status: string; data: string}>
   FetchUser(): Promise<{status: string; data: Account}>
+  SetFavoriteVenues(
+    favoriteVenues: number[],
+  ): Promise<{status: string}>
+  ToggleFavoriteVenue(venueId: number): Promise<{status: string}>
 }
 
 export function useLeague(): League
@@ -159,3 +164,7 @@ export function useTeams(): Team[]
 export function usePlayers(): Player[]
 export function useMatches(): Match[]
 export function useAccount(): Account
+export function useSeason(): {
+  GetMatches: (options?: string[]) => Promise<any>
+  GetMatchesBySeason: (season: number | string) => Promise<any>
+}

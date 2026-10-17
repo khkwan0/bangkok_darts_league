@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react'
+import React, {useEffect, useMemo, useState} from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native'
 import {ThemedText as Text} from '@/components/ThemedText'
+import AppSwitch from '@/components/AppSwitch'
 import config from '@/config'
 import {useLeague} from '@/hooks'
 import {useTranslation} from 'react-i18next'
@@ -29,6 +30,7 @@ type Team = {
   id: number
   name: string
   season_id: number
+  status_id?: number
 }
 
 type Venue = {
@@ -60,7 +62,15 @@ function Chip({
   )
 }
 
-function VenueRow({item, index}: {item: Venue; index: number}) {
+function VenueRow({
+  item,
+  index,
+  isFavorite,
+}: {
+  item: Venue
+  index: number
+  isFavorite: boolean
+}) {
   const {t} = useTranslation()
   const accent = ACCENTS[index % ACCENTS.length]
   const teamCount = item.teams.length
@@ -82,7 +92,12 @@ function VenueRow({item, index}: {item: Venue; index: number}) {
           transform: [{scale: pressed ? 0.985 : 1}],
         })}>
         <View style={styles.board}>
-          <View style={[styles.stripe, {backgroundColor: accent}]} />
+          <View
+            style={[
+              styles.stripe,
+              {backgroundColor: isFavorite ? '#F59E0B' : accent},
+            ]}
+          />
           <View style={styles.row}>
             {item.logo ? (
               <View style={styles.logoWell}>
@@ -100,9 +115,19 @@ function VenueRow({item, index}: {item: Venue; index: number}) {
               </View>
             )}
             <View style={styles.rowBody}>
-              <Text style={styles.venueName} numberOfLines={2}>
-                {item.name}
-              </Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.venueName} numberOfLines={2}>
+                  {item.name}
+                </Text>
+                {isFavorite ? (
+                  <MCI
+                    name="star"
+                    size={18}
+                    color="#F59E0B"
+                    style={{marginLeft: 6}}
+                  />
+                ) : null}
+              </View>
               <View style={styles.chipsWrap}>
                 <Chip
                   icon="account-group"
@@ -131,11 +156,29 @@ function VenueRow({item, index}: {item: Venue; index: number}) {
 export default function Venues() {
   const [venues, setVenues] = useState<Venue[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
   const league = useLeague()
   const {t} = useTranslation()
   const navigation = useNavigation()
   const {state} = useLeagueContext()
   const currentSeason = state.season
+  const favoriteIds = useMemo(() => {
+    const raw = state.user?.preferences?.favorite_venues
+    return new Set(
+      (Array.isArray(raw) ? raw : []).map(Number).filter(id => id > 0),
+    )
+  }, [state.user?.preferences?.favorite_venues])
+
+  const displayedVenues = useMemo(() => {
+    const sorted = [...venues].sort((a, b) => {
+      const aFav = favoriteIds.has(a.id) ? 0 : 1
+      const bFav = favoriteIds.has(b.id) ? 0 : 1
+      if (aFav !== bFav) return aFav - bFav
+      return String(a.name || '').localeCompare(String(b.name || ''))
+    })
+    if (!favoritesOnly) return sorted
+    return sorted.filter(v => favoriteIds.has(v.id))
+  }, [venues, favoriteIds, favoritesOnly])
 
   useEffect(() => {
     navigation.setOptions({
@@ -154,7 +197,9 @@ export default function Venues() {
             ...venue,
             teams:
               venue.teams?.filter(
-                (team: Team) => Number(team.season_id) === seasonId,
+                (team: Team) =>
+                  Number(team.season_id) === seasonId &&
+                  Number(team.status_id) === 1,
               ) || [],
           }))
           .filter((venue: Venue) => venue.teams.length > 0)
@@ -183,11 +228,23 @@ export default function Venues() {
           />
           <Chip
             icon="map-marker-radius"
-            label={`${venues.length} ${t('venues').toLowerCase()}`}
+            label={`${displayedVenues.length} ${t('venues').toLowerCase()}`}
             color="#A78BFA"
             background="rgba(139,92,246,0.22)"
           />
+          {favoriteIds.size > 0 ? (
+            <Chip
+              icon="star"
+              label={`${favoriteIds.size} ${t('favorites').toLowerCase()}`}
+              color="#F59E0B"
+              background="rgba(245,158,11,0.18)"
+            />
+          ) : null}
         </View>
+      </View>
+      <View style={styles.favoritesToggleRow}>
+        <Text style={styles.favoritesToggleLabel}>{t('favorites_only')}</Text>
+        <AppSwitch value={favoritesOnly} onValueChange={setFavoritesOnly} />
       </View>
     </View>
   )
@@ -198,7 +255,7 @@ export default function Venues() {
       locations={[0, 0.55, 1]}
       start={{x: 0.2, y: 0}}
       end={{x: 0.9, y: 1}}
-      style={StyleSheet.absoluteFillObject}
+      style={StyleSheet.absoluteFill}
     />
   )
 
@@ -229,11 +286,27 @@ export default function Venues() {
     <View style={{flex: 1, backgroundColor: '#0B1220'}}>
       {ScreenBackdrop}
       <FlatList
-        data={venues}
-        renderItem={({item, index}) => <VenueRow item={item} index={index} />}
+        data={displayedVenues}
+        renderItem={({item, index}) => (
+          <VenueRow
+            item={item}
+            index={index}
+            isFavorite={favoriteIds.has(item.id)}
+          />
+        )}
         keyExtractor={item => item.id.toString()}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={ListHeader}
+        ListEmptyComponent={
+          favoritesOnly ? (
+            <View style={styles.emptyFavorites}>
+              <MCI name="star-outline" size={28} color="#F59E0B" />
+              <Text style={styles.emptyFavoritesText}>
+                {t('no_favorite_venues')}
+              </Text>
+            </View>
+          ) : undefined
+        }
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -248,6 +321,23 @@ const styles = StyleSheet.create({
   },
   headerWrap: {
     marginBottom: 16,
+  },
+  favoritesToggleRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.22)',
+    backgroundColor: 'rgba(15,23,42,0.92)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  favoritesToggleLabel: {
+    color: '#E2E8F0',
+    fontSize: 14,
+    fontWeight: '600',
   },
   rowWrap: {
     marginBottom: 14,
@@ -307,7 +397,12 @@ const styles = StyleSheet.create({
     minWidth: 0,
     gap: 8,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   venueName: {
+    flex: 1,
     color: '#F8FAFC',
     fontSize: 16,
     fontWeight: '800',
@@ -362,6 +457,17 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     color: 'rgba(226,232,240,0.55)',
     fontSize: 13,
+    textAlign: 'center',
+  },
+  emptyFavorites: {
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  emptyFavoritesText: {
+    color: 'rgba(226,232,240,0.65)',
+    fontSize: 14,
     textAlign: 'center',
   },
 })
