@@ -90,6 +90,8 @@ export type FrameType = {
   awayPlayerStats?: PlayerLegStat[]
   homeBoardScore?: number
   awayBoardScore?: number
+  /** Team id that throws first dart in this game (darts only). */
+  firstDart?: number
   frameIdx?: number
   frameIndex?: number
   goldenBreak?: boolean

@@ -1,7 +1,6 @@
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import * as Haptics from 'expo-haptics'
 import {Pressable, View} from 'react-native'
-import FirstBreak from './FirstBreak'
 import Score from './Score'
 import VSHeader from './VSHeader'
 import {useScoresheetTheme} from './scoresheetTheme'
@@ -76,7 +75,6 @@ export default function ScoresheetHeader({
           <VSHeader />
         </View>
         <Score />
-        <FirstBreak />
       </View>
     </View>
   )

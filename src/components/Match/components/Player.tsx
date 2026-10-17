@@ -248,19 +248,11 @@ export default function Player({
     ])
   }
 
-  const hasBreak =
-    (teamId === homeTeamId &&
-      state.firstBreak === homeTeamId &&
-      state.frameData[frameIndex].frameNumber % 2 === 1) ||
-    (teamId === homeTeamId &&
-      state.firstBreak === awayTeamId &&
-      state.frameData[frameIndex].frameNumber % 2 === 0) ||
-    (teamId === awayTeamId &&
-      state.firstBreak === awayTeamId &&
-      state.frameData[frameIndex].frameNumber % 2 === 1) ||
-    (teamId === awayTeamId &&
-      state.firstBreak === homeTeamId &&
-      state.frameData[frameIndex].frameNumber % 2 === 0)
+  // Darts: first dart is per game (this row), not alternating from match break.
+  const gameFirstDart = Number(
+    state.frameData?.[frameIndex]?.firstDart ?? 0,
+  )
+  const hasBreak = gameFirstDart > 0 && gameFirstDart === teamId
 
   function slotMeta(slot: number) {
     const playerId = playerIds[slot]
@@ -377,7 +369,7 @@ export default function Player({
                   fontWeight: '800',
                   letterSpacing: 0.5,
                 }}>
-                {t('break').toUpperCase()}
+                {t('first_break').toUpperCase()}
               </Text>
             </View>
           ) : null}
@@ -523,7 +515,7 @@ export default function Player({
                   fontSize: 10,
                   fontWeight: '800',
                 }}>
-                {t('break').toUpperCase()}
+                {t('first_break').toUpperCase()}
               </Text>
             </View>
           </View>
@@ -612,7 +604,7 @@ export default function Player({
               fontWeight: '800',
               letterSpacing: 0.6,
             }}>
-            {t('break').toUpperCase()}
+            {t('first_break').toUpperCase()}
           </Text>
         </View>
       ) : null}

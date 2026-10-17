@@ -5,6 +5,7 @@ import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {Text, View} from 'react-native'
 import {FrameProps} from '../types'
+import FirstDart from './FirstDart'
 import Player from './Player'
 import {useScoresheetTheme} from './scoresheetTheme'
 import StatStepper from './StatStepper'
@@ -267,6 +268,7 @@ export default function Frame({
         theme.shadow,
       ]}>
       {titleBar()}
+      <FirstDart frameIndex={index} />
       {children}
     </View>
   )

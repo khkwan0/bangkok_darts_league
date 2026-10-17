@@ -171,6 +171,7 @@ export default function ScoreSheet() {
             awayPlayerStats: [],
             homeBoardScore: 0,
             awayBoardScore: 0,
+            firstDart: 0,
           }
           _frames.push(_frame)
           frameNumber++
@@ -228,10 +229,16 @@ export default function ScoreSheet() {
       const res = await match.GetFrames(matchInfo.match_id)
       if (typeof res?.data?.frames !== 'undefined') {
         const _frames = res.data.frames
-        _frames.forEach((frame: FrameType) => {
-          if (typeof frame.frameIndex === 'number') {
-            const template = __frames[frame.frameIndex]
-            __frames[frame.frameIndex] = {
+        _frames.forEach((frame: FrameType & {frameIdx?: number}) => {
+          const idx =
+            typeof frame.frameIndex === 'number'
+              ? frame.frameIndex
+              : typeof frame.frameIdx === 'number'
+                ? frame.frameIdx
+                : -1
+          if (idx >= 0 && idx < __frames.length) {
+            const template = __frames[idx]
+            __frames[idx] = {
               ...template,
               ...frame,
               type: frame.type ?? template?.type,
@@ -243,6 +250,7 @@ export default function ScoreSheet() {
               games: frame.games ?? template?.games,
               seriesMode: frame.seriesMode ?? template?.seriesMode,
               trackStats: frame.trackStats ?? template?.trackStats,
+              firstDart: Number(frame.firstDart ?? template?.firstDart ?? 0),
             }
           }
         })
@@ -261,14 +269,11 @@ export default function ScoreSheet() {
   }
 
   async function GetFirstBreak() {
+    // Name kept for call sites; loads finalize flags only (no match-level first break on darts).
     try {
       const res = await match.GetMatchInfo(matchInfo.match_id)
       if (typeof res.status !== 'undefined' && res.status === 'ok') {
-        if (typeof res.data.firstBreak !== 'undefined' && res.data.firstBreak) {
-          dispatch({type: 'SET_FIRSTBREAK', payload: res.data.firstBreak})
-        } else {
-          dispatch({type: 'SET_FIRSTBREAK', payload: null})
-        }
+        dispatch({type: 'SET_FIRSTBREAK', payload: null})
         if (
           typeof res.data.finalize_home !== 'undefined' &&
           Object.keys(res.data.finalize_home).length > 0

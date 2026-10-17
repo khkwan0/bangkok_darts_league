@@ -320,6 +320,8 @@ type FinalizeFrame = {
   winner?: number
   homePlayerIds?: number[]
   awayPlayerIds?: number[]
+  /** Team id that throws first dart in this game. */
+  firstDart?: number
 }
 
 /**
@@ -331,7 +333,7 @@ export function getFinalizeBlockReason(
   formatRaw: unknown,
   homeTeamId: number,
   awayTeamId: number,
-  firstBreak?: number | null,
+  _firstBreak?: number | null,
 ): FinalizeBlockReason | null {
   const format = parseMatchFormat(formatRaw)
   const mode = format?.mode ?? 'full_play'
@@ -346,12 +348,21 @@ export function getFinalizeBlockReason(
     return {key: 'finalize_no_frames'}
   }
 
-  const breakTeamId = Number(firstBreak ?? 0)
-  if (
-    !breakTeamId ||
-    (breakTeamId !== homeTeamId && breakTeamId !== awayTeamId)
-  ) {
-    return {key: 'finalize_missing_first_break'}
+  const missingFirstDart: number[] = []
+  for (const frame of playable) {
+    const dartTeamId = Number(frame.firstDart ?? 0)
+    if (
+      !dartTeamId ||
+      (dartTeamId !== homeTeamId && dartTeamId !== awayTeamId)
+    ) {
+      missingFirstDart.push(Number(frame.frameNumber))
+    }
+  }
+  if (missingFirstDart.length > 0) {
+    return {
+      key: 'finalize_missing_first_dart',
+      params: {games: missingFirstDart[0], games: missingFirstDart.join(', ')},
+    }
   }
 
   const missingWinner: number[] = []

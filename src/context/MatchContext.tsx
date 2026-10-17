@@ -165,6 +165,16 @@ const MatchReducer = (state: StateType, action: any) => {
         firstBreak: action.payload,
       }
     }
+    case 'SET_FIRST_DART': {
+      const {frameIndex, firstDart} = action.payload
+      const frame = {...state.frameData[frameIndex], firstDart}
+      const _frameData = [...state.frameData]
+      _frameData[frameIndex] = frame
+      return {
+        ...state,
+        frameData: _frameData,
+      }
+    }
     case 'SET_FRAMES': {
       return {
         ...state,
@@ -339,6 +349,14 @@ export const MatchProvider = (props: any) => {
               games: data.games,
             },
           })
+        } else if (data.type === 'firstdart') {
+          dispatch({
+            type: 'SET_FIRST_DART',
+            payload: {
+              frameIndex: data.frameIdx,
+              firstDart: Number(data.firstDart ?? 0),
+            },
+          })
         }
       }
     }
@@ -474,6 +492,7 @@ export const MatchProvider = (props: any) => {
   }
 
   function UpdateFirstBreak(teamId: number | string | null) {
+    // Unused on darts (per-game first dart). Kept for API compatibility.
     const breakId =
       teamId == null || teamId === '' ? 0 : parseInt(String(teamId), 10)
     const normalized = Number.isFinite(breakId) && breakId > 0 ? breakId : 0
@@ -481,7 +500,25 @@ export const MatchProvider = (props: any) => {
       type: 'SET_FIRSTBREAK',
       payload: normalized > 0 ? normalized : null,
     })
-    SocketSend('firstbreak', {firstBreak: normalized})
+  }
+
+  function UpdateFirstDart(frameIdx: number, teamId: number | string | null) {
+    const dartId =
+      teamId == null || teamId === '' ? 0 : parseInt(String(teamId), 10)
+    const normalized = Number.isFinite(dartId) && dartId > 0 ? dartId : 0
+    const initial = state.matchInfo.initialFrames?.[frameIdx]
+    const frame = state.frameData[frameIdx]
+    dispatch({
+      type: 'SET_FIRST_DART',
+      payload: {frameIndex: frameIdx, firstDart: normalized},
+    })
+    SocketSend('firstdart', {
+      frameIdx,
+      frameNumber: frame?.frameNumber ?? initial?.frameNumber ?? 0,
+      firstDart: normalized,
+      frameType: frame?.type || initial?.type || '',
+      mfpp: initial?.mfpp || 0,
+    })
   }
 
   function countPlayers(ids?: number[]) {
@@ -697,6 +734,7 @@ export const MatchProvider = (props: any) => {
         SocketDisconnect,
         UnfinalizeMatch,
         UpdateFirstBreak,
+        UpdateFirstDart,
         UpdateFramePlayers,
         UpdateFrameStats,
         UpdateFrameWin,

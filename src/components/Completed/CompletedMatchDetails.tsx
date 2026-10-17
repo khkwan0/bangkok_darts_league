@@ -32,6 +32,7 @@ type MatchMetadata = {
   home_frames: number
   away_frames: number
   first_break_home_team?: number
+  game_first_darts?: Array<{game_id: number; first_dart_home_team: number}>
   home_logo?: string | null
   away_logo?: string | null
   status_id?: number
@@ -509,8 +510,8 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
             )}
           </View>
         </View>
-        {(matchMetadata?.first_break_home_team === 1 ||
-          matchMetadata?.first_break_home_team === 0) && (
+        {Array.isArray(matchMetadata?.game_first_darts) &&
+        matchMetadata.game_first_darts.length > 0 ? (
           <Text
             style={{
               textAlign: 'center',
@@ -520,9 +521,16 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
               fontWeight: '700',
             }}>
             {t('first_break')}:{' '}
-            {matchMetadata?.first_break_home_team === 1 ? homeName : awayName}
+            {matchMetadata.game_first_darts
+              .map(
+                g =>
+                  `${t('frame')} ${g.game_id} ${
+                    g.first_dart_home_team === 1 ? homeName : awayName
+                  }`,
+              )
+              .join(' · ')}
           </Text>
-        )}
+        ) : null}
         </View>
       </View>
 

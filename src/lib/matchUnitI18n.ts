@@ -1,9 +1,10 @@
 import i18n from '@/i18n'
 
-const LEG_LABELS: Record<string, {frame: string; frames: string}> = {
-  en: {frame: 'Leg', frames: 'Legs'},
-  th: {frame: 'เลก', frames: 'เลก'},
-  cockney: {frame: 'Leg', frames: 'Legs'},
+/** Scoresheet row unit for darts: Game N (a game contains legs). */
+const GAME_LABELS: Record<string, {frame: string; frames: string}> = {
+  en: {frame: 'Game', frames: 'Games'},
+  th: {frame: 'เกม', frames: 'เกม'},
+  cockney: {frame: 'Game', frames: 'Games'},
 }
 
 const FRAME_LABELS: Record<string, {frame: string; frames: string}> = {
@@ -15,7 +16,8 @@ const FRAME_LABELS: Record<string, {frame: string; frames: string}> = {
 /** Apply pool/darts scoring-unit labels to i18n resources. */
 export function applyScoreUnitToI18n(scoreUnit: 'frame' | 'leg' | string) {
   const unit = scoreUnit === 'leg' || scoreUnit === 'legs' ? 'leg' : 'frame'
-  const labelsByLng = unit === 'leg' ? LEG_LABELS : FRAME_LABELS
+  // Darts score_unit is "leg" but scoresheet rows are labeled Game (legs are inside a game).
+  const labelsByLng = unit === 'leg' ? GAME_LABELS : FRAME_LABELS
 
   for (const [lng, labels] of Object.entries(labelsByLng)) {
     i18n.addResource(lng, 'translation', 'frame', labels.frame)
@@ -28,16 +30,18 @@ export function applyScoreUnitToI18n(scoreUnit: 'frame' | 'leg' | string) {
       const patched: Record<string, string> = {}
       for (const [key, value] of Object.entries(bundle)) {
         if (typeof value !== 'string') continue
-        if (key === 'frame' || key === 'frames') continue
+        if (key === 'frame' || key === 'frames' || key === 'legs' || key === 'leg')
+          continue
         let next = value
         if (lng === 'th') {
-          next = next.replace(/เฟรม/g, 'เลก').replace(/กระดาน/g, 'เลก')
+          // Remap pool frame wording only; keep เลก for series legs where intentional.
+          next = next.replace(/เฟรม/g, 'เกม').replace(/กระดาน/g, 'เกม')
         } else {
           next = next
-            .replace(/\bFrames\b/g, 'Legs')
-            .replace(/\bframes\b/g, 'legs')
-            .replace(/\bFrame\b/g, 'Leg')
-            .replace(/\bframe\b/g, 'leg')
+            .replace(/\bFrames\b/g, 'Games')
+            .replace(/\bframes\b/g, 'games')
+            .replace(/\bFrame\b/g, 'Game')
+            .replace(/\bframe\b/g, 'game')
         }
         if (next !== value) patched[key] = next
       }
