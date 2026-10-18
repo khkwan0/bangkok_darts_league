@@ -2,21 +2,26 @@ import React, {useEffect, useMemo, useState} from 'react'
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   View,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import {Image} from 'expo-image'
 import {ThemedText as Text} from '@/components/ThemedText'
 import AppSwitch from '@/components/AppSwitch'
-import config from '@/config'
 import {useLeague} from '@/hooks'
 import {useTranslation} from 'react-i18next'
 import {router, useNavigation} from 'expo-router'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {LinearGradient} from 'expo-linear-gradient'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
+import {
+  prefetchVenueLogos,
+  venueInitial,
+  venueLogoRecyclingKey,
+  venueLogoSource,
+} from '@/lib/venueLogo'
 
 const FAVORITES_ONLY_KEY = 'venues_favorites_only'
 
@@ -28,20 +33,6 @@ const ACCENTS = [
   '#F43F5E',
   '#8B5CF6',
 ] as const
-
-const SKIP_INITIAL_WORDS = new Set(['the', 'a', 'an'])
-
-function venueInitial(name?: string | null): string {
-  const parts = String(name || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-  const meaningful =
-    parts.find(word => !SKIP_INITIAL_WORDS.has(word.toLowerCase())) ||
-    parts[0] ||
-    '?'
-  return meaningful.charAt(0).toUpperCase() || '?'
-}
 
 type Team = {
   id: number
@@ -56,6 +47,8 @@ type Venue = {
   teams: Team[]
   location?: string
   logo?: string | null
+  /** Server timestamp; used to bust the local logo disk cache. */
+  modified?: string | null
 }
 
 function Chip({
@@ -94,6 +87,12 @@ function VenueRow({
   const teamsLabel = `${teamCount} ${
     teamCount === 1 ? t('team') : t('teams')
   }`.toLowerCase()
+  const logoOpts = {
+    logo: item.logo,
+    venueId: item.id,
+    modified: item.modified,
+  }
+  const logoSource = venueLogoSource(logoOpts)
 
   return (
     <View style={styles.rowWrap}>
@@ -116,12 +115,14 @@ function VenueRow({
             ]}
           />
           <View style={styles.row}>
-            {item.logo ? (
+            {logoSource ? (
               <View style={styles.logoWell}>
                 <Image
-                  source={{uri: config.logoUrl + item.logo}}
+                  source={logoSource}
                   style={styles.logo}
-                  resizeMode="contain"
+                  contentFit="contain"
+                  cachePolicy="disk"
+                  recyclingKey={venueLogoRecyclingKey(logoOpts)}
                 />
               </View>
             ) : (
@@ -252,6 +253,7 @@ export default function Venues() {
           }))
           .filter((venue: Venue) => venue.teams.length > 0)
         setVenues(filteredVenues)
+        prefetchVenueLogos(filteredVenues)
       } catch (error) {
         console.error('Failed to load venues:', error)
       } finally {

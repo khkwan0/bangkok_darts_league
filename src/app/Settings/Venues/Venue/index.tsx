@@ -16,9 +16,13 @@ import {useAccount, useLeague} from '@/hooks'
 import {useTranslation} from 'react-i18next'
 import {useLocalSearchParams, useNavigation, router} from 'expo-router'
 import {useTheme} from 'expo-router/react-navigation'
-import config from '@/config'
 import {useLeagueContext} from '@/context/LeagueContext'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
+import {
+  venueInitial,
+  venueLogoRecyclingKey,
+  venueLogoSource,
+} from '@/lib/venueLogo'
 
 type Team = {
   id: number
@@ -32,6 +36,7 @@ type Venue = {
   name: string
   teams: Team[]
   logo?: string
+  modified?: string | null
   location?: string
   latitude?: number
   longitude?: number
@@ -39,20 +44,6 @@ type Venue = {
   phone?: string
   email?: string
   website?: string
-}
-
-const SKIP_INITIAL_WORDS = new Set(['the', 'a', 'an'])
-
-function venueInitial(name?: string | null): string {
-  const parts = String(name || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-  const meaningful =
-    parts.find(word => !SKIP_INITIAL_WORDS.has(word.toLowerCase())) ||
-    parts[0] ||
-    '?'
-  return meaningful.charAt(0).toUpperCase() || '?'
 }
 
 function MetaPill({
@@ -105,6 +96,12 @@ function VenueHero({
   const pillBorder = isDark ? 'rgba(148,163,184,0.28)' : 'rgba(16,68,153,0.16)'
   const logoWell = isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF'
   const starColor = isFavorite ? '#F59E0B' : colors.text
+  const logoOpts = {
+    logo: venue.logo,
+    venueId: venue.id,
+    modified: venue.modified,
+  }
+  const logoSource = venueLogoSource(logoOpts)
 
   return (
     <View
@@ -127,11 +124,13 @@ function VenueHero({
                 : 'rgba(15,23,42,0.08)',
             },
           ]}>
-          {venue.logo ? (
+          {logoSource ? (
             <Image
-              source={{uri: config.logoUrl + venue.logo}}
+              source={logoSource}
               style={styles.logo}
               contentFit="contain"
+              cachePolicy="disk"
+              recyclingKey={venueLogoRecyclingKey(logoOpts)}
             />
           ) : (
             <Text className="text-3xl font-bold" style={{color: colors.primary}}>
