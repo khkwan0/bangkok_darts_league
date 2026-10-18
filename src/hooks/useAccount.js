@@ -8,11 +8,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import {getMessaging, getToken} from '@react-native-firebase/messaging'
 import {File} from 'expo-file-system'
 import {manipulateAsync, SaveFormat} from 'expo-image-manipulator'
+import {useEffect, useRef} from 'react'
 import {Platform} from 'react-native'
 
 export const useAccount = () => {
-  const {dispatch} = useLeagueContext()
+  const {dispatch, state} = useLeagueContext()
   const {Get, Post} = useNetwork()
+  // Prefer ref reads in async/gesture callbacks — closures over `state` can
+  // break when invoked via Reanimated scheduleOnRN / runOnJS.
+  const stateRef = useRef(state)
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   const LoadUser = async () => {
     try {
@@ -563,7 +570,7 @@ export const useAccount = () => {
         ? favoriteVenues.map(Number).filter(id => id > 0)
         : []
       const preferences = {
-        ...(state.user?.preferences || {}),
+        ...(stateRef.current.user?.preferences || {}),
         favorite_venues: next,
       }
       dispatch({
@@ -593,7 +600,7 @@ export const useAccount = () => {
             ? fabQuickActions
             : null
       const preferences = {
-        ...(state.user?.preferences || {}),
+        ...(stateRef.current.user?.preferences || {}),
         fab_quick_actions: next,
       }
       dispatch({
@@ -612,7 +619,7 @@ export const useAccount = () => {
     try {
       const next = Boolean(enabled)
       const preferences = {
-        ...(state.user?.preferences || {}),
+        ...(stateRef.current.user?.preferences || {}),
         ota_auto_reload: next,
       }
       dispatch({
@@ -631,8 +638,12 @@ export const useAccount = () => {
     try {
       const id = Number(venueId)
       if (!(id > 0)) return {status: 'error'}
-      const current = Array.isArray(state.user?.preferences?.favorite_venues)
-        ? state.user.preferences.favorite_venues.map(Number).filter(n => n > 0)
+      const current = Array.isArray(
+        stateRef.current.user?.preferences?.favorite_venues,
+      )
+        ? stateRef.current.user.preferences.favorite_venues
+            .map(Number)
+            .filter(n => n > 0)
         : []
       const next = current.includes(id)
         ? current.filter(n => n !== id)

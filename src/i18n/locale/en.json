@@ -783,6 +783,7 @@
   "fab_quick_actions_settings": "Quick actions",
   "fab_quick_actions_settings_description": "Choose which items appear in the FAB sheet and in what order.",
   "fab_quick_actions_reset_default": "Reset to default order",
+  "fab_quick_actions_reset_confirm": "Restore the default quick actions and order? Your current arrangement will be replaced.",
   "hide": "Hide",
   "expand": "Expand",
   "total": "Total",

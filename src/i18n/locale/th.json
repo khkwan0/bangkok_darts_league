@@ -779,6 +779,7 @@
   "fab_quick_actions_settings": "การดำเนินการด่วน",
   "fab_quick_actions_settings_description": "เลือกเมนูที่แสดงในแผ่น FAB และลำดับการแสดง",
   "fab_quick_actions_reset_default": "รีเซ็ตเป็นลำดับเริ่มต้น",
+  "fab_quick_actions_reset_confirm": "คืนค่าเมนูด่วนและการเรียงลำดับเริ่มต้นหรือไม่? การจัดเรียงปัจจุบันจะถูกแทนที่",
   "hide": "Hide",
   "expand": "ขยาย",
   "total": "Total",

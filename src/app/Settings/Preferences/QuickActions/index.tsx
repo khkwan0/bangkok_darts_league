@@ -1,6 +1,6 @@
 import QuickActionsPreference from '@/components/Preferences/QuickActionsPreference'
 import React from 'react'
-import {ScrollView} from 'react-native'
+import {View} from 'react-native'
 import {useNavigation} from 'expo-router'
 import {useTranslation} from 'react-i18next'
 import {useTheme} from 'expo-router/react-navigation'
@@ -17,10 +17,8 @@ export default function QuickActionsScreen() {
   }, [t, navigation])
 
   return (
-    <ScrollView
-      style={{flex: 1, backgroundColor: colors.background}}
-      contentContainerStyle={{paddingBottom: 32}}>
+    <View style={{flex: 1, backgroundColor: colors.background}}>
       <QuickActionsPreference />
-    </ScrollView>
+    </View>
   )
 }

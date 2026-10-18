@@ -769,6 +769,7 @@
   "fab_quick_actions_settings": "Quick actions",
   "fab_quick_actions_settings_description": "Choose which items appear in the FAB sheet and in what order.",
   "fab_quick_actions_reset_default": "Reset to default order",
+  "fab_quick_actions_reset_confirm": "Put the quick actions back to the usual lot and order? Your current setup gets chucked.",
   "hide": "Hide",
   "expand": "Expand",
   "total": "Total",

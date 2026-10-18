@@ -7,6 +7,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import {ThemedText as Text} from '@/components/ThemedText'
 import AppSwitch from '@/components/AppSwitch'
 import config from '@/config'
@@ -16,6 +17,8 @@ import {router, useNavigation} from 'expo-router'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {LinearGradient} from 'expo-linear-gradient'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
+
+const FAVORITES_ONLY_KEY = 'venues_favorites_only'
 
 const ACCENTS = [
   '#3B82F6',
@@ -181,6 +184,37 @@ export default function Venues() {
   }, [venues, favoriteIds, favoritesOnly])
 
   useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const raw = await AsyncStorage.getItem(FAVORITES_ONLY_KEY)
+        if (cancelled) return
+        if (raw != null) {
+          const parsed = JSON.parse(raw)
+          setFavoritesOnly(Boolean(parsed?.favoritesOnly))
+        }
+      } catch (e) {
+        console.log(e)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function handleFavoritesOnlyChange(value: boolean) {
+    setFavoritesOnly(value)
+    try {
+      await AsyncStorage.setItem(
+        FAVORITES_ONLY_KEY,
+        JSON.stringify({favoritesOnly: value}),
+      )
+    } catch (e) {
+      console.log(e)
+    }
+  }
+
+  useEffect(() => {
     navigation.setOptions({
       title: t('venues'),
     })
@@ -244,7 +278,12 @@ export default function Venues() {
       </View>
       <View style={styles.favoritesToggleRow}>
         <Text style={styles.favoritesToggleLabel}>{t('favorites_only')}</Text>
-        <AppSwitch value={favoritesOnly} onValueChange={setFavoritesOnly} />
+        <AppSwitch
+          value={favoritesOnly}
+          onValueChange={value => {
+            void handleFavoritesOnlyChange(value)
+          }}
+        />
       </View>
     </View>
   )
@@ -255,7 +294,7 @@ export default function Venues() {
       locations={[0, 0.55, 1]}
       start={{x: 0.2, y: 0}}
       end={{x: 0.9, y: 1}}
-      style={StyleSheet.absoluteFill}
+      style={StyleSheet.absoluteFillObject}
     />
   )
 
@@ -305,7 +344,7 @@ export default function Venues() {
                 {t('no_favorite_venues')}
               </Text>
             </View>
-          ) : undefined
+          ) : null
         }
         showsVerticalScrollIndicator={false}
       />

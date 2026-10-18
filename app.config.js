@@ -45,6 +45,9 @@ module.exports = ({config}) => ({
   updates: {
     url: 'https://ota.bkkleague.com/manifest',
     enabled: true,
+    // OTAUpdatePrompt owns check/fetch/reload. Native ON_LOAD races the JS
+    // API on iOS and can hang reloadAsync on fresh installs.
+    checkAutomatically: 'NEVER',
     codeSigningMetadata: process.env.DISABLE_CODE_SIGNING
       ? undefined
       : {keyid: 'main', alg: 'rsa-v1_5-sha256'},
