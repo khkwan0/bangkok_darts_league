@@ -251,7 +251,7 @@ const Interface = () => {
           </Text>
         </View>
         <AppSwitch
-          value={state.user?.preferences?.ota_auto_reload ?? true}
+          value={state.user?.preferences?.ota_auto_reload ?? false}
           onValueChange={handleOtaAutoReloadToggle}
         />
       </View>

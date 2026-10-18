@@ -1,7 +1,13 @@
+import Button from '@/components/Button'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {
+  consumeOtaRestoreLocation,
+  saveOtaRestoreLocation,
+} from '@/lib/otaNavigationRestore'
 import * as Updates from 'expo-updates'
+import {router, useGlobalSearchParams, usePathname, useRootNavigationState} from 'expo-router'
 import {useEffect, useRef, useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -25,19 +31,14 @@ function manifestId(manifest: unknown): string {
   return ''
 }
 
-function reloadWithSettledUI() {
-  // iOS can hang if reloadAsync runs during an Alert/AppState transition.
-  return new Promise<void>((resolve, reject) => {
-    setTimeout(() => {
-      Updates.reloadAsync().then(() => resolve()).catch(reject)
-    }, 350)
-  })
-}
-
 /**
  * Checks for OTA updates on launch and when returning to foreground.
- * Downloads with a visible modal, then either prompts to restart or
- * auto-reloads when user preference ota_auto_reload is enabled (default on).
+ * Shows a dismissable dialog while downloading, then either prompts to
+ * restart or auto-reloads when user preference ota_auto_reload is enabled
+ * (default off). Dismissing the dialog does not cancel the download.
+ *
+ * Before reload, saves the current route so the user returns to the same
+ * screen after the JS bundle reloads.
  *
  * Requires updates.checkAutomatically: 'NEVER' so native ON_LOAD does not
  * race these JS API calls (known iOS hang on fresh install).
@@ -45,23 +46,74 @@ function reloadWithSettledUI() {
 export default function OTAUpdatePrompt() {
   const {t} = useTranslation()
   const {state} = useLeagueContext()
+  const pathname = usePathname()
+  const params = useGlobalSearchParams()
+  const navigationState = useRootNavigationState()
   const [downloading, setDownloading] = useState(false)
   const busyRef = useRef(false)
   const dismissedUpdateIdRef = useRef<string | null>(null)
   const handledUpdateIdRef = useRef<string | null>(null)
+  const restoredRef = useRef(false)
+  const pathnameRef = useRef(pathname)
+  const paramsRef = useRef(params)
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
   const autoReloadRef = useRef(
-    state.user?.preferences?.ota_auto_reload !== false,
+    state.user?.preferences?.ota_auto_reload === true,
   )
+
+  pathnameRef.current = pathname
+  paramsRef.current = params
 
   useEffect(() => {
     autoReloadRef.current =
-      state.user?.preferences?.ota_auto_reload !== false
+      state.user?.preferences?.ota_auto_reload === true
   }, [state.user?.preferences?.ota_auto_reload])
+
+  // One-shot restore after Updates.reloadAsync()
+  useEffect(() => {
+    if (!navigationState?.key || restoredRef.current) return
+    restoredRef.current = true
+    let cancelled = false
+    ;(async () => {
+      const saved = await consumeOtaRestoreLocation()
+      if (cancelled || !saved) return
+      try {
+        router.replace(
+          {
+            pathname: saved.pathname as any,
+            params: saved.params,
+          },
+          {withAnchor: true},
+        )
+      } catch {
+        // Route may no longer exist after the update; stay on default home.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [navigationState?.key])
 
   useEffect(() => {
     if (Platform.OS === 'web' || __DEV__ || !Updates.isEnabled) {
       return
+    }
+
+    async function reloadWithSettledUI() {
+      try {
+        await saveOtaRestoreLocation(
+          pathnameRef.current,
+          paramsRef.current as Record<string, unknown>,
+        )
+      } catch {
+        // Proceed with reload even if persist fails.
+      }
+      // iOS can hang if reloadAsync runs during an Alert/AppState transition.
+      return new Promise<void>((resolve, reject) => {
+        setTimeout(() => {
+          Updates.reloadAsync().then(() => resolve()).catch(reject)
+        }, 350)
+      })
     }
 
     async function runCheck() {
@@ -88,13 +140,9 @@ export default function OTAUpdatePrompt() {
 
         const autoReload = autoReloadRef.current
 
-        if (!autoReload) {
-          setDownloading(true)
-        }
+        setDownloading(true)
         const fetched = await Updates.fetchUpdateAsync()
-        if (!autoReload) {
-          setDownloading(false)
-        }
+        setDownloading(false)
 
         if (!fetched.isNew) return
 
@@ -160,7 +208,11 @@ export default function OTAUpdatePrompt() {
   if (!downloading) return null
 
   return (
-    <Modal animationType="fade" transparent visible>
+    <Modal
+      animationType="fade"
+      transparent
+      visible
+      onRequestClose={() => setDownloading(false)}>
       <View
         style={{
           flex: 1,
@@ -173,9 +225,12 @@ export default function OTAUpdatePrompt() {
           <Text type="defaultSemiBold" className="text-lg mt-4 mb-1 text-center">
             {t('ota_downloading_title')}
           </Text>
-          <Text className="text-center text-gray-600 dark:text-gray-300">
+          <Text className="text-center text-gray-600 dark:text-gray-300 mb-4">
             {t('ota_downloading_message')}
           </Text>
+          <Button type="outline" small onPress={() => setDownloading(false)}>
+            close
+          </Button>
         </View>
       </View>
     </Modal>

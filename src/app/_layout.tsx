@@ -9,6 +9,7 @@ import {
   isAdminSupportTicketRemoteMessage,
   isSupportTicketRemoteMessage,
 } from '@/lib/notifications'
+import {peekOtaRestorePending} from '@/lib/otaNavigationRestore'
 import {BottomSheetModalProvider} from '@expo/ui/community/bottom-sheet'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
@@ -166,46 +167,48 @@ function RootLayout() {
         },
       )
 
-      // Check if app was opened from a notification (quit state)
+      // Check if app was opened from a notification (quit state).
+      // Skip after OTA reload — that path restores the pre-reload route.
       getInitialNotification(messagingInstance)
-        .then(remoteMessage => {
-          if (remoteMessage) {
-            if (isAdminSupportTicketRemoteMessage(remoteMessage)) {
-              const ticketId =
-                getSupportTicketIdFromRemoteMessage(remoteMessage)
-              if (ticketId) {
-                setTimeout(() => {
-                  handleAdminSupportTicketNavigation(ticketId)
-                }, 1000)
-                return
-              }
-            }
+        .then(async remoteMessage => {
+          if (!remoteMessage) return
+          if (await peekOtaRestorePending()) return
 
-            if (isSupportTicketRemoteMessage(remoteMessage)) {
-              const supportTicketId =
-                getSupportTicketIdFromRemoteMessage(remoteMessage)
-              if (supportTicketId) {
-                setTimeout(() => {
-                  handleSupportTicketNavigation(supportTicketId)
-                }, 1000)
-                return
-              }
+          if (isAdminSupportTicketRemoteMessage(remoteMessage)) {
+            const ticketId =
+              getSupportTicketIdFromRemoteMessage(remoteMessage)
+            if (ticketId) {
+              setTimeout(() => {
+                handleAdminSupportTicketNavigation(ticketId)
+              }, 1000)
+              return
             }
+          }
 
-            const senderId = remoteMessage?.data?.senderId || null
-            if (senderId) {
+          if (isSupportTicketRemoteMessage(remoteMessage)) {
+            const supportTicketId =
+              getSupportTicketIdFromRemoteMessage(remoteMessage)
+            if (supportTicketId) {
+              setTimeout(() => {
+                handleSupportTicketNavigation(supportTicketId)
+              }, 1000)
+              return
+            }
+          }
+
+          const senderId = remoteMessage?.data?.senderId || null
+          if (senderId) {
+            setTimeout(() => {
+              handleNotificationNavigation(remoteMessage)
+            }, 1000)
+          } else {
+            const url = remoteMessage.data?.link
+            if (url) {
+              Linking.openURL(url as string)
+            } else {
               setTimeout(() => {
                 handleNotificationNavigation(remoteMessage)
               }, 1000)
-            } else {
-              const url = remoteMessage.data?.link
-              if (url) {
-                Linking.openURL(url as string)
-              } else {
-                setTimeout(() => {
-                  handleNotificationNavigation(remoteMessage)
-                }, 1000)
-              }
             }
           }
         })
