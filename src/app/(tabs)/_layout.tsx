@@ -554,8 +554,12 @@ export default function TabLayout() {
       <Tabs.Screen
         name="teams"
         options={{
-          href: null,
+          // Do not use href: null — SDK 58 treats that as hidden and
+          // redirects focus back to the initial tab (upcoming matches).
+          // Hide the tab button only; Teams remains reachable from the FAB.
           headerShown: false,
+          tabBarButton: () => null,
+          tabBarItemStyle: {display: 'none'},
         }}
       />
       <Tabs.Screen

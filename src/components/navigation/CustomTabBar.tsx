@@ -134,11 +134,21 @@ export function CustomTabBar({
     ? colors.buttonBackground
     : competitionAccent
 
+  const isTabVisible = React.useCallback(
+    (routeKey: string) => {
+      const {options} = descriptors[routeKey]
+      if ((options as {hidden?: boolean}).hidden === true) {
+        return false
+      }
+      const itemStyle = StyleSheet.flatten(options.tabBarItemStyle ?? {})
+      return itemStyle.display !== 'none'
+    },
+    [descriptors],
+  )
+
   const fabAdjacentIndices = React.useMemo(() => {
     const visibleIndices = state.routes.reduce<number[]>((indices, route, index) => {
-      const {options} = descriptors[route.key]
-      const itemStyle = StyleSheet.flatten(options.tabBarItemStyle ?? {})
-      if (itemStyle.display !== 'none') {
+      if (isTabVisible(route.key)) {
         indices.push(index)
       }
       return indices
@@ -149,7 +159,7 @@ export function CustomTabBar({
       left: visibleIndices[center - 1],
       right: visibleIndices[center],
     }
-  }, [state.routes, descriptors])
+  }, [state.routes, isTabVisible])
 
   const openSheet = () => {
     if (process.env.EXPO_OS === 'ios') {
@@ -244,9 +254,7 @@ export function CustomTabBar({
           },
         ]}>
         {state.routes.map((route, index) => {
-          const {options} = descriptors[route.key]
-          const itemStyle = StyleSheet.flatten(options.tabBarItemStyle ?? {})
-          if (itemStyle.display === 'none') {
+          if (!isTabVisible(route.key)) {
             return null
           }
           return renderRoute(route, index)

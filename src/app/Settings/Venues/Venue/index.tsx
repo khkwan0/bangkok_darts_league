@@ -41,6 +41,20 @@ type Venue = {
   website?: string
 }
 
+const SKIP_INITIAL_WORDS = new Set(['the', 'a', 'an'])
+
+function venueInitial(name?: string | null): string {
+  const parts = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  const meaningful =
+    parts.find(word => !SKIP_INITIAL_WORDS.has(word.toLowerCase())) ||
+    parts[0] ||
+    '?'
+  return meaningful.charAt(0).toUpperCase() || '?'
+}
+
 function MetaPill({
   icon,
   label,
@@ -121,7 +135,7 @@ function VenueHero({
             />
           ) : (
             <Text className="text-3xl font-bold" style={{color: colors.primary}}>
-              {venue.name.charAt(0).toUpperCase()}
+              {venueInitial(venue.name)}
             </Text>
           )}
         </View>

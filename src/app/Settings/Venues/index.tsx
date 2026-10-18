@@ -29,6 +29,20 @@ const ACCENTS = [
   '#8B5CF6',
 ] as const
 
+const SKIP_INITIAL_WORDS = new Set(['the', 'a', 'an'])
+
+function venueInitial(name?: string | null): string {
+  const parts = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  const meaningful =
+    parts.find(word => !SKIP_INITIAL_WORDS.has(word.toLowerCase())) ||
+    parts[0] ||
+    '?'
+  return meaningful.charAt(0).toUpperCase() || '?'
+}
+
 type Team = {
   id: number
   name: string
@@ -113,7 +127,7 @@ function VenueRow({
             ) : (
               <View style={[styles.iconWell, {backgroundColor: `${accent}22`}]}>
                 <Text style={[styles.initial, {color: accent}]}>
-                  {(item.name || '?').charAt(0).toUpperCase()}
+                  {venueInitial(item.name)}
                 </Text>
               </View>
             )}
