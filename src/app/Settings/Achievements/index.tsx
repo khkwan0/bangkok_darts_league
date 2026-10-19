@@ -113,8 +113,21 @@ export default function AchievementsScreen() {
   const [refreshing, setRefreshing] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [expandedCode, setExpandedCode] = React.useState<string | null>(null)
+  const [sortMode, setSortMode] = React.useState<'default' | 'newest'>(
+    'newest',
+  )
   const lang = i18n.language || 'en'
   const playerId = Number(state.user?.id) || 0
+
+  const unlockedSorted = React.useMemo(() => {
+    const list = data?.unlocked ?? []
+    if (sortMode !== 'newest') return list
+    return [...list].sort((a, b) => {
+      const aTime = a.awardedAt ? new Date(a.awardedAt).getTime() : 0
+      const bTime = b.awardedAt ? new Date(b.awardedAt).getTime() : 0
+      return bTime - aTime
+    })
+  }, [data?.unlocked, sortMode])
 
   const load = React.useCallback(async () => {
     if (!playerId) {
@@ -204,10 +217,39 @@ export default function AchievementsScreen() {
 
           {(data?.unlocked?.length ?? 0) > 0 ? (
             <>
-              <Text className="mb-2 text-xs font-bold uppercase tracking-wide opacity-50">
-                {t('achievements_earned')}
-              </Text>
-              {data!.unlocked.map(item => (
+              <RNView className="mb-2 flex-row items-center justify-between">
+                <Text className="text-xs font-bold uppercase tracking-wide opacity-50">
+                  {t('achievements_earned')}
+                </Text>
+                <RNView className="flex-row overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+                  {(
+                    [
+                      ['newest', t('achievements_sort_newest')],
+                      ['default', t('achievements_sort_default')],
+                    ] as const
+                  ).map(([mode, label]) => {
+                    const active = sortMode === mode
+                    return (
+                      <Pressable
+                        key={mode}
+                        onPress={() => setSortMode(mode)}
+                        className="px-2.5 py-1"
+                        style={{
+                          backgroundColor: active
+                            ? 'rgba(234,179,8,0.2)'
+                            : 'transparent',
+                        }}>
+                        <Text
+                          className="text-xs font-semibold"
+                          style={{opacity: active ? 1 : 0.55}}>
+                          {label}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
+                </RNView>
+              </RNView>
+              {unlockedSorted.map(item => (
                 <AchievementRow
                   key={item.code}
                   item={item}

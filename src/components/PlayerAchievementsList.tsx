@@ -137,7 +137,20 @@ export default function PlayerAchievementsList({
 }) {
   const {t, i18n} = useTranslation()
   const [expandedCode, setExpandedCode] = React.useState<string | null>(null)
+  const [sortMode, setSortMode] = React.useState<'default' | 'newest'>(
+    'newest',
+  )
   const lang = i18n.language || 'en'
+
+  const unlockedSorted = React.useMemo(() => {
+    if (!data) return []
+    if (sortMode !== 'newest') return data.unlocked
+    return [...data.unlocked].sort((a, b) => {
+      const aTime = a.awardedAt ? new Date(a.awardedAt).getTime() : 0
+      const bTime = b.awardedAt ? new Date(b.awardedAt).getTime() : 0
+      return bTime - aTime
+    })
+  }, [data, sortMode])
 
   if (!data) return null
 
@@ -190,18 +203,64 @@ export default function PlayerAchievementsList({
 
       {data.unlocked.length > 0 ? (
         <>
-          <Text
+          <RNView
             style={{
               marginBottom: 8,
-              fontSize: 11,
-              fontWeight: '700',
-              letterSpacing: 0.6,
-              textTransform: 'uppercase',
-              color: mutedColor ?? '#94A3B8',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             }}>
-            {t('achievements_earned')}
-          </Text>
-          {data.unlocked.map(item => (
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '700',
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+                color: mutedColor ?? '#94A3B8',
+              }}>
+              {t('achievements_earned')}
+            </Text>
+            <RNView
+              style={{
+                flexDirection: 'row',
+                overflow: 'hidden',
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: 'rgba(148,163,184,0.35)',
+              }}>
+              {(
+                [
+                  ['newest', t('achievements_sort_newest')],
+                  ['default', t('achievements_sort_default')],
+                ] as const
+              ).map(([mode, label]) => {
+                const active = sortMode === mode
+                return (
+                  <Pressable
+                    key={mode}
+                    onPress={() => setSortMode(mode)}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      backgroundColor: active
+                        ? 'rgba(234,179,8,0.2)'
+                        : 'transparent',
+                    }}>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: '600',
+                        color: textColor,
+                        opacity: active ? 1 : 0.55,
+                      }}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </RNView>
+          </RNView>
+          {unlockedSorted.map(item => (
             <AchievementRow
               key={item.code}
               item={item}
