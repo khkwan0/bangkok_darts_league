@@ -19,7 +19,6 @@ import {
   View,
 } from 'react-native'
 import type {
-  HighlightGameTypeOption,
   WeeklyHighlightPlayer,
   WeeklyHighlights,
   WeeklySpotlight,
@@ -56,10 +55,6 @@ function getTheme(isDark: boolean) {
       title: '#F8FAFC',
       muted: 'rgba(226,232,240,0.7)',
       accent: '#E8C6F0',
-      chipBg: 'rgba(255,255,255,0.08)',
-      chipBorder: 'rgba(148,163,184,0.28)',
-      chipActiveBg: '#F8FAFC',
-      chipActiveText: '#1A1220',
       pillBg: 'rgba(245, 215, 110, 0.18)',
       pillText: '#F5D76E',
       spotlightBg: 'rgba(255,255,255,0.07)',
@@ -74,10 +69,6 @@ function getTheme(isDark: boolean) {
     title: '#FFFFFF',
     muted: 'rgba(255,255,255,0.75)',
     accent: '#F3D9F8',
-    chipBg: 'rgba(255,255,255,0.12)',
-    chipBorder: 'rgba(255,255,255,0.24)',
-    chipActiveBg: '#FFFFFF',
-    chipActiveText: '#37003C',
     pillBg: 'rgba(245, 215, 110, 0.22)',
     pillText: '#FFE9A8',
     spotlightBg: 'rgba(255,255,255,0.12)',
@@ -102,14 +93,6 @@ function formatWeekDay(dateStr: string): string {
 
 function formatWeekRange(weekStart: string, weekEnd: string): string {
   return `${formatWeekDay(weekStart)} – ${formatWeekDay(weekEnd)}`
-}
-
-function gameTypeLabel(
-  opt: HighlightGameTypeOption,
-  t: (key: string) => string,
-): string {
-  if (opt.code === 'all') return t('weekly_highlights_all')
-  return opt.label
 }
 
 function Avatar({
@@ -195,10 +178,9 @@ export default function WeeklyHighlightsCard() {
   const {getWeeklyHighlights} = useWeeklyHighlights()
   const isDark = useColorScheme() === 'dark'
   const theme = getTheme(isDark)
-  const [gameType, setGameType] = React.useState('all')
   const [data, setData] = React.useState<WeeklyHighlights | null>(null)
   const [loading, setLoading] = React.useState(true)
-  const [collapsed, setCollapsed] = React.useState(false)
+  const [collapsed, setCollapsed] = React.useState(true)
 
   React.useEffect(() => {
     let cancelled = false
@@ -215,16 +197,9 @@ export default function WeeklyHighlightsCard() {
     ;(async () => {
       setLoading(true)
       try {
-        const res = await getWeeklyHighlights({gameType})
+        const res = await getWeeklyHighlights({gameType: 'all'})
         if (cancelled) return
-        if (res?.playerOfTheWeek) {
-          setData(res)
-        } else if (gameType !== 'all') {
-          // Empty filter — keep the card up and fall back to All.
-          setGameType('all')
-        } else {
-          setData(null)
-        }
+        setData(res?.playerOfTheWeek ? res : null)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -232,7 +207,7 @@ export default function WeeklyHighlightsCard() {
     return () => {
       cancelled = true
     }
-  }, [getWeeklyHighlights, gameType])
+  }, [getWeeklyHighlights])
 
   async function setCollapsedPersisted(next: boolean) {
     setCollapsed(next)
@@ -246,11 +221,6 @@ export default function WeeklyHighlightsCard() {
   if (!data?.playerOfTheWeek) return null
 
   const potw = data.playerOfTheWeek
-  const options =
-    (data.gameTypes?.length ?? 0) > 0
-      ? data.gameTypes
-      : [{code: 'all', label: 'All'}]
-  const activeGameType = data.gameType || gameType
   const record = `${potw.won}–${potw.lost}${
     potw.played > 0 ? ` · ${potw.winPct}%` : ''
   }`
@@ -331,41 +301,6 @@ export default function WeeklyHighlightsCard() {
             </Pressable>
           </View>
         </View>
-
-        {options.length > 1 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.chipsRow}
-            contentContainerStyle={styles.chipsContent}>
-            {options.map(opt => {
-              const active = activeGameType === opt.code
-              return (
-                <Pressable
-                  key={opt.code}
-                  onPress={() => setGameType(opt.code)}
-                  style={[
-                    styles.chip,
-                    {
-                      borderColor: active ? theme.chipActiveBg : theme.chipBorder,
-                      backgroundColor: active
-                        ? theme.chipActiveBg
-                        : theme.chipBg,
-                    },
-                  ]}>
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: '700',
-                      color: active ? theme.chipActiveText : theme.muted,
-                    }}>
-                    {gameTypeLabel(opt, t)}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </ScrollView>
-        ) : null}
 
         <Text style={[styles.title, {color: theme.title}]}>
           {t('player_of_the_week')}
@@ -498,19 +433,6 @@ const styles = StyleSheet.create({
   actionBtnText: {
     fontSize: 12,
     fontWeight: '800',
-  },
-  chipsRow: {
-    marginTop: 10,
-  },
-  chipsContent: {
-    paddingRight: 4,
-  },
-  chip: {
-    marginRight: 6,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-    borderRadius: 999,
-    borderWidth: 1,
   },
   hero: {
     marginTop: 14,
