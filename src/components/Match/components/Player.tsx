@@ -10,7 +10,12 @@ import {useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {Alert, Pressable, Text, View} from 'react-native'
 import {useScoresheetTheme} from './scoresheetTheme'
+import {
+  isValidDartCheckout,
+  MAX_DART_CHECKOUT,
+} from '@/lib/dartCheckouts'
 import StatStepper from './StatStepper'
+import StatValueInput from './StatValueInput'
 
 export type PlayerLayout = 'panel' | 'ledger' | 'chips'
 
@@ -25,6 +30,9 @@ interface PlayerProps {
   noPlayers?: number
   playerIds: number[]
   trackStats?: boolean
+  trackTons?: boolean
+  trackHeavyTons?: boolean
+  trackCloses?: boolean
   /** @deprecated prefer layout; kept for callers that pass statsView */
   statsView?: ScoresheetStatsView
   layout?: PlayerLayout
@@ -55,6 +63,9 @@ function StatsBlock({
   tons,
   heavyTons,
   closes,
+  showTons = true,
+  showHeavyTons = true,
+  showCloses = true,
   ink,
   accent,
   locked,
@@ -65,6 +76,9 @@ function StatsBlock({
   tons: number
   heavyTons: number
   closes: number
+  showTons?: boolean
+  showHeavyTons?: boolean
+  showCloses?: boolean
   ink: string
   accent: string
   locked: boolean
@@ -73,6 +87,7 @@ function StatsBlock({
 }) {
   const {t} = useTranslation()
   const abbrev = size === 'compact'
+  if (!showTons && !showHeavyTons && !showCloses) return null
   return (
     <View
       style={{
@@ -83,33 +98,43 @@ function StatsBlock({
         gap: horizontal ? 12 : size === 'compact' ? 4 : 8,
         marginTop: horizontal ? 0 : size === 'compact' ? 4 : 6,
       }}>
-      <StatStepper
-        size={size}
-        label={abbrev ? t('stat_abbr_tons') : t('tons')}
-        value={tons}
-        ink={ink}
-        accent={accent}
-        disabled={locked}
-        onDelta={d => onDelta('tons', d)}
-      />
-      <StatStepper
-        size={size}
-        label={abbrev ? t('stat_abbr_heavy') : t('heavy')}
-        value={heavyTons}
-        ink={ink}
-        accent={accent}
-        disabled={locked}
-        onDelta={d => onDelta('heavyTons', d)}
-      />
-      <StatStepper
-        size={size}
-        label={abbrev ? t('stat_abbr_closes') : t('closes')}
-        value={closes}
-        ink={ink}
-        accent={accent}
-        disabled={locked}
-        onDelta={d => onDelta('closes', d)}
-      />
+      {showTons ? (
+        <StatStepper
+          size={size}
+          label={abbrev ? t('stat_abbr_tons') : t('tons')}
+          value={tons}
+          ink={ink}
+          accent={accent}
+          disabled={locked}
+          onDelta={d => onDelta('tons', d)}
+        />
+      ) : null}
+      {showHeavyTons ? (
+        <StatStepper
+          size={size}
+          label={abbrev ? t('stat_abbr_heavy') : t('heavy')}
+          value={heavyTons}
+          ink={ink}
+          accent={accent}
+          disabled={locked}
+          onDelta={d => onDelta('heavyTons', d)}
+        />
+      ) : null}
+      {showCloses ? (
+        <StatValueInput
+          size={size}
+          label={abbrev ? t('stat_abbr_closes') : t('closes')}
+          value={closes}
+          ink={ink}
+          accent={accent}
+          disabled={locked}
+          max={MAX_DART_CHECKOUT}
+          isValid={isValidDartCheckout}
+          invalidTitle={t('invalid_checkout_title')}
+          invalidMessage={t('invalid_checkout_message')}
+          onChange={next => onDelta('closes', next - closes)}
+        />
+      ) : null}
     </View>
   )
 }
@@ -135,6 +160,9 @@ export default function Player({
   noPlayers,
   playerIds,
   trackStats = false,
+  trackTons,
+  trackHeavyTons,
+  trackCloses,
   statsView,
   layout: layoutProp,
   refreshing = false,
@@ -161,6 +189,10 @@ export default function Player({
     ? Math.min(maxCount, assigned.length + 1)
     : maxCount
   const locked = !!(state.finalizedHome && state.finalizedAway)
+  const showTons = trackTons ?? trackStats
+  const showHeavyTons = trackHeavyTons ?? trackStats
+  const showCloses = trackCloses ?? trackStats
+  const showAnyPlayerStats = showTons || showHeavyTons || showCloses
   const statsKey = side === 'home' ? 'homePlayerStats' : 'awayPlayerStats'
   const playerStats = state.frameData?.[frameIndex]?.[statsKey] ?? []
   const accent = side === 'home' ? theme.home.button : theme.away.button
@@ -355,7 +387,7 @@ export default function Player({
             </View>
           ) : null}
         </View>
-        {trackStats &&
+        {showAnyPlayerStats &&
         activeFocus != null &&
         slotMeta(activeFocus).filled ? (
           <View
@@ -384,6 +416,9 @@ export default function Player({
               tons={Number(slotMeta(activeFocus).slotStat.tons ?? 0)}
               heavyTons={Number(slotMeta(activeFocus).slotStat.heavyTons ?? 0)}
               closes={Number(slotMeta(activeFocus).slotStat.closes ?? 0)}
+              showTons={showTons}
+              showHeavyTons={showHeavyTons}
+              showCloses={showCloses}
               ink={ink}
               accent={accent}
               locked={locked}
@@ -399,7 +434,7 @@ export default function Player({
               </Text>
             </Pressable>
           </View>
-        ) : trackStats ? (
+        ) : showAnyPlayerStats ? (
           <Text
             style={{
               marginTop: 8,
@@ -463,13 +498,16 @@ export default function Player({
                   </Row>
                 )}
               </Pressable>
-              {trackStats && filled ? (
+              {showAnyPlayerStats && filled ? (
                 <StatsBlock
                   size="compact"
                   horizontal
                   tons={Number(slotStat.tons ?? 0)}
                   heavyTons={Number(slotStat.heavyTons ?? 0)}
                   closes={Number(slotStat.closes ?? 0)}
+                  showTons={showTons}
+                  showHeavyTons={showHeavyTons}
+                  showCloses={showCloses}
                   ink={ink}
                   accent={accent}
                   locked={locked}
@@ -552,12 +590,15 @@ export default function Player({
                 </Row>
               )}
             </Pressable>
-            {trackStats && filled ? (
+            {showAnyPlayerStats && filled ? (
               <StatsBlock
                 size="default"
                 tons={Number(slotStat.tons ?? 0)}
                 heavyTons={Number(slotStat.heavyTons ?? 0)}
                 closes={Number(slotStat.closes ?? 0)}
+                showTons={showTons}
+                showHeavyTons={showHeavyTons}
+                showCloses={showCloses}
                 ink={ink}
                 accent={accent}
                 locked={locked}

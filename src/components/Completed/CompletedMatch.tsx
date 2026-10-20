@@ -15,6 +15,10 @@ type CompletedMatchProps = {
     away_frames: number
     date: string
     original_date: string
+    postponed_by?: number
+    postponed_by_name?: string | null
+    postponed_by_team_name?: string | null
+    postponed_by_team_short_name?: string | null
   }
 }
 
@@ -141,6 +145,7 @@ export default function CompletedMatch({
   item,
   index = 0,
 }: CompletedMatchProps & {index?: number}) {
+  const {t} = useTranslation()
   const colors = useStatColors()
   const accent = cardAccent(index)
   const matchDate = formatBangkokDateMed(item.date)
@@ -148,6 +153,20 @@ export default function CompletedMatch({
     ? formatBangkokDateMed(item.original_date)
     : null
   const postponed = originalDate && originalDate !== matchDate
+  const postponedByName = item.postponed_by_name?.trim()
+  const postponedByTeam =
+    item.postponed_by_team_short_name?.trim() ||
+    item.postponed_by_team_name?.trim() ||
+    ''
+  const postponedByLine =
+    postponed && postponedByName && item.postponed_by && item.postponed_by > 0
+      ? postponedByTeam
+        ? t('postponed_by_player', {
+            name: postponedByName,
+            team: postponedByTeam,
+          })
+        : t('postponed_by_player_no_team', {name: postponedByName})
+      : null
 
   function handlePress() {
     router.push({
@@ -198,8 +217,13 @@ export default function CompletedMatch({
           <Ionicons name="chevron-forward" size={16} color={colors.muted} />
         </View>
         {postponed ? (
-          <Text style={{fontSize: 12, color: colors.muted, marginBottom: 12}}>
+          <Text style={{fontSize: 12, color: colors.muted, marginBottom: postponedByLine ? 2 : 12}}>
             {`(${originalDate})`}
+          </Text>
+        ) : null}
+        {postponedByLine ? (
+          <Text style={{fontSize: 12, color: colors.muted, marginBottom: 12}}>
+            {postponedByLine}
           </Text>
         ) : null}
         <ResultScore

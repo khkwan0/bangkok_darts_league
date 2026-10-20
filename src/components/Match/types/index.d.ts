@@ -77,6 +77,11 @@ export type FrameType = {
   games?: number
   /** best_of | race_to when games > 1 */
   seriesMode?: 'best_of' | 'race_to'
+  trackTons?: boolean
+  trackHeavyTons?: boolean
+  trackCloses?: boolean
+  trackBoardScore?: boolean
+  /** Legacy: any of tons / heavy / closes. */
   trackStats?: boolean
   homeTons?: number
   awayTons?: number

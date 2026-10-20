@@ -1,6 +1,10 @@
 import {useMatchContext} from '@/context/MatchContext'
 import type {ScoresheetStatsView} from '@/lib/scoresheetStatsView'
-import {seriesWinsNeeded} from '@/lib/matchFormat'
+import {
+  anyPlayerStatFlags,
+  resolveScoreSheetStatFlags,
+  seriesWinsNeeded,
+} from '@/lib/matchFormat'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {Text, View} from 'react-native'
@@ -46,12 +50,23 @@ export default function Frame({
     games > 1
       ? item.seriesMode ?? initial?.seriesMode ?? 'best_of'
       : undefined
-  const trackStats = item.trackStats ?? initial?.trackStats ?? true
-  const isMickey =
-    String(frameType ?? '').toLowerCase() === 'mm' ||
-    String(frameLabel ?? '')
-      .toLowerCase()
-      .includes('mickey')
+  const configuredFlags = {
+    trackTons: item.trackTons ?? initial?.trackTons,
+    trackHeavyTons: item.trackHeavyTons ?? initial?.trackHeavyTons,
+    trackCloses: item.trackCloses ?? initial?.trackCloses,
+    trackBoardScore: item.trackBoardScore ?? initial?.trackBoardScore,
+    trackStats: item.trackStats ?? initial?.trackStats,
+  }
+  const hasConfiguredFlags =
+    configuredFlags.trackTons != null ||
+    configuredFlags.trackHeavyTons != null ||
+    configuredFlags.trackCloses != null ||
+    configuredFlags.trackBoardScore != null ||
+    configuredFlags.trackStats != null
+  const statFlags = resolveScoreSheetStatFlags(
+    hasConfiguredFlags ? configuredFlags : {trackStats: true},
+  )
+  const trackStats = anyPlayerStatFlags(statFlags)
   const {home_team_id: homeTeamId, away_team_id: awayTeamId} = state.matchInfo
   const locked = !!(state.finalizedHome && state.finalizedAway)
   const view: ScoresheetStatsView = statsView ?? 'full'
@@ -76,9 +91,14 @@ export default function Frame({
     let awayCloses = 0
     let homeLegs = 0
     let awayLegs = 0
+    let sectionShowTons = false
+    let sectionShowHeavy = false
+    let sectionShowCloses = false
+    let sectionHasSeries = false
     let i = index - 1
     while (i >= 0 && state.frameData[i]?.frameNumber !== -1) {
       const f = state.frameData[i]
+      const init = state.matchInfo.initialFrames?.[i]
       if (f.winner === homeTeamId) homeWins++
       if (f.winner === awayTeamId) awayWins++
       homeTons += Number(f.homeTons ?? 0)
@@ -89,10 +109,32 @@ export default function Frame({
       awayCloses += Number(f.awayCloses ?? 0)
       homeLegs += Number(f.homeScore ?? 0)
       awayLegs += Number(f.awayScore ?? 0)
+      const fFlags = resolveScoreSheetStatFlags({
+        trackTons: f.trackTons ?? init?.trackTons,
+        trackHeavyTons: f.trackHeavyTons ?? init?.trackHeavyTons,
+        trackCloses: f.trackCloses ?? init?.trackCloses,
+        trackBoardScore: f.trackBoardScore ?? init?.trackBoardScore,
+        trackStats: f.trackStats ?? init?.trackStats,
+      })
+      if (fFlags.trackTons) sectionShowTons = true
+      if (fFlags.trackHeavyTons) sectionShowHeavy = true
+      if (fFlags.trackCloses) sectionShowCloses = true
+      if (Number(f.games ?? init?.games ?? 1) > 1) sectionHasSeries = true
       i--
     }
-    const showStats =
-      trackStats || homeTons + awayTons + homeHeavy + awayHeavy > 0
+    const statsParts: string[] = []
+    if (sectionShowTons || homeTons + awayTons > 0) {
+      statsParts.push(`${t('tons')} ${homeTons}/${awayTons}`)
+    }
+    if (sectionShowHeavy || homeHeavy + awayHeavy > 0) {
+      statsParts.push(`${t('heavy_tons')} ${homeHeavy}/${awayHeavy}`)
+    }
+    if (sectionShowCloses || homeCloses + awayCloses > 0) {
+      statsParts.push(`${t('closes')} ${homeCloses}/${awayCloses}`)
+    }
+    if (sectionHasSeries || homeLegs + awayLegs > 0) {
+      statsParts.push(`${t('legs')} ${homeLegs}/${awayLegs}`)
+    }
     return (
       <View
         style={{
@@ -137,7 +179,7 @@ export default function Frame({
             </Text>
           </View>
         </View>
-        {showStats ? (
+        {statsParts.length > 0 ? (
           <Text
             style={{
               marginTop: 6,
@@ -145,9 +187,7 @@ export default function Frame({
               fontSize: 11,
               fontWeight: '600',
             }}>
-            {t('tons')} {homeTons}/{awayTons} · {t('heavy_tons')} {homeHeavy}/
-            {awayHeavy} · {t('closes')} {homeCloses}/{awayCloses} · {t('legs')}{' '}
-            {homeLegs}/{awayLegs}
+            {statsParts.join(' · ')}
           </Text>
         ) : null}
       </View>
@@ -168,7 +208,7 @@ export default function Frame({
     const palette = side === 'home' ? theme.home : theme.away
     const legs = side === 'home' ? live.homeScore : live.awayScore
     const board = side === 'home' ? live.homeBoardScore : live.awayBoardScore
-    if (!isMickey && !showSeries) return null
+    if (!statFlags.trackBoardScore && !showSeries) return null
     return (
       <View
         style={{
@@ -178,7 +218,7 @@ export default function Frame({
           flexWrap: 'wrap',
           justifyContent: 'center',
         }}>
-        {isMickey ? (
+        {statFlags.trackBoardScore ? (
           <StatStepper
             label={t('score')}
             value={Number(board ?? 0)}
@@ -194,7 +234,7 @@ export default function Frame({
             value={Number(legs ?? 0)}
             ink={palette.ink}
             accent={palette.button}
-            disabled={locked || !!winner}
+            disabled={locked}
             onDelta={d => UpdateFrameStats(index, side, 'games', d)}
           />
         ) : null}
@@ -202,10 +242,11 @@ export default function Frame({
     )
   }
 
+  /** Series winners come from leg counts — no explicit Win control. */
   function winFor(side: 'home' | 'away') {
+    if (showSeries) return null
     const teamId = side === 'home' ? homeTeamId : awayTeamId
     const palette = side === 'home' ? theme.home : theme.away
-    if (showSeries && !winner) return null
     return (
       <WinButton
         winner={winner}
@@ -326,6 +367,9 @@ export default function Frame({
             noPlayers={minPlayers}
             playerIds={live.homePlayerIds}
             trackStats={trackStats}
+            trackTons={statFlags.trackTons}
+            trackHeavyTons={statFlags.trackHeavyTons}
+            trackCloses={statFlags.trackCloses}
             layout="ledger"
             refreshing={refreshing}
             ink={theme.home.ink}
@@ -378,6 +422,9 @@ export default function Frame({
             noPlayers={minPlayers}
             playerIds={live.awayPlayerIds}
             trackStats={trackStats}
+            trackTons={statFlags.trackTons}
+            trackHeavyTons={statFlags.trackHeavyTons}
+            trackCloses={statFlags.trackCloses}
             layout="ledger"
             refreshing={refreshing}
             ink={theme.away.ink}
@@ -436,6 +483,9 @@ export default function Frame({
             noPlayers={minPlayers}
             playerIds={live.homePlayerIds}
             trackStats={trackStats}
+            trackTons={statFlags.trackTons}
+            trackHeavyTons={statFlags.trackHeavyTons}
+            trackCloses={statFlags.trackCloses}
             layout="chips"
             focusedSlot={focusHome}
             onFocusSlot={setFocusHome}
@@ -505,6 +555,9 @@ export default function Frame({
             noPlayers={minPlayers}
             playerIds={live.awayPlayerIds}
             trackStats={trackStats}
+            trackTons={statFlags.trackTons}
+            trackHeavyTons={statFlags.trackHeavyTons}
+            trackCloses={statFlags.trackCloses}
             layout="chips"
             focusedSlot={focusAway}
             onFocusSlot={setFocusAway}
@@ -560,6 +613,9 @@ export default function Frame({
           noPlayers={minPlayers}
           playerIds={live.homePlayerIds}
           trackStats={trackStats}
+          trackTons={statFlags.trackTons}
+          trackHeavyTons={statFlags.trackHeavyTons}
+          trackCloses={statFlags.trackCloses}
           layout="panel"
           refreshing={refreshing}
           ink={theme.home.ink}
@@ -580,6 +636,9 @@ export default function Frame({
           noPlayers={minPlayers}
           playerIds={live.awayPlayerIds}
           trackStats={trackStats}
+          trackTons={statFlags.trackTons}
+          trackHeavyTons={statFlags.trackHeavyTons}
+          trackCloses={statFlags.trackCloses}
           layout="panel"
           refreshing={refreshing}
           ink={theme.away.ink}

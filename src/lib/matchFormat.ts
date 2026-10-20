@@ -54,7 +54,88 @@ export type FormatSubsection = {
   seriesMode?: FrameSeriesMode
   minPlayers?: number
   maxPlayers?: number
+  trackTons?: boolean
+  trackHeavyTons?: boolean
+  trackCloses?: boolean
+  trackBoardScore?: boolean
+  /** Legacy: any of tons / heavy / closes. */
   trackStats?: boolean
+}
+
+export type ScoreSheetStatFlags = {
+  trackTons: boolean
+  trackHeavyTons: boolean
+  trackCloses: boolean
+  trackBoardScore: boolean
+}
+
+export function anyPlayerStatFlags(flags: ScoreSheetStatFlags): boolean {
+  return flags.trackTons || flags.trackHeavyTons || flags.trackCloses
+}
+
+/** Resolve granular scoresheet toggles (legacy trackStats expands to tons/180s/closes). */
+export function resolveScoreSheetStatFlags(
+  raw:
+    | Partial<FormatSubsection>
+    | Partial<ScoreSheetStatFlags>
+    | {
+        trackStats?: boolean
+        track_stats?: boolean | string | number
+        trackTons?: boolean
+        track_tons?: boolean | string | number
+        trackHeavyTons?: boolean
+        track_heavy_tons?: boolean | string | number
+        trackCloses?: boolean
+        track_closes?: boolean | string | number
+        trackBoardScore?: boolean
+        track_board_score?: boolean | string | number
+      }
+    | null
+    | undefined,
+): ScoreSheetStatFlags {
+  const o = (raw ?? {}) as Record<string, unknown>
+  const legacy =
+    o.trackStats != null
+      ? Boolean(o.trackStats)
+      : o.track_stats != null
+        ? Boolean(o.track_stats)
+        : undefined
+  const read = (camel: string, snake: string): boolean | undefined => {
+    if (o[camel] != null) return Boolean(o[camel])
+    if (o[snake] != null) return Boolean(o[snake])
+    return undefined
+  }
+  const trackTons = read('trackTons', 'track_tons')
+  const trackHeavyTons = read('trackHeavyTons', 'track_heavy_tons')
+  const trackCloses = read('trackCloses', 'track_closes')
+  const trackBoardScore = read('trackBoardScore', 'track_board_score')
+  const hasGranular =
+    trackTons != null ||
+    trackHeavyTons != null ||
+    trackCloses != null ||
+    trackBoardScore != null
+  if (hasGranular) {
+    return {
+      trackTons: trackTons ?? false,
+      trackHeavyTons: trackHeavyTons ?? false,
+      trackCloses: trackCloses ?? false,
+      trackBoardScore: trackBoardScore ?? false,
+    }
+  }
+  if (legacy != null) {
+    return {
+      trackTons: legacy,
+      trackHeavyTons: legacy,
+      trackCloses: legacy,
+      trackBoardScore: false,
+    }
+  }
+  return {
+    trackTons: false,
+    trackHeavyTons: false,
+    trackCloses: false,
+    trackBoardScore: false,
+  }
 }
 
 export type FrameTypeMeta = {
@@ -64,6 +145,10 @@ export type FrameTypeMeta = {
   default_games?: number | string
   default_series_mode?: string
   track_stats?: boolean | string | number
+  track_tons?: boolean | string | number
+  track_heavy_tons?: boolean | string | number
+  track_closes?: boolean | string | number
+  track_board_score?: boolean | string | number
 }
 
 /** Map frame_types.short_name → no_players (min) for scoresheet slot counts. */
@@ -92,6 +177,10 @@ export function buildFrameTypeMetaByType(
     games: number
     seriesMode?: FrameSeriesMode
     trackStats: boolean
+    trackTons: boolean
+    trackHeavyTons: boolean
+    trackCloses: boolean
+    trackBoardScore: boolean
   }
 > {
   const map: Record<
@@ -102,6 +191,10 @@ export function buildFrameTypeMetaByType(
       games: number
       seriesMode?: FrameSeriesMode
       trackStats: boolean
+      trackTons: boolean
+      trackHeavyTons: boolean
+      trackCloses: boolean
+      trackBoardScore: boolean
     }
   > = {}
   if (!Array.isArray(frameTypes)) return map
@@ -123,13 +216,17 @@ export function buildFrameTypeMetaByType(
           ? 'race_to'
           : 'best_of'
         : undefined
+    const flags = resolveScoreSheetStatFlags(ft)
     map[key] = {
       minPlayers,
       maxPlayers,
       games,
       seriesMode,
-      // Darts scoresheet: track tons/closes unless explicitly disabled.
-      trackStats: ft?.track_stats !== false && ft?.track_stats !== 0,
+      trackTons: flags.trackTons,
+      trackHeavyTons: flags.trackHeavyTons,
+      trackCloses: flags.trackCloses,
+      trackBoardScore: flags.trackBoardScore,
+      trackStats: anyPlayerStatFlags(flags),
     }
   }
   return map
@@ -190,12 +287,6 @@ export function resolveFormatSubsections(raw: unknown): FormatSubsection[] {
         const minPlayers = Number(minRaw)
         const maxPlayers = Number(maxRaw)
         const games = Number(gamesRaw)
-        const trackStats =
-          section.trackStats != null
-            ? Boolean(section.trackStats)
-            : section.track_stats != null
-              ? Boolean(section.track_stats)
-              : undefined
         const seriesRaw = String(
           section.seriesMode ?? section.series_mode ?? '',
         ).trim()
@@ -214,6 +305,20 @@ export function resolveFormatSubsections(raw: unknown): FormatSubsection[] {
             : section.name != null
               ? String(section.name).trim()
               : ''
+        const hasStatKey =
+          section.trackTons != null ||
+          section.track_tons != null ||
+          section.trackHeavyTons != null ||
+          section.track_heavy_tons != null ||
+          section.trackCloses != null ||
+          section.track_closes != null ||
+          section.trackBoardScore != null ||
+          section.track_board_score != null ||
+          section.trackStats != null ||
+          section.track_stats != null
+        const flags = hasStatKey
+          ? resolveScoreSheetStatFlags(section)
+          : undefined
         return {
           frames: Number(section.frames) || 0,
           type,
@@ -233,7 +338,15 @@ export function resolveFormatSubsections(raw: unknown): FormatSubsection[] {
               : undefined,
           games: truncatedGames,
           seriesMode,
-          trackStats,
+          ...(flags
+            ? {
+                trackTons: flags.trackTons,
+                trackHeavyTons: flags.trackHeavyTons,
+                trackCloses: flags.trackCloses,
+                trackBoardScore: flags.trackBoardScore,
+                trackStats: anyPlayerStatFlags(flags),
+              }
+            : {}),
         }
       })
       .filter(section => section.frames > 0)

@@ -13,10 +13,12 @@ import { useMatchContext } from '@/context/MatchContext'
 import { useMatch } from '@/hooks/useMatch'
 import { useTabListContentContainerStyle } from '@/hooks/useTabListContentContainerStyle'
 import {
+  anyPlayerStatFlags,
   buildFrameTypeMetaByType,
   buildNoPlayersByType,
   resolveFormatSubsections,
   resolveNoPlayers,
+  resolveScoreSheetStatFlags,
 } from '@/lib/matchFormat'
 import {
   DEFAULT_SCORESHEET_STATS_VIEW,
@@ -69,12 +71,10 @@ export default function ScoreSheet() {
 
   const showStatsViewSelector = React.useMemo(() => {
     const list = state.frameData ?? frames.current ?? []
-    return list.some(
-      (f: FrameType) =>
-        f?.frameNumber !== -1 &&
-        f?.type !== 'section' &&
-        (f?.trackStats ?? true),
-    )
+    return list.some((f: FrameType) => {
+      if (f?.frameNumber === -1 || f?.type === 'section') return false
+      return anyPlayerStatFlags(resolveScoreSheetStatFlags(f))
+    })
   }, [state.frameData])
 
   function handleStatsViewChange(view: ScoresheetStatsView) {
@@ -139,10 +139,23 @@ export default function ScoreSheet() {
               typeMeta?.seriesMode ??
               'best_of'
             : undefined
-        const trackStats =
+        const sectionHasFlags =
+          section.trackTons != null ||
+          section.trackHeavyTons != null ||
+          section.trackCloses != null ||
+          section.trackBoardScore != null ||
           section.trackStats != null
-            ? section.trackStats
-            : (typeMeta?.trackStats ?? true)
+        const flags = resolveScoreSheetStatFlags(
+          sectionHasFlags
+            ? section
+            : {
+                trackTons: typeMeta?.trackTons,
+                trackHeavyTons: typeMeta?.trackHeavyTons,
+                trackCloses: typeMeta?.trackCloses,
+                trackBoardScore: typeMeta?.trackBoardScore,
+                trackStats: typeMeta?.trackStats ?? true,
+              },
+        )
         for (let i = 0; i < section.frames; i++) {
           const _frame: FrameType = {
             frameNumber: frameNumber,
@@ -155,7 +168,11 @@ export default function ScoreSheet() {
             maxPlayers,
             games,
             seriesMode,
-            trackStats,
+            trackTons: flags.trackTons,
+            trackHeavyTons: flags.trackHeavyTons,
+            trackCloses: flags.trackCloses,
+            trackBoardScore: flags.trackBoardScore,
+            trackStats: anyPlayerStatFlags(flags),
             winner: 0,
             homePlayerIds: [],
             awayPlayerIds: [],
@@ -249,6 +266,11 @@ export default function ScoreSheet() {
               maxPlayers: frame.maxPlayers ?? template?.maxPlayers,
               games: frame.games ?? template?.games,
               seriesMode: frame.seriesMode ?? template?.seriesMode,
+              trackTons: frame.trackTons ?? template?.trackTons,
+              trackHeavyTons: frame.trackHeavyTons ?? template?.trackHeavyTons,
+              trackCloses: frame.trackCloses ?? template?.trackCloses,
+              trackBoardScore:
+                frame.trackBoardScore ?? template?.trackBoardScore,
               trackStats: frame.trackStats ?? template?.trackStats,
               firstDart: Number(frame.firstDart ?? template?.firstDart ?? 0),
             }

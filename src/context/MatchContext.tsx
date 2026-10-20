@@ -1,6 +1,8 @@
 import {FrameType, MatchInfoDataType} from '@/components/Match/types'
 import {useMatch, useTeams} from '@/hooks'
+import i18n from '@/i18n'
 import React, {createContext, useContext, useReducer} from 'react'
+import {Alert} from 'react-native'
 import {io} from 'socket.io-client'
 import {useLeagueContext} from './LeagueContext'
 
@@ -304,6 +306,15 @@ export const MatchProvider = (props: any) => {
               goldenBreak: data?.goldenBreak ?? false,
             },
           })
+        } else if (data.type === 'win_rejected') {
+          const reason = String(data.reason ?? 'unknown')
+          const messageKey =
+            reason === 'frame_not_found'
+              ? 'win_rejected_frame_not_found'
+              : reason === 'no_winning_players'
+                ? 'win_rejected_no_winning_players'
+                : 'win_rejected_unknown'
+          Alert.alert(i18n.t('win_rejected_title'), i18n.t(messageKey))
         } else if (data.type === 'players') {
           ;(async () => {
             if (typeof data.newPlayer !== 'undefined' && data.newPlayer) {
@@ -535,17 +546,30 @@ export const MatchProvider = (props: any) => {
     const idx = parseInt(String(frameIdx), 10)
     const frame = state.frameData[idx]
     const initial = state.matchInfo.initialFrames?.[idx]
-    const minNeeded =
-      frame?.minPlayers ??
-      frame?.noPlayers ??
-      initial?.minPlayers ??
-      initial?.noPlayers ??
-      1
+    if (!frame) {
+      Alert.alert(
+        i18n.t('win_rejected_title'),
+        i18n.t('win_rejected_frame_not_found'),
+      )
+      return
+    }
+    const minNeeded = Math.max(
+      1,
+      Number(
+        frame?.minPlayers ??
+          frame?.noPlayers ??
+          initial?.minPlayers ??
+          initial?.noPlayers ??
+          1,
+      ) || 1,
+    )
     const homePlayerCount = countPlayers(frame.homePlayerIds)
     const awayPlayerCount = countPlayers(frame.awayPlayerIds)
     const playerIds =
       side === 'home' ? frame.homePlayerIds : frame.awayPlayerIds
-    if (awayPlayerCount >= minNeeded && homePlayerCount >= minNeeded) {
+    const homeOk = homePlayerCount >= minNeeded
+    const awayOk = awayPlayerCount >= minNeeded
+    if (homeOk && awayOk) {
       const data = {
         side: side,
         matchId: state.matchInfo.match_id,
@@ -562,7 +586,20 @@ export const MatchProvider = (props: any) => {
         seriesMode: frame.seriesMode ?? initial?.seriesMode,
       }
       SocketSend('win', data)
+      return
     }
+    const shortSides: string[] = []
+    if (!homeOk) shortSides.push(i18n.t('home'))
+    if (!awayOk) shortSides.push(i18n.t('away'))
+    Alert.alert(
+      i18n.t('players_required_title'),
+      i18n.t('players_required_message', {
+        count: minNeeded,
+        home: homePlayerCount,
+        away: awayPlayerCount,
+        sides: shortSides.join(', '),
+      }),
+    )
   }
 
   function UpdateFrameStats(

@@ -29,6 +29,10 @@ type CompletedMatchType = {
   home_frames: number
   away_frames: number
   tournament_id?: number
+  postponed_by?: number
+  postponed_by_name?: string | null
+  postponed_by_team_name?: string | null
+  postponed_by_team_short_name?: string | null
 }
 
 type ApiResponse = {
