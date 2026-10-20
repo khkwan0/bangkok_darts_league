@@ -1,10 +1,33 @@
+const fs = require('fs')
+const path = require('path')
+
 const SENTRY_PLUGIN = '@sentry/react-native/expo'
+const BUILD_PROPERTIES_PLUGIN = 'expo-build-properties'
+
+const ANDROID_PROGUARD_RULES = fs.readFileSync(
+  path.join(__dirname, 'plugins/android-proguard-rules.pro'),
+  'utf8',
+)
+
+/** Inject app-level R8 keeps into expo-build-properties (minify stays on). */
+function withAndroidProguardRules(plugins) {
+  return (plugins ?? []).map(entry => {
+    const name = Array.isArray(entry) ? entry[0] : entry
+    if (name !== BUILD_PROPERTIES_PLUGIN) return entry
+    const opts = Array.isArray(entry) ? {...(entry[1] ?? {})} : {}
+    const android = {...(opts.android ?? {})}
+    android.extraProguardRules = ANDROID_PROGUARD_RULES
+    return [name, {...opts, android}]
+  })
+}
 
 function applyEnvConfig(expo) {
-  const plugins = (expo.plugins ?? []).filter((entry) => {
-    const name = Array.isArray(entry) ? entry[0] : entry
-    return name !== SENTRY_PLUGIN
-  })
+  const plugins = withAndroidProguardRules(
+    (expo.plugins ?? []).filter(entry => {
+      const name = Array.isArray(entry) ? entry[0] : entry
+      return name !== SENTRY_PLUGIN
+    }),
+  )
 
   const sentryOrg = process.env.SENTRY_ORG
   const sentryProject = process.env.SENTRY_PROJECT
