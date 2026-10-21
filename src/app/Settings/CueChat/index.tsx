@@ -154,6 +154,7 @@ export default function CueChat({agentScope = 'member'}: CueChatProps) {
     deleteRef.current = Delete
   }, [Get, Post, Put, Delete])
   const [visionEnabled, setVisionEnabled] = React.useState(false)
+  const [llmModelLabel, setLlmModelLabel] = React.useState<string | null>(null)
   const [pendingImageUris, setPendingImageUris] = React.useState<string[]>([])
   const [uploadingImages, setUploadingImages] = React.useState(false)
 
@@ -167,6 +168,17 @@ export default function CueChat({agentScope = 'member'}: CueChatProps) {
         const res = await getRef.current(`/${capabilitiesPath}`)
         if (!cancelled && res?.status === 'ok') {
           setVisionEnabled(Boolean(res.vision_enabled))
+          const model =
+            typeof res.model === 'string' ? res.model.trim() : ''
+          const endpointName =
+            typeof res.endpoint_name === 'string'
+              ? res.endpoint_name.trim()
+              : ''
+          if (endpointName && model && endpointName !== model) {
+            setLlmModelLabel(`${endpointName} · ${model}`)
+          } else {
+            setLlmModelLabel(endpointName || model || null)
+          }
         }
       } catch {
         // leave vision off
@@ -1905,6 +1917,18 @@ export default function CueChat({agentScope = 'member'}: CueChatProps) {
                 {displayError}
               </Text>
             </View>
+          ) : null}
+
+          {llmModelLabel ? (
+            <Text
+              style={{
+                marginHorizontal: 16,
+                marginTop: 8,
+                fontSize: 12,
+                color: themeMutedTextColor,
+              }}>
+              {t('ai_assistant_model_label')}: {llmModelLabel}
+            </Text>
           ) : null}
 
           {/* Messages List */}

@@ -3,6 +3,9 @@ import MatchBettingRow from '@/components/betting/MatchBettingRow'
 import MatchPredictionRow from '@/components/predictions/MatchPredictionRow'
 import {MatchInfoDataType} from '@/components/Match/types'
 import {ThemedText as Text} from '@/components/ThemedText'
+import CupMatchBanner, {
+  formatCupBannerLabel,
+} from '@/components/upcoming/CupMatchBanner'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useMatch} from '@/hooks/useMatch'
 import {useTeams} from '@/hooks/useTeams'
@@ -42,10 +45,15 @@ const ACCENTS = [
   '#8B5CF6',
 ] as const
 
+const CUP_ACCENT = '#F59E0B'
+const CUP_BOARD_BG = 'rgba(69,40,8,0.55)'
+const CUP_GLOW = 'rgba(245,158,11,0.28)'
+
 function getCardTheme(isDark: boolean) {
   if (isDark) {
     return {
       page: ['#0B1220', '#111827', '#0F172A'] as const,
+      cupPage: ['#1A1205', '#1C1408', '#0F172A'] as const,
       boardBg: 'rgba(15,23,42,0.72)',
       boardBorder: 'rgba(148,163,184,0.22)',
       text: '#F8FAFC',
@@ -63,17 +71,16 @@ function getCardTheme(isDark: boolean) {
       probAway: 'rgba(148,163,184,0.35)',
       confirm: '#34D399',
       confirmBg: 'rgba(52,211,153,0.16)',
-      chipBg: 'rgba(148,163,184,0.16)',
-      waiting: '#FBBF24',
-      waitingBg: 'rgba(251,191,36,0.14)',
       postponeText: '#FDE68A',
       indefiniteBg: 'rgba(239,68,68,0.14)',
       indefiniteBorder: 'rgba(248,113,113,0.35)',
       indefiniteText: '#FCA5A5',
+      cupBoardBg: CUP_BOARD_BG,
     }
   }
   return {
     page: ['#F8FAFC', '#FFFFFF', '#F1F5F9'] as const,
+    cupPage: ['#FFFBEB', '#FFFFFF', '#F8FAFC'] as const,
     boardBg: '#FFFFFF',
     boardBorder: 'rgba(15,23,42,0.1)',
     text: '#0F172A',
@@ -91,13 +98,11 @@ function getCardTheme(isDark: boolean) {
     probAway: 'rgba(15,23,42,0.18)',
     confirm: '#059669',
     confirmBg: 'rgba(5,150,105,0.12)',
-    chipBg: 'rgba(15,23,42,0.06)',
-    waiting: '#B45309',
-    waitingBg: 'rgba(180,83,9,0.12)',
     postponeText: '#B45309',
     indefiniteBg: 'rgba(239,68,68,0.08)',
     indefiniteBorder: 'rgba(220,38,38,0.28)',
     indefiniteText: '#DC2626',
+    cupBoardBg: '#FFFBEB',
   }
 }
 
@@ -235,7 +240,6 @@ export default function MatchCard({
   )
   const [isMounted, setIsMounted] = React.useState(false)
   const {width} = Dimensions.get('window')
-  const accent = ACCENTS[idx % ACCENTS.length]
   const pad = Math.max(16, width * 0.04)
   const logoSize = Math.min(width * 0.22, 96)
   const isDark = useColorScheme() === 'dark'
@@ -451,10 +455,21 @@ export default function MatchCard({
 
   if (!isMounted || !matchInfo) return null
 
-  const isTournament = Number((matchInfo as any).tournament_id) > 0
-  const divisionName = String(
-    (matchInfo as any).division_name || '',
-  ).trim()
+  const isTournament = Number(matchInfo.tournament_id) > 0
+  const divisionName = String(matchInfo.division_name || '').trim()
+  const cupBannerLabel = formatCupBannerLabel({
+    round: matchInfo.round,
+    stage_label: matchInfo.stage_label,
+    stage_key: matchInfo.stage_key,
+    division_name: matchInfo.division_name,
+    fallback: t('cup_match'),
+    stageKeyLabels: {
+      gold: t('cups_gold'),
+      silver: t('cups_silver'),
+      bronze: t('cups_bronze'),
+    },
+  })
+  const accent = isTournament ? CUP_ACCENT : ACCENTS[idx % ACCENTS.length]
   const bothConfirmed =
     matchInfo.home_confirmed > 0 && matchInfo.away_confirmed > 0
   const dateLabel = formatMatchDate(getMatchDisplayDate(matchInfo))
@@ -468,19 +483,25 @@ export default function MatchCard({
   }
   const homeNameSize = teamNameSize(matchInfo.home_team_short_name)
   const awayNameSize = teamNameSize(matchInfo.away_team_short_name)
+  const pageColors = isTournament ? theme.cupPage : theme.page
 
   const cardBody = (
     <>
       {embedded ? null : (
       <LinearGradient
-        colors={[...theme.page]}
+        colors={[...pageColors]}
         locations={[0, 0.55, 1]}
         start={{x: 0.2, y: 0}}
         end={{x: 0.9, y: 1}}
         style={StyleSheet.absoluteFillObject}
       />
       )}
-      <View style={[styles.accentGlow, {backgroundColor: accent}]} />
+      <View
+        style={[
+          styles.accentGlow,
+          {backgroundColor: isTournament ? CUP_GLOW : accent},
+        ]}
+      />
 
       <View style={{paddingHorizontal: pad, paddingTop: pad}}>
         <Link
@@ -494,46 +515,47 @@ export default function MatchCard({
               style={[
                 styles.board,
                 {
-                  backgroundColor: theme.boardBg,
-                  borderColor: theme.boardBorder,
+                  backgroundColor: isTournament
+                    ? theme.cupBoardBg
+                    : theme.boardBg,
+                  borderColor: isTournament ? '#F59E0B' : theme.boardBorder,
                 },
+                isTournament
+                  ? {
+                      borderWidth: 2,
+                      paddingTop: 0,
+                    }
+                  : null,
               ]}>
-              <View style={[styles.stripe, {backgroundColor: accent}]} />
+              {!isTournament ? (
+                <View style={[styles.stripe, {backgroundColor: accent}]} />
+              ) : null}
 
-              <View style={styles.metaRow}>
-                <View style={styles.chipsWrap}>
-                  <Chip
-                    icon="calendar"
-                    label={dateLabel}
-                    color={theme.icon}
-                    background={theme.chipBg}
-                  />
-                  {divisionName ? (
-                    <Chip
-                      icon="shield-outline"
-                      label={divisionName}
-                      color={accent}
-                      background={`${accent}22`}
-                    />
-                  ) : null}
-                  {isTournament ? (
-                    <Chip
-                      icon="trophy-outline"
-                      label="Tournament"
-                      color={theme.waiting}
-                      background={theme.waitingBg}
-                    />
-                  ) : null}
-                  {bothConfirmed ? (
-                    <Chip
-                      icon="check-decagram"
-                      label={t('match_confirmed')}
-                      color={theme.confirm}
-                      background={theme.confirmBg}
-                    />
-                  ) : null}
+              {isTournament ? <CupMatchBanner label={cupBannerLabel} /> : null}
+
+              <View style={isTournament ? {paddingTop: 14} : null}>
+              {(!isTournament && divisionName) || bothConfirmed ? (
+                <View style={styles.metaRow}>
+                  <View style={styles.chipsWrap}>
+                    {!isTournament && divisionName ? (
+                      <Chip
+                        icon="shield-outline"
+                        label={divisionName}
+                        color={accent}
+                        background={`${accent}22`}
+                      />
+                    ) : null}
+                    {bothConfirmed ? (
+                      <Chip
+                        icon="check-decagram"
+                        label={t('match_confirmed')}
+                        color={theme.confirm}
+                        background={theme.confirmBg}
+                      />
+                    ) : null}
+                  </View>
                 </View>
-              </View>
+              ) : null}
 
               {postponedProposal?.newDate ? (
                 <Text style={[styles.postponeNote, {color: theme.postponeText}]}>
@@ -569,6 +591,12 @@ export default function MatchCard({
                   </Text>
                 </View>
               ) : null}
+
+              <Text
+                style={[styles.matchDate, {color: theme.text}]}
+                numberOfLines={2}>
+                {dateLabel}
+              </Text>
 
               <View style={styles.teamsRow}>
                 <View style={styles.teamCol}>
@@ -703,6 +731,7 @@ export default function MatchCard({
                   {matchInfo.location}
                 </Text>
               </Pressable>
+              </View>
             </View>
           </Pressable>
         </Link>
@@ -827,7 +856,7 @@ export default function MatchCard({
   if (embedded) {
     return (
       <LinearGradient
-        colors={[...theme.page]}
+        colors={[...pageColors]}
         locations={[0, 0.55, 1]}
         start={{x: 0.2, y: 0}}
         end={{x: 0.9, y: 1}}
@@ -921,6 +950,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     textAlign: 'center',
+  },
+  matchDate: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 12,
   },
   teamsRow: {
     flexDirection: 'row',

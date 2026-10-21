@@ -1,11 +1,9 @@
 /**
  * League-admin checks for the mobile app.
  *
- * Prefer API `isAdmin` / `isSuperAdmin` (from league_admins for the current
- * host, or platform superadmin). Only fall back to role_id when the API has
- * not yet attached flags (older cached sessions). If `isAdmin` is explicitly
- * false, do not grant access via legacy role_id 9 — that keeps pool admins
- * from seeing admin UI on other leagues.
+ * Trust API `isAdmin` / `isSuperAdmin` only (from league_admins for the
+ * current host, or platform superadmin). Never grant from role_id 9 alone —
+ * that flag is global and would let pool admins act on other leagues.
  */
 
 export type AdminUserLike = {
@@ -26,8 +24,5 @@ export function isLeagueAdmin(user: AdminUserLike): boolean {
   if (!user) return false
   if (user.isAdmin === true) return true
   if (isSuperAdminUser(user)) return true
-  // Explicit API denial for this host — do not fall back to role_id 9.
-  if (user.isAdmin === false) return false
-  // Legacy cached session without isAdmin: role_id 9 was global site admin.
-  return Number(user.role_id) === 9
+  return false
 }

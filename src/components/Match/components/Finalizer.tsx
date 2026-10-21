@@ -111,6 +111,9 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
   const [seenHome, setSeenHome] = React.useState(matchState.finalizedHome)
   const [seenAway, setSeenAway] = React.useState(matchState.finalizedAway)
   const [seenBusy, setSeenBusy] = React.useState(!!matchState.finalizeBusy)
+  const [seenRejectedAt, setSeenRejectedAt] = React.useState(
+    matchState.finalizeRejectedAt ?? 0,
+  )
   const {t} = useTranslation()
   const matchCompleted = !!(
     matchState.finalizedHome && matchState.finalizedAway
@@ -131,6 +134,11 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
     setSeenBusy(!!matchState.finalizeBusy)
     // Remote lock released (or never acquired) — clear optimistic local lock.
     if (!matchState.finalizeBusy) setLocalBusy(false)
+  }
+
+  if ((matchState.finalizeRejectedAt ?? 0) !== seenRejectedAt) {
+    setSeenRejectedAt(matchState.finalizeRejectedAt ?? 0)
+    setLocalBusy(false)
   }
 
   React.useEffect(() => {

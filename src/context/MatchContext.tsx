@@ -40,6 +40,8 @@ type StateType = {
   finalizedHome: boolean
   finalizedAway: boolean
   finalizeBusy: boolean
+  /** Timestamp of last server finalize/unfinalize reject (clears local spinner). */
+  finalizeRejectedAt: number
 }
 
 const MatchContext = createContext({})
@@ -54,6 +56,7 @@ const initialState: StateType = {
   finalizedHome: false,
   finalizedAway: false,
   finalizeBusy: false,
+  finalizeRejectedAt: 0,
 }
 
 const MatchReducer = (state: StateType, action: any) => {
@@ -69,6 +72,7 @@ const MatchReducer = (state: StateType, action: any) => {
         finalizedHome: false,
         finalizedAway: false,
         finalizeBusy: false,
+        finalizeRejectedAt: 0,
       }
     }
     case 'SET_MATCHINFO': {
@@ -213,6 +217,13 @@ const MatchReducer = (state: StateType, action: any) => {
         finalizeBusy: !!action.payload,
       }
     }
+    case 'SET_FINALIZE_REJECTED_AT': {
+      return {
+        ...state,
+        finalizeBusy: false,
+        finalizeRejectedAt: Number(action.payload) || Date.now(),
+      }
+    }
     default:
       return state
   }
@@ -225,8 +236,13 @@ export const MatchProvider = (props: any) => {
   const teams = useTeams()
   const roomId = React.useRef('')
   const socket = React.useRef<ReturnType<typeof io> | null>(null)
+  const userIdRef = React.useRef<number>(0)
 
   const matchInfoRef = React.useRef({})
+
+  React.useEffect(() => {
+    userIdRef.current = Number(leagueState.user?.id ?? 0)
+  }, [leagueState.user?.id])
 
   React.useEffect(() => {
     matchInfoRef.current = state.matchInfo
@@ -291,6 +307,25 @@ export const MatchProvider = (props: any) => {
             type: 'SET_FINALIZE_BUSY',
             payload: !!data?.data?.busy,
           })
+        } else if (data.type === 'finalize_error') {
+          dispatch({
+            type: 'SET_FINALIZE_REJECTED_AT',
+            payload: Date.now(),
+          })
+          const forUser =
+            Number(data?.data?.playerId) === userIdRef.current
+          if (forUser) {
+            const reason = String(data?.data?.reason ?? '')
+            const msgKey = [
+              'not_authorized',
+              'already_completed',
+              'finalize_busy',
+              'missing_player_or_team',
+            ].includes(reason)
+              ? `finalize_error_${reason}`
+              : 'finalize_error'
+            Alert.alert(i18n.t('error'), i18n.t(msgKey))
+          }
         }
       }
     }

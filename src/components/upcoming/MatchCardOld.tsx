@@ -2,6 +2,9 @@ import MatchBettingRow from '@/components/betting/MatchBettingRow'
 import MatchPredictionRow from '@/components/predictions/MatchPredictionRow'
 import {MatchInfoDataType} from '@/components/Match/types'
 import {ThemedText as Text} from '@/components/ThemedText'
+import CupMatchBanner, {
+  formatCupBannerLabel,
+} from '@/components/upcoming/CupMatchBanner'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import {useMatch} from '@/hooks/useMatch'
@@ -308,7 +311,10 @@ export default function MatchCardOld({
   const [isMounted, setIsMounted] = React.useState(false)
   const [showInfo, setShowInfo] = React.useState(false)
   const {width} = Dimensions.get('window')
-  const accent = ACCENTS[idx % ACCENTS.length]
+  const isTournamentPreview = Number(propsMatchInfo?.tournament_id) > 0
+  const accent = isTournamentPreview
+    ? '#F59E0B'
+    : ACCENTS[idx % ACCENTS.length]
   const theme = getCardTheme(isDark, accent)
   const logoSize = Math.min(width * 0.16, 68)
 
@@ -464,6 +470,19 @@ export default function MatchCardOld({
 
   if (!isMounted || !matchInfo) return null
 
+  const isTournament = Number(matchInfo.tournament_id) > 0
+  const cupBannerLabel = formatCupBannerLabel({
+    round: matchInfo.round,
+    stage_label: matchInfo.stage_label,
+    stage_key: matchInfo.stage_key,
+    division_name: matchInfo.division_name,
+    fallback: t('cup_match'),
+    stageKeyLabels: {
+      gold: t('cups_gold'),
+      silver: t('cups_silver'),
+      bronze: t('cups_bronze'),
+    },
+  })
   const bothConfirmed =
     matchInfo.home_confirmed > 0 && matchInfo.away_confirmed > 0
   const dateLabel = formatMatchDate(getMatchDisplayDate(matchInfo))
@@ -609,10 +628,16 @@ export default function MatchCardOld({
         style={[
           styles.board,
           {
-            borderColor: theme.boardBorder,
+            borderColor: isTournament
+              ? 'rgba(251,191,36,0.85)'
+              : theme.boardBorder,
+            borderWidth: isTournament ? 2 : 1,
+            paddingTop: isTournament ? 0 : 16,
           },
         ]}>
         <View style={[styles.stripe, {backgroundColor: accent}]} />
+
+        {isTournament ? <CupMatchBanner label={cupBannerLabel} /> : null}
 
         <Link
           href={{
@@ -620,15 +645,13 @@ export default function MatchCardOld({
             params: {params: JSON.stringify(matchInfo)},
           }}
           asChild>
-          <Pressable style={({pressed}) => ({opacity: pressed ? 0.96 : 1})}>
+          <Pressable
+            style={({pressed}) => ({
+              opacity: pressed ? 0.96 : 1,
+              paddingTop: isTournament ? 14 : 0,
+            })}>
             <View style={styles.metaRow}>
               <View style={styles.chipsWrap}>
-                <Chip
-                  icon="calendar"
-                  label={dateLabel}
-                  color={theme.chipText}
-                  background={theme.chipBg}
-                />
                 {bothConfirmed ? (
                   <Chip
                     icon="check-decagram"
@@ -701,6 +724,12 @@ export default function MatchCardOld({
                 </Text>
               </View>
             ) : null}
+
+            <Text
+              style={[styles.matchDate, {color: theme.chipText}]}
+              numberOfLines={2}>
+              {dateLabel}
+            </Text>
 
             <View style={styles.teamsRow}>
               <View style={styles.teamCol}>
@@ -1146,6 +1175,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     textAlign: 'center',
+  },
+  matchDate: {
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 12,
   },
   teamsRow: {
     flexDirection: 'row',
