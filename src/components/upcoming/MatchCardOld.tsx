@@ -4,6 +4,7 @@ import {MatchInfoDataType} from '@/components/Match/types'
 import {ThemedText as Text} from '@/components/ThemedText'
 import CupMatchBanner, {
   formatCupBannerLabel,
+  getCupTierTheme,
 } from '@/components/upcoming/CupMatchBanner'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
@@ -312,8 +313,9 @@ export default function MatchCardOld({
   const [showInfo, setShowInfo] = React.useState(false)
   const {width} = Dimensions.get('window')
   const isTournamentPreview = Number(propsMatchInfo?.tournament_id) > 0
+  const previewTier = getCupTierTheme(propsMatchInfo?.stage_key)
   const accent = isTournamentPreview
-    ? '#F59E0B'
+    ? previewTier.accent
     : ACCENTS[idx % ACCENTS.length]
   const theme = getCardTheme(isDark, accent)
   const logoSize = Math.min(width * 0.16, 68)
@@ -471,6 +473,7 @@ export default function MatchCardOld({
   if (!isMounted || !matchInfo) return null
 
   const isTournament = Number(matchInfo.tournament_id) > 0
+  const cupTier = getCupTierTheme(matchInfo.stage_key)
   const cupBannerLabel = formatCupBannerLabel({
     round: matchInfo.round,
     stage_label: matchInfo.stage_label,
@@ -628,16 +631,19 @@ export default function MatchCardOld({
         style={[
           styles.board,
           {
-            borderColor: isTournament
-              ? 'rgba(251,191,36,0.85)'
-              : theme.boardBorder,
+            borderColor: isTournament ? cupTier.border : theme.boardBorder,
             borderWidth: isTournament ? 2 : 1,
             paddingTop: isTournament ? 0 : 16,
           },
         ]}>
         <View style={[styles.stripe, {backgroundColor: accent}]} />
 
-        {isTournament ? <CupMatchBanner label={cupBannerLabel} /> : null}
+        {isTournament ? (
+          <CupMatchBanner
+            label={cupBannerLabel}
+            stageKey={matchInfo.stage_key}
+          />
+        ) : null}
 
         <Link
           href={{

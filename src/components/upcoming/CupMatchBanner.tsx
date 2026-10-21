@@ -13,6 +13,85 @@ const STAGE_KEY_LABELS: Record<string, string> = {
 
 const KNOWN_STAGE_KEYS = new Set(Object.keys(STAGE_KEY_LABELS))
 
+/** Medal palette aligned with league standings rank 1–3. */
+export type CupTierTheme = {
+  key: 'gold' | 'silver' | 'bronze' | 'default'
+  /** Card / accent border */
+  border: string
+  /** Solid accent (VS badge, chips, stripe) */
+  accent: string
+  /** Soft glow behind the card */
+  glow: string
+  /** Banner strip background */
+  banner: string
+  /** Light-mode board fill */
+  boardBgLight: string
+  /** Dark-mode board fill */
+  boardBgDark: string
+  /** Banner pulse text colors [start, mid, end] */
+  bannerText: [string, string, string]
+  /** Trophy icon on banner */
+  bannerIcon: string
+}
+
+const CUP_TIER_THEMES: Record<'gold' | 'silver' | 'bronze' | 'default', CupTierTheme> =
+  {
+    gold: {
+      key: 'gold',
+      border: '#d4a017',
+      accent: '#d4a017',
+      glow: 'rgba(212,160,23,0.32)',
+      banner: '#d4a017',
+      boardBgLight: '#FFFBEB',
+      boardBgDark: 'rgba(69,40,8,0.55)',
+      bannerText: ['#FFFFFF', '#5c4308', '#fff8dc'],
+      bannerIcon: '#FFFBEB',
+    },
+    silver: {
+      key: 'silver',
+      border: '#9CA3AF',
+      accent: '#6b7280',
+      glow: 'rgba(107,114,128,0.28)',
+      banner: '#6b7280',
+      boardBgLight: '#F8FAFC',
+      boardBgDark: 'rgba(30,41,59,0.72)',
+      bannerText: ['#FFFFFF', '#3f3f46', '#e5e7eb'],
+      bannerIcon: '#F8FAFC',
+    },
+    bronze: {
+      key: 'bronze',
+      border: '#b87333',
+      accent: '#b87333',
+      glow: 'rgba(184,115,51,0.30)',
+      banner: '#b87333',
+      boardBgLight: '#FFF7ED',
+      boardBgDark: 'rgba(69,40,8,0.50)',
+      bannerText: ['#FFFFFF', '#4a240c', '#f8e0c8'],
+      bannerIcon: '#FFF7ED',
+    },
+    default: {
+      key: 'default',
+      border: '#F59E0B',
+      accent: '#F59E0B',
+      glow: 'rgba(245,158,11,0.28)',
+      banner: '#F59E0B',
+      boardBgLight: '#FFFBEB',
+      boardBgDark: 'rgba(69,40,8,0.55)',
+      bannerText: ['#FFFFFF', '#78350F', '#FEF08A'],
+      bannerIcon: '#FFFBEB',
+    },
+  }
+
+export function getCupTierTheme(stageKey?: string | null): CupTierTheme {
+  const key = String(stageKey || '')
+    .trim()
+    .toLowerCase()
+  if (key === 'gold' || key === 'silver' || key === 'bronze') {
+    return CUP_TIER_THEMES[key]
+  }
+  return CUP_TIER_THEMES.default
+}
+
 export function formatCupBannerLabel(args: {
   round?: number | null
   stage_label?: string | null
@@ -44,7 +123,14 @@ export function formatCupBannerLabel(args: {
   return stage
 }
 
-export default function CupMatchBanner({label}: {label: string}) {
+export default function CupMatchBanner({
+  label,
+  stageKey,
+}: {
+  label: string
+  stageKey?: string | null
+}) {
+  const tier = getCupTierTheme(stageKey)
   const pulse = React.useRef(new Animated.Value(0)).current
 
   React.useEffect(() => {
@@ -70,11 +156,11 @@ export default function CupMatchBanner({label}: {label: string}) {
 
   const textColor = pulse.interpolate({
     inputRange: [0, 0.5, 1],
-    outputRange: ['#FFFFFF', '#78350F', '#FEF08A'],
+    outputRange: tier.bannerText,
   })
 
   return (
-    <View style={styles.banner}>
+    <View style={[styles.banner, {backgroundColor: tier.banner}]}>
       <Animated.View
         style={{
           opacity: pulse.interpolate({
@@ -82,7 +168,7 @@ export default function CupMatchBanner({label}: {label: string}) {
             outputRange: [1, 0.55, 1],
           }),
         }}>
-        <MCI name="trophy" size={18} color="#FFFBEB" />
+        <MCI name="trophy" size={18} color={tier.bannerIcon} />
       </Animated.View>
       <Animated.Text style={[styles.label, {color: textColor}]} numberOfLines={1}>
         {label}
@@ -101,7 +187,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#F59E0B',
   },
   label: {
     flex: 1,

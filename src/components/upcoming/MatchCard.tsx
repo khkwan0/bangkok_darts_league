@@ -5,6 +5,7 @@ import {MatchInfoDataType} from '@/components/Match/types'
 import {ThemedText as Text} from '@/components/ThemedText'
 import CupMatchBanner, {
   formatCupBannerLabel,
+  getCupTierTheme,
 } from '@/components/upcoming/CupMatchBanner'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useMatch} from '@/hooks/useMatch'
@@ -45,10 +46,6 @@ const ACCENTS = [
   '#8B5CF6',
 ] as const
 
-const CUP_ACCENT = '#F59E0B'
-const CUP_BOARD_BG = 'rgba(69,40,8,0.55)'
-const CUP_GLOW = 'rgba(245,158,11,0.28)'
-
 function getCardTheme(isDark: boolean) {
   if (isDark) {
     return {
@@ -75,7 +72,6 @@ function getCardTheme(isDark: boolean) {
       indefiniteBg: 'rgba(239,68,68,0.14)',
       indefiniteBorder: 'rgba(248,113,113,0.35)',
       indefiniteText: '#FCA5A5',
-      cupBoardBg: CUP_BOARD_BG,
     }
   }
   return {
@@ -102,7 +98,6 @@ function getCardTheme(isDark: boolean) {
     indefiniteBg: 'rgba(239,68,68,0.08)',
     indefiniteBorder: 'rgba(220,38,38,0.28)',
     indefiniteText: '#DC2626',
-    cupBoardBg: '#FFFBEB',
   }
 }
 
@@ -469,7 +464,8 @@ export default function MatchCard({
       bronze: t('cups_bronze'),
     },
   })
-  const accent = isTournament ? CUP_ACCENT : ACCENTS[idx % ACCENTS.length]
+  const cupTier = getCupTierTheme(matchInfo.stage_key)
+  const accent = isTournament ? cupTier.accent : ACCENTS[idx % ACCENTS.length]
   const bothConfirmed =
     matchInfo.home_confirmed > 0 && matchInfo.away_confirmed > 0
   const dateLabel = formatMatchDate(getMatchDisplayDate(matchInfo))
@@ -484,6 +480,7 @@ export default function MatchCard({
   const homeNameSize = teamNameSize(matchInfo.home_team_short_name)
   const awayNameSize = teamNameSize(matchInfo.away_team_short_name)
   const pageColors = isTournament ? theme.cupPage : theme.page
+  const cupBoardBg = isDark ? cupTier.boardBgDark : cupTier.boardBgLight
 
   const cardBody = (
     <>
@@ -499,7 +496,7 @@ export default function MatchCard({
       <View
         style={[
           styles.accentGlow,
-          {backgroundColor: isTournament ? CUP_GLOW : accent},
+          {backgroundColor: isTournament ? cupTier.glow : accent},
         ]}
       />
 
@@ -515,10 +512,8 @@ export default function MatchCard({
               style={[
                 styles.board,
                 {
-                  backgroundColor: isTournament
-                    ? theme.cupBoardBg
-                    : theme.boardBg,
-                  borderColor: isTournament ? '#F59E0B' : theme.boardBorder,
+                  backgroundColor: isTournament ? cupBoardBg : theme.boardBg,
+                  borderColor: isTournament ? cupTier.border : theme.boardBorder,
                 },
                 isTournament
                   ? {
@@ -531,7 +526,12 @@ export default function MatchCard({
                 <View style={[styles.stripe, {backgroundColor: accent}]} />
               ) : null}
 
-              {isTournament ? <CupMatchBanner label={cupBannerLabel} /> : null}
+              {isTournament ? (
+                <CupMatchBanner
+                  label={cupBannerLabel}
+                  stageKey={matchInfo.stage_key}
+                />
+              ) : null}
 
               <View style={isTournament ? {paddingTop: 14} : null}>
               {(!isTournament && divisionName) || bothConfirmed ? (
