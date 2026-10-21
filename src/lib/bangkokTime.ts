@@ -1,8 +1,87 @@
 import {DateTime} from 'luxon'
 
 export const BANGKOK_ZONE = 'Asia/Bangkok'
+/** Default display timezone when the user has no saved preference. */
+export const DEFAULT_TIMEZONE = BANGKOK_ZONE
+export const TZ_MISMATCH_ACK_PREFIX = 'tz_mismatch_ack:'
 
 const PROPOSED_DATE_FORMAT = 'dd LLL yyyy hh:mm a'
+
+export const COMMON_TIMEZONES: {value: string; label: string}[] = [
+  {value: 'Asia/Bangkok', label: 'Bangkok (ICT)'},
+  {value: 'Asia/Singapore', label: 'Singapore'},
+  {value: 'Asia/Hong_Kong', label: 'Hong Kong'},
+  {value: 'Asia/Tokyo', label: 'Tokyo'},
+  {value: 'Asia/Seoul', label: 'Seoul'},
+  {value: 'Asia/Shanghai', label: 'Shanghai'},
+  {value: 'Asia/Kolkata', label: 'India'},
+  {value: 'Asia/Dubai', label: 'Dubai'},
+  {value: 'Europe/London', label: 'London'},
+  {value: 'Europe/Paris', label: 'Paris / Central Europe'},
+  {value: 'Europe/Berlin', label: 'Berlin'},
+  {value: 'Europe/Moscow', label: 'Moscow'},
+  {value: 'America/New_York', label: 'New York (Eastern)'},
+  {value: 'America/Chicago', label: 'Chicago (Central)'},
+  {value: 'America/Denver', label: 'Denver (Mountain)'},
+  {value: 'America/Los_Angeles', label: 'Los Angeles (Pacific)'},
+  {value: 'America/Sao_Paulo', label: 'São Paulo'},
+  {value: 'Australia/Sydney', label: 'Sydney'},
+  {value: 'Pacific/Auckland', label: 'Auckland'},
+  {value: 'UTC', label: 'UTC'},
+]
+
+export function isValidTimeZone(value: string): boolean {
+  try {
+    return Boolean(value) && DateTime.now().setZone(value).isValid
+  } catch {
+    return false
+  }
+}
+
+export function resolvePreferredTimeZone(
+  preferences: {timezone?: unknown} | null | undefined,
+): string {
+  const raw = preferences?.timezone
+  if (typeof raw === 'string' && isValidTimeZone(raw)) {
+    return raw
+  }
+  return DEFAULT_TIMEZONE
+}
+
+export function getDeviceTimeZone(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return tz && isValidTimeZone(tz) ? tz : DEFAULT_TIMEZONE
+  } catch {
+    return DEFAULT_TIMEZONE
+  }
+}
+
+export function tzMismatchAckKey(preferredTz: string, deviceTz: string): string {
+  return `${TZ_MISMATCH_ACK_PREFIX}${preferredTz}:${deviceTz}`
+}
+
+/** Parse a UTC instant into the given IANA zone. */
+export function toTimeZone(
+  isoOrDate: string | Date,
+  timeZone: string = DEFAULT_TIMEZONE,
+): DateTime {
+  const zone = isValidTimeZone(timeZone) ? timeZone : DEFAULT_TIMEZONE
+  if (isoOrDate instanceof Date) {
+    return DateTime.fromJSDate(isoOrDate, {zone: 'utc'}).setZone(zone)
+  }
+  return DateTime.fromISO(isoOrDate, {zone: 'utc'}).setZone(zone)
+}
+
+/** Format a UTC instant in the viewer's preferred timezone. */
+export function formatInTimeZone(
+  isoOrDate: string | Date,
+  timeZone: string,
+  format: string = PROPOSED_DATE_FORMAT,
+): string {
+  const dt = toTimeZone(isoOrDate, timeZone)
+  return dt.isValid ? dt.toFormat(format) : String(isoOrDate)
+}
 
 /** Parse ISO or JS Date in Bangkok zone. */
 export function toBangkok(isoOrDate: string | Date): DateTime {
@@ -113,7 +192,7 @@ export function bangkokMinimumPickerDate(): Date {
 /** Format unix millis in Bangkok (e.g. match history log). */
 export function formatBangkokFromMillis(
   timestamp: number,
-  format: string = DateTime.DATETIME_MED,
+  format: Intl.DateTimeFormatOptions = DateTime.DATETIME_MED,
 ): string {
   if (!timestamp) return 'unknown'
   const dt = DateTime.fromMillis(timestamp).setZone(BANGKOK_ZONE)
@@ -138,18 +217,25 @@ export function minutesBetweenIso(iso1: string, iso2: string): number {
 export function formatRelativeMessageListDate(
   iso: string,
   yesterdayLabel: string,
+  timeZone: string = DEFAULT_TIMEZONE,
 ): string {
-  const date = toBangkok(iso)
-  const now = nowInBangkok()
+  const date = toTimeZone(iso, timeZone)
+  const now = DateTime.now().setZone(
+    isValidTimeZone(timeZone) ? timeZone : DEFAULT_TIMEZONE,
+  )
   if (date.hasSame(now, 'day')) return date.toFormat('h:mm a')
   if (date.hasSame(now.minus({days: 1}), 'day')) return yesterdayLabel
   return date.toFormat('LLL d')
 }
 
 /** Chat date separator: Today / Yesterday / month day. */
-export function formatMessageDateSeparator(iso: string): string {
-  const dateObj = toBangkok(iso)
-  const now = nowInBangkok()
+export function formatMessageDateSeparator(
+  iso: string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  const zone = isValidTimeZone(timeZone) ? timeZone : DEFAULT_TIMEZONE
+  const dateObj = toTimeZone(iso, zone)
+  const now = DateTime.now().setZone(zone)
   if (dateObj.hasSame(now, 'day')) return 'Today'
   if (dateObj.hasSame(now.minus({days: 1}), 'day')) return 'Yesterday'
   if (dateObj.hasSame(now, 'year')) return dateObj.toFormat('MMMM d')
@@ -157,18 +243,37 @@ export function formatMessageDateSeparator(iso: string): string {
 }
 
 /** Chat bubble timestamp under messages. */
-export function formatMessageTimestamp(iso: string): string {
-  const date = toBangkok(iso)
-  const now = nowInBangkok()
+export function formatMessageTimestamp(
+  iso: string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  const zone = isValidTimeZone(timeZone) ? timeZone : DEFAULT_TIMEZONE
+  const date = toTimeZone(iso, zone)
+  const now = DateTime.now().setZone(zone)
   if (date.hasSame(now, 'day')) return date.toFormat('h:mm a')
   if (date.hasSame(now, 'year')) return date.toFormat('MMM d, h:mm a')
   return date.toFormat('MMM d, yyyy, h:mm a')
 }
 
-export function formatMessageCardDate(iso: string): string {
-  return formatBangkok(iso, 'LLL d, yyyy')
+export function formatMessageCardDate(
+  iso: string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  return formatInTimeZone(iso, timeZone, 'LLL d, yyyy')
 }
 
-export function formatMessageCardTime(iso: string): string {
-  return formatBangkok(iso, 'h:mm a')
+export function formatMessageCardTime(
+  iso: string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  return formatInTimeZone(iso, timeZone, 'h:mm a')
+}
+
+/** Locale-friendly medium datetime in preferred zone (support, betting history, etc.). */
+export function formatPreferredDateTime(
+  iso: string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  const dt = toTimeZone(iso, timeZone)
+  return dt.isValid ? dt.toLocaleString(DateTime.DATETIME_MED) : iso
 }

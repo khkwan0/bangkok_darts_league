@@ -2,6 +2,8 @@ import TextInput from '@/components/TextInput'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {usePreferredTimeZone} from '@/hooks/usePreferredTimeZone'
+import {formatPreferredDateTime} from '@/lib/bangkokTime'
 import {useSupportTickets} from '@/hooks/useSupportTickets'
 import {
   canMemberReplyToTicket,
@@ -43,18 +45,8 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   return value
 }
 
-function formatTicketDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
+function formatTicketDate(iso: string, timeZone: string) {
+  return formatPreferredDateTime(iso, timeZone)
 }
 
 function AttachmentList({
@@ -109,6 +101,7 @@ function ReplyBubble({
   isDark: boolean
 }) {
   const {t} = useTranslation()
+  const timeZone = usePreferredTimeZone()
   const isStaff = reply.is_staff
   const unread = Boolean(isStaff && reply.is_unread)
   return (
@@ -149,7 +142,7 @@ function ReplyBubble({
             </RNView>
           ) : null}
         </RNView>
-        <Text className="text-xs opacity-60">{formatTicketDate(reply.created_at)}</Text>
+        <Text className="text-xs opacity-60">{formatTicketDate(reply.created_at, timeZone)}</Text>
       </RNView>
       <Text className="text-sm">{reply.message}</Text>
       <AttachmentList attachments={reply.attachments} apiUrl={apiUrl} />
@@ -158,6 +151,7 @@ function ReplyBubble({
 }
 
 export default function SupportTicketDetailScreen() {
+  const timeZone = usePreferredTimeZone()
   const {t} = useTranslation()
   const navigation = useNavigation()
   const router = useRouter()
@@ -360,7 +354,7 @@ export default function SupportTicketDetailScreen() {
           </Text>
         </RNView>
         <Text className="text-xs" style={{color: muted}}>
-          {t('support_ticket_opened', {date: formatTicketDate(ticket.created_at)})}
+          {t('support_ticket_opened', {date: formatTicketDate(ticket.created_at, timeZone)})}
         </Text>
       </RNView>
 
@@ -372,7 +366,7 @@ export default function SupportTicketDetailScreen() {
         <RNView className="mb-2 flex-row items-center justify-between">
           <Text className="font-semibold">{t('support_your_original_message')}</Text>
           <Text className="text-xs opacity-60">
-            {formatTicketDate(ticket.created_at)}
+            {formatTicketDate(ticket.created_at, timeZone)}
           </Text>
         </RNView>
         <Text className="text-sm">{ticket.message}</Text>

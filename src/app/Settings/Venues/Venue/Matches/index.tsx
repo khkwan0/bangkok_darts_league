@@ -564,6 +564,10 @@ export default function VenueMatches() {
           keyExtractor={(item, index) =>
             String(item.match_id ?? `${item.home_team_id}-${item.date}-${index}`)
           }
+          removeClippedSubviews={false}
+          windowSize={11}
+          maxToRenderPerBatch={8}
+          initialNumToRender={6}
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={
             fixtures.length === 0

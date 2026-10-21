@@ -3,6 +3,7 @@ import {ThemedView as View} from '@/components/ThemedView'
 import config from '@/config'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import {formatRelativeMessageListDate} from '@/lib/bangkokTime'
+import {usePreferredTimeZone} from '@/hooks/usePreferredTimeZone'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
 import {useTranslation} from 'react-i18next'
 import {
@@ -25,6 +26,7 @@ export default function Messages({
   onDeleteAllThreads,
   footerBusy,
 }: MessagesProps) {
+  const timeZone = usePreferredTimeZone()
   const {t} = useTranslation()
   const insets = useSafeAreaInsets()
   const listContentStyle = useTabListContentContainerStyle()
@@ -59,7 +61,7 @@ export default function Messages({
     const unreadCount = item.unread_count || 0
 
     const dateText = lastMessageDate
-      ? formatRelativeMessageListDate(lastMessageDate, t('yesterday'))
+      ? formatRelativeMessageListDate(lastMessageDate, t('yesterday'), timeZone)
       : ''
 
     return (

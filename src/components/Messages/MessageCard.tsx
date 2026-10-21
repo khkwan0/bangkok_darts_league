@@ -10,12 +10,14 @@ import {
   formatMessageCardDate,
   formatMessageCardTime,
 } from '@/lib/bangkokTime'
+import {usePreferredTimeZone} from '@/hooks/usePreferredTimeZone'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, StyleSheet, TouchableOpacity } from 'react-native'
 import { MessageCardProps } from './types'
 
 export default function MessageCard({message, showAll}: MessageCardProps) {
+  const timeZone = usePreferredTimeZone()
   const messageDate = message.created_at
   const account = useAccount()
   const [isRead, setIsRead] = React.useState(message.read_at)
@@ -28,7 +30,7 @@ export default function MessageCard({message, showAll}: MessageCardProps) {
       if (!isRead) {
         const res = await account.MarkMessageAsRead(message.id)
         if (res.status === 'ok') {
-          setIsRead(formatMessageCardDate(bangkokNowIso()))
+          setIsRead(formatMessageCardDate(bangkokNowIso(), timeZone))
           const count = await account.GetUnreadMessageCount()
           dispatch({type: 'SET_MESSAGE_COUNT', payload: count})
           await setAppBadgeCount(count)
@@ -107,10 +109,10 @@ export default function MessageCard({message, showAll}: MessageCardProps) {
           {message.message}
         </Text>
         <Text style={styles.date}>
-          {messageDate ? formatMessageCardDate(messageDate) : ''}
+          {messageDate ? formatMessageCardDate(messageDate, timeZone) : ''}
         </Text>
         <Text style={styles.time}>
-          {messageDate ? formatMessageCardTime(messageDate) : ''}
+          {messageDate ? formatMessageCardTime(messageDate, timeZone) : ''}
         </Text>
       </View>
     </TouchableOpacity>

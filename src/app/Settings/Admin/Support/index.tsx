@@ -1,5 +1,7 @@
 import {ThemedText as Text} from '@/components/ThemedText'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {usePreferredTimeZone} from '@/hooks/usePreferredTimeZone'
+import {formatPreferredDateTime} from '@/lib/bangkokTime'
 import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
 import {refreshAdminSupportUnread} from '@/lib/adminSupportUnread'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
@@ -26,21 +28,12 @@ import {
 
 type StatusFilter = SupportTicketStatus | 'all' | 'deleted'
 
-function formatTicketDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
+function formatTicketDate(iso: string, timeZone: string) {
+  return formatPreferredDateTime(iso, timeZone)
 }
 
 export default function AdminSupportScreen() {
+  const timeZone = usePreferredTimeZone()
   const {t} = useTranslation()
   const navigation = useNavigation()
   const router = useRouter()
@@ -249,7 +242,7 @@ export default function AdminSupportScreen() {
               </Text>
               <RNView className="mt-2 flex-row items-center justify-between">
                 <Text className="text-xs" style={{color: muted}}>
-                  {formatTicketDate(item.created_at)}
+                  {formatTicketDate(item.created_at, timeZone)}
                   {item.attachment_count > 0
                     ? ` · ${t('admin_support_attachments', {count: item.attachment_count})}`
                     : ''}

@@ -1,3 +1,5 @@
+import {DEFAULT_TIMEZONE, formatPreferredDateTime} from '@/lib/bangkokTime'
+
 export const MEMBER_AI_CHAT_THREADS_PATH = 'ai-agent/chat-threads'
 export const ADMIN_AI_CHAT_THREADS_PATH = 'admin/ai/chat-threads'
 export const AI_CHAT_THREADS_PATH = MEMBER_AI_CHAT_THREADS_PATH
@@ -162,13 +164,9 @@ export function turnsToChatMessages(
   })
 }
 
-export function formatThreadTime(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
+export function formatThreadTime(
+  iso: string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  return formatPreferredDateTime(iso, timeZone)
 }

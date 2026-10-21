@@ -158,6 +158,32 @@ function hasLogoUri(uri?: string | null) {
   return true
 }
 
+/** Apply captain/player team role synchronously so cards don't grow after remount. */
+function withUserTeamRole(
+  info: MatchInfoDataType,
+  user: {teams?: Array<{id: number; team_role_id: number}>} | null | undefined,
+): MatchInfoDataType {
+  const teams = user?.teams
+  if (!Array.isArray(teams) || teams.length === 0) return info
+  for (const team of teams) {
+    if (team.id === info.home_team_id) {
+      return {
+        ...info,
+        team_role_id: team.team_role_id,
+        player_team_id: info.home_team_id,
+      }
+    }
+    if (team.id === info.away_team_id) {
+      return {
+        ...info,
+        team_role_id: team.team_role_id,
+        player_team_id: info.away_team_id,
+      }
+    }
+  }
+  return info
+}
+
 function TeamLogoMark({
   uri,
   name,
@@ -230,56 +256,46 @@ export default function MatchCard({
   const match = useMatch()
   const teams = useTeams()
   const user = state.user
-  const [matchInfo, setMatchInfo] = React.useState<MatchInfoDataType | null>(
-    null,
+  const [matchInfo, setMatchInfo] = React.useState<MatchInfoDataType>(() =>
+    withUserTeamRole(propsMatchInfo, state.user),
   )
-  const [isMounted, setIsMounted] = React.useState(false)
   const {width} = Dimensions.get('window')
   const pad = Math.max(16, width * 0.04)
   const logoSize = Math.min(width * 0.22, 96)
   const isDark = useColorScheme() === 'dark'
   const theme = getCardTheme(isDark)
 
-  React.useEffect(() => {
-    setMatchInfo(propsMatchInfo)
-    setIsMounted(true)
-  }, [propsMatchInfo])
+  const teamRoleKey =
+    user?.teams?.map((t: {id: number; team_role_id: number}) =>
+      `${t.id}:${t.team_role_id}`,
+    ).join('|') ?? ''
 
   React.useEffect(() => {
-    if (!isMounted || !matchInfo || !user?.id) return
+    setMatchInfo(withUserTeamRole(propsMatchInfo, user))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propsMatchInfo, user?.id, teamRoleKey])
+
+  React.useEffect(() => {
+    if (!user?.id) return
+    // Already resolved from user.teams — skip roster fetch that can resize the card.
+    if (
+      Array.isArray(user.teams) &&
+      user.teams.some(
+        (team: {id: number}) =>
+          team.id === matchInfo.home_team_id ||
+          team.id === matchInfo.away_team_id,
+      )
+    ) {
+      return
+    }
 
     let cancelled = false
 
     async function resolveMembership() {
-      if (Array.isArray(user.teams) && user.teams.length > 0) {
-        for (const team of user.teams) {
-          if (team.id === matchInfo!.home_team_id) {
-            if (!cancelled) {
-              setMatchInfo({
-                ...matchInfo!,
-                team_role_id: team.team_role_id,
-                player_team_id: matchInfo!.home_team_id,
-              })
-            }
-            return
-          }
-          if (team.id === matchInfo!.away_team_id) {
-            if (!cancelled) {
-              setMatchInfo({
-                ...matchInfo!,
-                team_role_id: team.team_role_id,
-                player_team_id: matchInfo!.away_team_id,
-              })
-            }
-            return
-          }
-        }
-      }
-
-      const homeId = Number(matchInfo!.home_team_id)
-      const awayId = Number(matchInfo!.away_team_id)
+      const homeId = Number(matchInfo.home_team_id)
+      const awayId = Number(matchInfo.away_team_id)
       if (!homeId || !awayId) return
-      const matchId = Number(matchInfo!.match_id ?? 0) || null
+      const matchId = Number(matchInfo.match_id ?? 0) || null
 
       const [homeRes, awayRes] = await Promise.all([
         teams.GetPlayers(homeId, true, matchId),
@@ -304,11 +320,11 @@ export default function MatchCard({
           Number(p.playerId ?? p.player_id ?? p.id) === uid,
       )
       if (onHome) {
-        setMatchInfo({
-          ...matchInfo!,
+        setMatchInfo(prev => ({
+          ...prev,
           team_role_id: Number(onHome.team_role_id ?? 0),
           player_team_id: homeId,
-        })
+        }))
         return
       }
       const onAway = awayPlayers.find(
@@ -316,11 +332,11 @@ export default function MatchCard({
           Number(p.playerId ?? p.player_id ?? p.id) === uid,
       )
       if (onAway) {
-        setMatchInfo({
-          ...matchInfo!,
+        setMatchInfo(prev => ({
+          ...prev,
           team_role_id: Number(onAway.team_role_id ?? 0),
           player_team_id: awayId,
-        })
+        }))
       }
     }
 
@@ -329,7 +345,7 @@ export default function MatchCard({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMounted, user?.id, matchInfo?.home_team_id, matchInfo?.away_team_id])
+  }, [user?.id, matchInfo.home_team_id, matchInfo.away_team_id])
 
   function ShowLocation(
     lat: number | undefined,
@@ -447,8 +463,6 @@ export default function MatchCard({
       calculateWinProbability(matchInfo?.homeStats, matchInfo?.awayStats),
     [matchInfo?.homeStats, matchInfo?.awayStats],
   )
-
-  if (!isMounted || !matchInfo) return null
 
   const isTournament = Number(matchInfo.tournament_id) > 0
   const divisionName = String(matchInfo.division_name || '').trim()

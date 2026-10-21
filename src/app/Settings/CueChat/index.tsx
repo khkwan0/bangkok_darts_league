@@ -1,4 +1,5 @@
 import Button from '@/components/Button'
+import {usePreferredTimeZone} from '@/hooks/usePreferredTimeZone'
 import {ChatMarkdown, markdownContainsTable} from '@/components/ChatMarkdown'
 import TextInput from '@/components/TextInput'
 import {ThemedText as Text} from '@/components/ThemedText'
@@ -120,6 +121,7 @@ type CueChatProps = {
 }
 
 export default function CueChat({agentScope = 'member'}: CueChatProps) {
+  const timeZone = usePreferredTimeZone()
   const isAdminChat = agentScope === 'admin'
   const threadsApiBase = isAdminChat
     ? ADMIN_AI_CHAT_THREADS_PATH
@@ -1871,7 +1873,7 @@ export default function CueChat({agentScope = 'member'}: CueChatProps) {
                           fontSize: 12,
                           color: themeMutedTextColor,
                         }}>
-                        {formatThreadTime(item.updated_at)}
+                        {formatThreadTime(item.updated_at, timeZone)}
                         {item.message_count > 0
                           ? ` · ${item.message_count} ${t('ai_assistant_msgs')}`
                           : ''}

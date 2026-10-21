@@ -18,6 +18,7 @@ import {
   formatMessageTimestamp,
   minutesBetweenIso,
 } from '@/lib/bangkokTime'
+import {usePreferredTimeZone} from '@/hooks/usePreferredTimeZone'
 import { DateTime } from 'luxon'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -99,9 +100,10 @@ function ResponseInput({
 }
 
 function DateSeparator({ date }: { date: string }) {
+  const timeZone = usePreferredTimeZone()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
-  const formattedDate = formatMessageDateSeparator(date)
+  const formattedDate = formatMessageDateSeparator(date, timeZone)
 
   return (
     <View style={styles.dateSeparator}>
@@ -131,6 +133,7 @@ function MessageLine({
   nextMessage?: Message
 }) {
   const {state} = useLeagueContext()
+  const timeZone = usePreferredTimeZone()
   const userId = state.user.id
   const isUserMessage = message.from_player_id === userId
   const colorScheme = useColorScheme()
@@ -164,7 +167,7 @@ function MessageLine({
     minutesBetweenIso(message.created_at, nextMessage.created_at) >= 1
 
   const formattedTimestamp = shouldShowTimestamp
-    ? formatMessageTimestamp(message.created_at)
+    ? formatMessageTimestamp(message.created_at, timeZone)
     : null
 
   return (

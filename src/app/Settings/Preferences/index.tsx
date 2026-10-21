@@ -88,11 +88,21 @@ export default function Preferences() {
           />
           {user?.id && (
             <PreferenceRow
+              icon="clock-outline"
+              label={t('timezone_settings')}
+              route="/Settings/Preferences/Timezone"
+              iconColor="#0D9488"
+              iconBackground="rgba(13, 148, 136, 0.15)"
+            />
+          )}
+          {user?.id && (
+            <PreferenceRow
               icon="bell-outline"
               label={t('notification')}
               route="/Settings/Preferences/Notifications"
               iconColor="#FF9800"
               iconBackground="rgba(255, 152, 0, 0.15)"
+              showDivider={false}
             />
           )}
         </View>

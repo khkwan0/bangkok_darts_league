@@ -42,6 +42,8 @@ interface User {
   preferences?: {
     enabledPushNotifications?: boolean
     soundNotifications?: boolean
+    /** IANA timezone for displaying UTC timestamps (default Asia/Bangkok). */
+    timezone?: string
     home_panels?: string[] | null
     /** Ordered FAB quick-action ids; null/absent = app default. */
     fab_quick_actions?: string[] | null

@@ -627,13 +627,34 @@ export default function UpcomingMatches(props: any) {
                   }
                   showsVerticalScrollIndicator={false}
                   showsHorizontalScrollIndicator={false}
-                  pagingEnabled={true}
-                  snapToInterval={width}
-                  decelerationRate="fast"
-                  snapToAlignment="center"
+                  // Paging/snap only for the horizontal new-card pager.
+                  // On the vertical list these fight variable card heights and
+                  // cause jump/readjust when scrolling up.
+                  pagingEnabled={
+                    fixtures.length > 0 && state.isNewMatchCard ? true : false
+                  }
+                  snapToInterval={
+                    fixtures.length > 0 && state.isNewMatchCard
+                      ? width
+                      : undefined
+                  }
+                  decelerationRate={
+                    fixtures.length > 0 && state.isNewMatchCard
+                      ? 'fast'
+                      : 'normal'
+                  }
+                  snapToAlignment={
+                    fixtures.length > 0 && state.isNewMatchCard
+                      ? 'center'
+                      : undefined
+                  }
                   scrollEnabled={true}
                   directionalLockEnabled={true}
                   alwaysBounceVertical={false}
+                  removeClippedSubviews={false}
+                  windowSize={11}
+                  maxToRenderPerBatch={8}
+                  initialNumToRender={6}
                   onScrollBeginDrag={closeFilters}
                   refreshControl={
                     <RefreshControl
@@ -644,15 +665,10 @@ export default function UpcomingMatches(props: any) {
                   bounces={true}
                   keyExtractor={(item: ItemType, index) => {
                     if (typeof item.ad_spot !== 'undefined' && item.ad_spot) {
-                      return item.key
-                    } else {
-                      return (
-                        item.home_team_id +
-                        item.away_team_id +
-                        item.date +
-                        index
-                      )
+                      return String(item.key ?? `ad_${index}`)
                     }
+                    const matchId = (item as any).match_id
+                    return `${matchId ?? ''}_${item.home_team_id}_${item.away_team_id}_${item.date}_${index}`
                   }}
                   data={fixtures}
                   renderItem={renderItem}

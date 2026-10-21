@@ -1,6 +1,6 @@
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import React from 'react'
-import {Animated, Easing, StyleSheet, View} from 'react-native'
+import {Animated, Easing, StyleSheet, Text, View} from 'react-native'
 
 const STAGE_KEY_LABELS: Record<string, string> = {
   gold: 'Gold Cup',
@@ -131,22 +131,23 @@ export default function CupMatchBanner({
   stageKey?: string | null
 }) {
   const tier = getCupTierTheme(stageKey)
-  const pulse = React.useRef(new Animated.Value(0)).current
+  const pulse = React.useRef(new Animated.Value(1)).current
 
   React.useEffect(() => {
+    // Opacity-only + native driver: avoids JS-thread color flicker when FlatList recycles.
     const loop = Animated.loop(
       Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 0.62,
+          duration: 4400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
         Animated.timing(pulse, {
           toValue: 1,
           duration: 4400,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: false,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0,
-          duration: 4400,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
       ]),
     )
@@ -154,25 +155,14 @@ export default function CupMatchBanner({
     return () => loop.stop()
   }, [pulse])
 
-  const textColor = pulse.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: tier.bannerText,
-  })
-
   return (
     <View style={[styles.banner, {backgroundColor: tier.banner}]}>
-      <Animated.View
-        style={{
-          opacity: pulse.interpolate({
-            inputRange: [0, 0.5, 1],
-            outputRange: [1, 0.55, 1],
-          }),
-        }}>
+      <Animated.View style={{opacity: pulse}}>
         <MCI name="trophy" size={18} color={tier.bannerIcon} />
       </Animated.View>
-      <Animated.Text style={[styles.label, {color: textColor}]} numberOfLines={1}>
+      <Text style={[styles.label, {color: tier.bannerText[0]}]} numberOfLines={1}>
         {label}
-      </Animated.Text>
+      </Text>
     </View>
   )
 }

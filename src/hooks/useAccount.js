@@ -634,6 +634,28 @@ export const useAccount = () => {
     }
   }
 
+  async function SetTimezone(timezone) {
+    try {
+      if (typeof timezone !== 'string' || !timezone.trim()) {
+        return {status: 'error'}
+      }
+      const next = timezone.trim()
+      const preferences = {
+        ...(stateRef.current.user?.preferences || {}),
+        timezone: next,
+      }
+      dispatch({
+        type: 'SET_PREFERENCES',
+        payload: {timezone: next},
+      })
+      await SavePreferences(preferences)
+      return {status: 'ok'}
+    } catch (e) {
+      console.error(e)
+      return {status: 'error'}
+    }
+  }
+
   async function ToggleFavoriteVenue(venueId) {
     try {
       const id = Number(venueId)
@@ -743,6 +765,7 @@ export const useAccount = () => {
     SetFavoriteVenues,
     SetFabQuickActions,
     SetOtaAutoReload,
+    SetTimezone,
     ToggleFavoriteVenue,
     SetUpEmail,
     SaveLanguage,

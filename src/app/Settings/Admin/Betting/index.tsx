@@ -1,5 +1,7 @@
 import {ThemedText as Text} from '@/components/ThemedText'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {usePreferredTimeZone} from '@/hooks/usePreferredTimeZone'
+import {formatPreferredDateTime} from '@/lib/bangkokTime'
 import {
   useAdminBetting,
   type AdminBetStatus,
@@ -22,19 +24,9 @@ import {
 
 type StatusFilter = AdminBetStatus | 'all'
 
-function formatWhen(iso: string | null) {
+function formatWhen(iso: string | null, timeZone: string) {
   if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
+  return formatPreferredDateTime(iso, timeZone)
 }
 
 function formatPick(item: AdminBettingActivityItem) {
@@ -47,6 +39,7 @@ function formatPick(item: AdminBettingActivityItem) {
 }
 
 export default function AdminBettingScreen() {
+  const timeZone = usePreferredTimeZone()
   const {t} = useTranslation()
   const navigation = useNavigation()
   const router = useRouter()
@@ -323,9 +316,9 @@ export default function AdminBettingScreen() {
                 </Text>
               </View>
               <Text style={{fontSize: 11, color: muted, marginTop: 6}}>
-                {formatWhen(item.placed_at)}
+                {formatWhen(item.placed_at, timeZone)}
                 {item.settled_at
-                  ? ` · ${t('admin_betting_settled')} ${formatWhen(item.settled_at)}`
+                  ? ` · ${t('admin_betting_settled')} ${formatWhen(item.settled_at, timeZone)}`
                   : ''}
               </Text>
             </View>

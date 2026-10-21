@@ -1,5 +1,7 @@
 import {ThemedText as Text} from '@/components/ThemedText'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {usePreferredTimeZone} from '@/hooks/usePreferredTimeZone'
+import {formatPreferredDateTime} from '@/lib/bangkokTime'
 import {
   useBetting,
   type BettingBet,
@@ -21,19 +23,9 @@ import {
 
 type StatusFilter = BettingBetStatus | 'all'
 
-function formatWhen(iso: string | null) {
+function formatWhen(iso: string | null, timeZone: string) {
   if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
+  return formatPreferredDateTime(iso, timeZone)
 }
 
 function formatPick(item: BettingBet, t: (key: string) => string) {
@@ -64,6 +56,7 @@ function marketLabel(item: BettingBet, t: (key: string) => string) {
 }
 
 export default function BettingHistoryScreen() {
+  const timeZone = usePreferredTimeZone()
   const {t} = useTranslation()
   const navigation = useNavigation()
   const colorScheme = useColorScheme() ?? 'light'
@@ -275,9 +268,9 @@ export default function BettingHistoryScreen() {
                 </Text>
               </View>
               <Text style={{fontSize: 11, color: muted, marginTop: 6}}>
-                {formatWhen(item.placed_at)}
+                {formatWhen(item.placed_at, timeZone)}
                 {item.settled_at
-                  ? ` · ${t('betting_history_settled')} ${formatWhen(item.settled_at)}`
+                  ? ` · ${t('betting_history_settled')} ${formatWhen(item.settled_at, timeZone)}`
                   : ''}
               </Text>
             </View>

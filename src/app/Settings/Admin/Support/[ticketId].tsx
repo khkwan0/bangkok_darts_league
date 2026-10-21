@@ -2,6 +2,8 @@ import TextInput from '@/components/TextInput'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {usePreferredTimeZone} from '@/hooks/usePreferredTimeZone'
+import {formatPreferredDateTime} from '@/lib/bangkokTime'
 import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
 import {refreshAdminSupportUnread} from '@/lib/adminSupportUnread'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
@@ -48,18 +50,8 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   return value
 }
 
-function formatTicketDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
+function formatTicketDate(iso: string, timeZone: string) {
+  return formatPreferredDateTime(iso, timeZone)
 }
 
 function AttachmentList({
@@ -114,6 +106,7 @@ function ReplyBubble({
   isDark: boolean
 }) {
   const {t} = useTranslation()
+  const timeZone = usePreferredTimeZone()
   const isStaff = reply.is_staff
   const unread = Boolean(!isStaff && reply.is_unread)
   return (
@@ -157,7 +150,7 @@ function ReplyBubble({
           ) : null}
         </RNView>
         <Text className="text-xs opacity-60">
-          {formatTicketDate(reply.created_at)}
+          {formatTicketDate(reply.created_at, timeZone)}
         </Text>
       </RNView>
       <Text className="text-sm">{reply.message}</Text>
@@ -167,6 +160,7 @@ function ReplyBubble({
 }
 
 export default function AdminSupportTicketDetailScreen() {
+  const timeZone = usePreferredTimeZone()
   const {t} = useTranslation()
   const navigation = useNavigation()
   const router = useRouter()
@@ -506,13 +500,13 @@ export default function AdminSupportTicketDetailScreen() {
         </Text>
         <Text className="mt-2 text-xs" style={{color: muted}}>
           {t('support_ticket_opened', {
-            date: formatTicketDate(ticket.created_at),
+            date: formatTicketDate(ticket.created_at, timeZone),
           })}
         </Text>
         {isDeleted && ticket.deleted_at ? (
           <Text className="mt-1 text-xs" style={{color: '#b91c1c'}}>
             {t('admin_support_deleted_at', {
-              date: formatTicketDate(ticket.deleted_at),
+              date: formatTicketDate(ticket.deleted_at, timeZone),
             })}
           </Text>
         ) : null}
@@ -546,7 +540,7 @@ export default function AdminSupportTicketDetailScreen() {
             ) : null}
           </RNView>
           <Text className="text-xs opacity-60">
-            {formatTicketDate(ticket.created_at)}
+            {formatTicketDate(ticket.created_at, timeZone)}
           </Text>
         </RNView>
         <Text className="text-sm">{ticket.message}</Text>

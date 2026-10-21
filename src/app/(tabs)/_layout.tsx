@@ -1,4 +1,5 @@
 import AnnouncementDialog from '@/components/Announcements/AnnouncementDialog'
+import TimezoneMismatchDialog from '@/components/TimezoneMismatchDialog'
 import LanguageOption from '@/components/LanguageOption'
 import {CompetitionPickerModal} from '@/components/navigation/CompetitionPickerModal'
 import {CompetitionValidator} from '@/components/navigation/CompetitionValidator'
@@ -505,6 +506,7 @@ export default function TabLayout() {
         submitting={markingAnnouncementRead}
         onDismiss={handleAnnouncementDismiss}
       />
+      <TimezoneMismatchDialog />
       {showLanguageOption ? (
         <View className="flex-1 justify-center mx-4">
           <LanguageOption handleLanguageOption={handleLanguageOption} />
