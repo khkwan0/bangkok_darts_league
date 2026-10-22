@@ -40,6 +40,7 @@ export type CalendarFixture = {
   round?: number | null
   stage_label?: string | null
   stage_key?: string | null
+  game_type_label?: string | null
   home_logo?: string | null
   away_logo?: string | null
   home_confirmed?: number | string

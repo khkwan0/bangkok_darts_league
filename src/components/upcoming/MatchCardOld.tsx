@@ -644,6 +644,7 @@ export default function MatchCardOld({
           <CupMatchBanner
             label={cupBannerLabel}
             stageKey={matchInfo.stage_key}
+            gameType={matchInfo.game_type_label}
           />
         ) : null}
 

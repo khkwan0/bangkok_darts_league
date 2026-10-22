@@ -126,26 +126,30 @@ export function formatCupBannerLabel(args: {
 export default function CupMatchBanner({
   label,
   stageKey,
+  gameType,
 }: {
   label: string
   stageKey?: string | null
+  /** Game type label (e.g. "8-Ball") shown beside the stage. */
+  gameType?: string | null
 }) {
   const tier = getCupTierTheme(stageKey)
-  const pulse = React.useRef(new Animated.Value(1)).current
+  const pulse = React.useRef(new Animated.Value(0)).current
+  const gameTypeLabel = String(gameType || '').trim()
 
   React.useEffect(() => {
-    // Opacity-only + native driver: avoids JS-thread color flicker when FlatList recycles.
+    // Opacity/transform + native driver: avoids JS-thread color flicker when FlatList recycles.
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
-          toValue: 0.62,
-          duration: 4400,
+          toValue: 1,
+          duration: 1800,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(pulse, {
-          toValue: 1,
-          duration: 4400,
+          toValue: 0,
+          duration: 1800,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
@@ -155,14 +159,58 @@ export default function CupMatchBanner({
     return () => loop.stop()
   }, [pulse])
 
+  const glowOpacity = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.45, 0.95],
+  })
+  const glowScale = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.88, 1.22],
+  })
+  const iconOpacity = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.82, 1],
+  })
+
   return (
     <View style={[styles.banner, {backgroundColor: tier.banner}]}>
-      <Animated.View style={{opacity: pulse}}>
-        <MCI name="trophy" size={18} color={tier.bannerIcon} />
-      </Animated.View>
-      <Text style={[styles.label, {color: tier.bannerText[0]}]} numberOfLines={1}>
-        {label}
-      </Text>
+      <View style={styles.trophyWrap} accessibilityRole="image" accessibilityLabel="Cup match">
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.glowHalo,
+            {
+              opacity: glowOpacity,
+              transform: [{scale: glowScale}],
+              backgroundColor: 'rgba(255,255,255,0.55)',
+            },
+          ]}
+        />
+        <View style={styles.glowCore} pointerEvents="none" />
+        <Animated.View style={{opacity: iconOpacity}}>
+          <MCI name="trophy" size={22} color="#FFFFFF" />
+        </Animated.View>
+      </View>
+      <View style={styles.labelWrap}>
+        <Text
+          style={[styles.label, {color: tier.bannerText[0]}]}
+          numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+      {gameTypeLabel ? (
+        <View
+          style={[
+            styles.gameTypePill,
+            {backgroundColor: 'rgba(255,255,255,0.22)'},
+          ]}>
+          <Text
+            style={[styles.gameTypeText, {color: tier.bannerText[0]}]}
+            numberOfLines={1}>
+            {gameTypeLabel}
+          </Text>
+        </View>
+      ) : null}
     </View>
   )
 }
@@ -178,10 +226,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  label: {
+  trophyWrap: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  glowHalo: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  glowCore: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  labelWrap: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  label: {
     fontSize: 14,
     fontWeight: '800',
     letterSpacing: 0.3,
+  },
+  gameTypePill: {
+    flexShrink: 0,
+    maxWidth: '38%',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  gameTypeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
 })

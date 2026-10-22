@@ -80,7 +80,9 @@ export default function PlayerCard({
       },
     })
       */
-      router.dismissTo('/Match')
+      // Pop back to the scoresheet so its route params are preserved.
+      // dismissTo('/Match') can remount Match without params.
+      router.back()
     } catch (e) {
       console.log(e)
     }

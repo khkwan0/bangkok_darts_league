@@ -21,6 +21,8 @@ export type MatchInfoDataType = {
   /** Stage label e.g. "Gold Cup" from tournament_stages. */
   stage_label?: string | null
   stage_key?: string | null
+  /** Cup game type label from game_types (e.g. "501"). */
+  game_type_label?: string | null
   home_confirmed: number
   away_confirmed: number
   team_role_id: number

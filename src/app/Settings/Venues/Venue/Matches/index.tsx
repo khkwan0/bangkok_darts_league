@@ -72,6 +72,7 @@ type VenueMatch = {
   round?: number | null
   stage_label?: string | null
   stage_key?: string | null
+  game_type_label?: string | null
   home_confirmed?: number
   away_confirmed?: number
   postponed_proposal?: unknown

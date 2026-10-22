@@ -189,7 +189,11 @@ function FrameRow({frame, index}: {frame: Frame; index: number}) {
   )
 }
 
-export default function CompletedMatchDetails({matchId}: {matchId: number}) {
+export default function CompletedMatchDetails({
+  matchId,
+}: {
+  matchId?: number | null
+}) {
   const matchHook = useMatch()
   const [matchDetails, setMatchDetails] = React.useState<MatchDetails | null>(
     null,
@@ -203,6 +207,10 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
   const router = useRouter()
   const theme = useScoresheetTheme()
   const {t} = useTranslation()
+  const validMatchId = (() => {
+    const id = Number(matchId)
+    return Number.isFinite(id) && id > 0 ? id : null
+  })()
 
   React.useEffect(() => {
     let cancelled = false
@@ -244,20 +252,22 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
       }
     }
 
-    if (matchId) {
-      getMatchDetails(matchId)
+    if (validMatchId) {
+      getMatchDetails(validMatchId)
+    } else {
+      setLoading(false)
     }
 
     return () => {
       cancelled = true
     }
-  }, [matchId])
+  }, [validMatchId])
 
   React.useEffect(() => {
     navigation.setOptions({
-      title: `Match #${matchId}`,
+      title: validMatchId ? `Match #${validMatchId}` : 'Match',
     })
-  }, [matchId])
+  }, [validMatchId, navigation])
 
   if (loading) {
     return (
@@ -331,7 +341,7 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
             paddingTop: 14,
           }}>
           <Text style={{color: theme.muted, fontSize: 13, fontWeight: '700'}}>
-            Match #{matchId}
+            Match #{validMatchId}
           </Text>
           {typeof matchDate === 'string' && (
             <Text style={{color: theme.muted, fontSize: 13, fontWeight: '600'}}>
@@ -534,7 +544,7 @@ export default function CompletedMatchDetails({matchId}: {matchId: number}) {
         </View>
       </View>
 
-      <More matchId={matchId} />
+      {validMatchId ? <More matchId={validMatchId} /> : null}
 
       <FlatList
         style={{flex: 1}}

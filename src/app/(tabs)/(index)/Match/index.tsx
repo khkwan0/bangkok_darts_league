@@ -45,15 +45,28 @@ export default function ScoreSheet() {
   const navigation = useNavigation()
   const theme = useScoresheetTheme()
   const listContentStyle = useTabListContentContainerStyle({paddingBottom: 16})
-  /*
-  const matchInfo = React.useMemo(
-    () =>
-      typeof params !== 'undefined' ? JSON.parse(params as string) : {},
-    [params],
-  )
-    */
+  // Route params can be cleared (e.g. dismissTo('/Match') after picking a
+  // player) while MatchContext still holds the active scoresheet.
+  const routeMatchInfo = React.useMemo(() => {
+    try {
+      if (typeof params === 'string') {
+        return JSON.parse(params)
+      }
+    } catch {
+      // ignore malformed route params
+    }
+    return {}
+  }, [params])
   const matchInfo =
-    typeof params !== 'undefined' ? JSON.parse(params as string) : {}
+    routeMatchInfo?.match_id != null
+      ? routeMatchInfo
+      : state?.matchInfo?.match_id != null
+        ? state.matchInfo
+        : routeMatchInfo
+  const resolvedMatchId = (() => {
+    const id = Number(matchInfo?.match_id)
+    return Number.isFinite(id) && id > 0 ? id : null
+  })()
   const frames = React.useRef<FrameType[]>([])
   const appState = React.useRef(AppState.currentState)
   const [refreshing, setRefreshing] = React.useState(false)
@@ -83,12 +96,12 @@ export default function ScoreSheet() {
   }
 
   React.useEffect(() => {
-    if (typeof matchInfo.match_id !== 'undefined') {
-      navigation.setOptions({title: '#' + matchInfo.match_id})
-    } else {
+    if (resolvedMatchId) {
+      navigation.setOptions({title: '#' + resolvedMatchId})
+    } else if (!state?.matchInfo?.match_id) {
       router.back()
     }
-  }, [])
+  }, [resolvedMatchId])
 
   React.useEffect(() => {
     // Listen for app state changes (background to foreground)
@@ -353,7 +366,7 @@ export default function ScoreSheet() {
   }
 
   if (matchCompleted) {
-    return <CompletedMatchDetails matchId={matchInfo.match_id} />
+    return <CompletedMatchDetails matchId={resolvedMatchId} />
   }
 
   const header = (
@@ -383,7 +396,7 @@ export default function ScoreSheet() {
         ListFooterComponent={
           <>
             <Finalizer matchInfo={matchInfo} />
-            <More matchId={matchInfo.match_id} />
+            <More matchId={resolvedMatchId ?? matchInfo.match_id} />
           </>
         }
         data={state.frameData}
