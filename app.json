@@ -3,7 +3,7 @@
     "name": "Bangkok Darts League",
     "slug": "bangkok_darts_league",
     "version": "1.09",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "bangkokdartsleague",
     "userInterfaceStyle": "automatic",
@@ -130,15 +130,7 @@
       "expo-status-bar",
       "./plugins/withIosMarketingVersion",
       "./plugins/withIosSignEmbeddedFrameworks",
-      "./plugins/withAndroidReleaseSigning",
-      [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "bangkok-darts-league",
-          "organization": "nitrox-studios"
-        }
-      ]
+      "./plugins/withAndroidReleaseSigning"
     ],
     "experiments": {
       "typedRoutes": true,

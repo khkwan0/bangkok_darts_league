@@ -2,6 +2,7 @@ import {LeagueProvider} from '@/context/LeagueContext'
 import {MatchProvider} from '@/context/MatchContext'
 import OTAUpdatePrompt from '@/components/OTAUpdatePrompt'
 import {SystemNavigationBar} from '@/components/SystemNavigationBar'
+import {useAdaptiveOrientationLock} from '@/hooks/useAdaptiveOrientationLock'
 import '@/i18n'
 import {
   ensureAppWideChannel,
@@ -67,6 +68,7 @@ function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   })
+  useAdaptiveOrientationLock()
 
   async function RequestUserPermission() {
     if (Platform.OS === 'ios') {

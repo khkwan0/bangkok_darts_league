@@ -2,6 +2,7 @@ const fs = require('fs')
 const path = require('path')
 
 const SENTRY_PLUGIN = '@sentry/react-native/expo'
+const SENTRY_NODE_ENV_PLUGIN = './plugins/withSentryXcodeNodeEnv'
 const BUILD_PROPERTIES_PLUGIN = 'expo-build-properties'
 
 const ANDROID_PROGUARD_RULES = fs.readFileSync(
@@ -41,6 +42,10 @@ function applyEnvConfig(expo) {
       },
     ])
   }
+
+  // Always last: Sentry rewrites its upload phase on every prebuild; this
+  // replaces the bare-`node` wrapper that breaks under Xcode's PATH.
+  plugins.push(SENTRY_NODE_ENV_PLUGIN)
 
   const ios = {...expo.ios}
   if (process.env.APPLE_TEAM_ID) {
