@@ -9,6 +9,7 @@ import {useLeagueContext} from '@/context/LeagueContext'
 import {LiveScoresProvider} from '@/context/LiveScoresContext'
 import {QuickActionsSheetProvider} from '@/context/QuickActionsSheetContext'
 import {useForumActivitySync} from '@/hooks/useForumActivity'
+import {useIsRegularLayout} from '@/hooks/useLayoutMode'
 import {useShowLiveScoresAccessory} from '@/hooks/useShowLiveScoresAccessory'
 import {useHasNewForumPosts} from '@/lib/forumActivity'
 import {useHasSupportActivity} from '@/lib/supportUnread'
@@ -567,6 +568,8 @@ export default function TabLayout() {
   )
 }
 
+const QUICK_ACTIONS_TAB_ICON = require('../../../assets/images/fab-dartboard.png')
+
 function TabsWithLiveScoresAccessory({
   tintColor,
   messageBadge,
@@ -581,6 +584,77 @@ function TabsWithLiveScoresAccessory({
   showCompetitionAccessory: boolean
 }) {
   const showLiveAccessory = useShowLiveScoresAccessory()
+  // Bar phones: center FAB-style quick actions. Regular (Duo/iPad): system More.
+  const isRegular = useIsRegularLayout()
+
+  const homeTrigger = (
+    <NativeTabs.Trigger name="(index)">
+      <NativeTabs.Trigger.Icon
+        sf={{default: 'house', selected: 'house.fill'}}
+        md={{default: 'home', selected: 'home_filled'}}
+      />
+      <NativeTabs.Trigger.Label>{t('home')}</NativeTabs.Trigger.Label>
+    </NativeTabs.Trigger>
+  )
+  const statisticsTrigger = (
+    <NativeTabs.Trigger name="statistics">
+      <NativeTabs.Trigger.Icon
+        sf={{default: 'chart.bar', selected: 'chart.bar.fill'}}
+        md={{default: 'bar_chart', selected: 'bar_chart'}}
+      />
+      <NativeTabs.Trigger.Label>{t('statistics')}</NativeTabs.Trigger.Label>
+    </NativeTabs.Trigger>
+  )
+  const completedTrigger = (
+    <NativeTabs.Trigger name="completed">
+      <NativeTabs.Trigger.Icon
+        sf={{
+          default: 'checkmark.circle',
+          selected: 'checkmark.circle.fill',
+        }}
+        md={{default: 'check_circle', selected: 'check_circle'}}
+      />
+      <NativeTabs.Trigger.Label>{t('completed')}</NativeTabs.Trigger.Label>
+    </NativeTabs.Trigger>
+  )
+  const messagesTrigger = (
+    <NativeTabs.Trigger name="messages">
+      <NativeTabs.Trigger.Icon
+        sf={{default: 'envelope', selected: 'envelope.fill'}}
+        md={{default: 'mail', selected: 'mail'}}
+      />
+      <NativeTabs.Trigger.Label>{t('messages')}</NativeTabs.Trigger.Label>
+      {messageBadge ? (
+        <NativeTabs.Trigger.Badge>{messageBadge}</NativeTabs.Trigger.Badge>
+      ) : null}
+    </NativeTabs.Trigger>
+  )
+  const moreTrigger = isRegular ? (
+    <NativeTabs.Trigger name="more" role="more">
+      <NativeTabs.Trigger.Icon
+        sf={{
+          default: 'ellipsis.circle',
+          selected: 'ellipsis.circle.fill',
+        }}
+        md={{default: 'more_horiz', selected: 'more_horiz'}}
+      />
+      <NativeTabs.Trigger.Label>{t('quick_actions')}</NativeTabs.Trigger.Label>
+      {showMoreBadge ? <NativeTabs.Trigger.Badge /> : null}
+    </NativeTabs.Trigger>
+  ) : (
+    <NativeTabs.Trigger
+      name="more"
+      accessibilityLabel={t('quick_actions')}>
+      <NativeTabs.Trigger.Icon
+        src={QUICK_ACTIONS_TAB_ICON}
+        renderingMode="original"
+      />
+      <NativeTabs.Trigger.Label hidden>
+        {t('quick_actions')}
+      </NativeTabs.Trigger.Label>
+      {showMoreBadge ? <NativeTabs.Trigger.Badge /> : null}
+    </NativeTabs.Trigger>
+  )
 
   return (
     <NativeTabs tintColor={tintColor} minimizeBehavior="onScrollDown">
@@ -594,51 +668,23 @@ function TabsWithLiveScoresAccessory({
           <CompetitionBottomAccessory />
         </NativeTabs.BottomAccessory>
       ) : null}
-      <NativeTabs.Trigger name="(index)">
-        <NativeTabs.Trigger.Icon
-          sf={{default: 'house', selected: 'house.fill'}}
-          md={{default: 'home', selected: 'home_filled'}}
-        />
-        <NativeTabs.Trigger.Label>{t('home')}</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="statistics">
-        <NativeTabs.Trigger.Icon
-          sf={{default: 'chart.bar', selected: 'chart.bar.fill'}}
-          md={{default: 'bar_chart', selected: 'bar_chart'}}
-        />
-        <NativeTabs.Trigger.Label>{t('statistics')}</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="completed">
-        <NativeTabs.Trigger.Icon
-          sf={{
-            default: 'checkmark.circle',
-            selected: 'checkmark.circle.fill',
-          }}
-          md={{default: 'check_circle', selected: 'check_circle'}}
-        />
-        <NativeTabs.Trigger.Label>{t('completed')}</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="messages">
-        <NativeTabs.Trigger.Icon
-          sf={{default: 'envelope', selected: 'envelope.fill'}}
-          md={{default: 'mail', selected: 'mail'}}
-        />
-        <NativeTabs.Trigger.Label>{t('messages')}</NativeTabs.Trigger.Label>
-        {messageBadge ? (
-          <NativeTabs.Trigger.Badge>{messageBadge}</NativeTabs.Trigger.Badge>
-        ) : null}
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="more" role="more">
-        <NativeTabs.Trigger.Icon
-          sf={{
-            default: 'ellipsis.circle',
-            selected: 'ellipsis.circle.fill',
-          }}
-          md={{default: 'more_horiz', selected: 'more_horiz'}}
-        />
-        <NativeTabs.Trigger.Label>{t('quick_actions')}</NativeTabs.Trigger.Label>
-        {showMoreBadge ? <NativeTabs.Trigger.Badge /> : null}
-      </NativeTabs.Trigger>
+      {isRegular ? (
+        <>
+          {homeTrigger}
+          {statisticsTrigger}
+          {completedTrigger}
+          {messagesTrigger}
+          {moreTrigger}
+        </>
+      ) : (
+        <>
+          {homeTrigger}
+          {statisticsTrigger}
+          {moreTrigger}
+          {completedTrigger}
+          {messagesTrigger}
+        </>
+      )}
     </NativeTabs>
   )
 }
