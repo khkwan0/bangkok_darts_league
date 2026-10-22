@@ -8,8 +8,8 @@
  * `src/config.js` is gitignored. This example is the template for local clones.
  *
  * `version` and `build` are overwritten automatically when you run:
- *   npm run deploy_ios | deploy_android | archive_ios | archive_android
- * (values are synced from app.json before each build.)
+ *   npm run deploy_ios | deploy_android | archive_ios | archive_android | ota_publish
+ * (values are synced from app.json before each build / OTA publish.)
  */
 
 export const domain = 'darts.bkkleague.com'

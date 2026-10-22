@@ -467,7 +467,7 @@
   "achievements_view_mine": "ของฉัน",
   "achievements_view_league": "ทุกคน",
   "achievements_league_title": "ปลดล็อกล่าสุด",
-  "achievements_league_subtitle": "ปลดล็อกล่าสุด {count} รายการทั่วลีก",
+  "achievements_league_subtitle": "{count} รายการ · สัปดาห์นี้หรือ 100 ล่าสุด",
   "achievements_league_empty": "ยังไม่มีรายการปลดล็อก",
   "achievement_badge": "เหรียญ",
   "achievement_trophy": "ถ้วยรางวัล",

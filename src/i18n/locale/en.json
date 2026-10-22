@@ -467,7 +467,7 @@
   "achievements_view_mine": "Mine",
   "achievements_view_league": "Everyone",
   "achievements_league_title": "Recent unlocks",
-  "achievements_league_subtitle": "{count} recent unlocks across the league",
+  "achievements_league_subtitle": "{count} unlocks · last week or latest 100",
   "achievements_league_empty": "No unlocks yet.",
   "achievement_badge": "Badge",
   "achievement_trophy": "Trophy",
