@@ -469,7 +469,7 @@
   "timezone_save_failed": "Couldn't save that time zone",
   "timezone_use_device": "Use this phone's time zone",
   "timezone_mismatch_title": "Time zone heads-up",
-  "timezone_mismatch_body": "Your phone's in {{device}}, but times show in your preferred zone ({{preferred}}).",
+  "timezone_mismatch_body": "Your phone's in {device}, but times show in your preferred zone ({preferred}).",
   "timezone_mismatch_settings_hint": "Change it anytime in Settings → Preferences → Time zone.",
   "timezone_mismatch_open_settings": "Open settings",
   "timezone_mismatch_ok": "Got it",

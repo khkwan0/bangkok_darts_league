@@ -1,5 +1,8 @@
 import {useNetwork} from '@/hooks/useNetwork'
-import type {PlayerAchievements} from '@/types/achievements'
+import type {
+  PlayerAchievements,
+  RecentAchievementsFeed,
+} from '@/types/achievements'
 import React from 'react'
 
 export function useAchievements() {
@@ -24,5 +27,18 @@ export function useAchievements() {
     [],
   )
 
-  return {getPlayerAchievements}
+  const getRecentUnlocks = React.useCallback(async (): Promise<
+    RecentAchievementsFeed | null
+  > => {
+    const res = await networkRef.current.Get('/achievements/recent')
+    if (!res || res.status === 'error' || res.httpStatus) {
+      return null
+    }
+    if (typeof res !== 'object' || !('unlocks' in res)) {
+      return null
+    }
+    return res as RecentAchievementsFeed
+  }, [])
+
+  return {getPlayerAchievements, getRecentUnlocks}
 }

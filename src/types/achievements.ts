@@ -32,3 +32,23 @@ export type PlayerAchievements = {
     available: number
   }
 }
+
+export type RecentAchievementUnlock = {
+  id: number
+  playerId: number
+  playerNickname: string
+  achievementCode: string
+  achievementName: LocalizedText
+  kind: AchievementKind | null
+  tier: AchievementTier | null
+  icon: string | null
+  silly: boolean
+  sport: 'pool' | 'darts' | 'shared'
+  awardedAt: string
+}
+
+export type RecentAchievementsFeed = {
+  leagueId: number
+  sport: 'pool' | 'darts'
+  unlocks: RecentAchievementUnlock[]
+}
