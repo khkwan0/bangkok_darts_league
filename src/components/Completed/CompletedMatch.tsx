@@ -20,6 +20,9 @@ type CompletedMatchProps = {
     postponed_by_team_name?: string | null
     postponed_by_team_short_name?: string | null
   }
+  index?: number
+  /** When set (regular-width split), select in-pane instead of pushing. */
+  onSelectMatch?: (matchId: number) => void
 }
 
 const WIN = '#16a34a'
@@ -144,7 +147,8 @@ function ScoreLine({
 export default function CompletedMatch({
   item,
   index = 0,
-}: CompletedMatchProps & {index?: number}) {
+  onSelectMatch,
+}: CompletedMatchProps) {
   const {t} = useTranslation()
   const colors = useStatColors()
   const accent = cardAccent(index)
@@ -169,6 +173,10 @@ export default function CompletedMatch({
       : null
 
   function handlePress() {
+    if (onSelectMatch) {
+      onSelectMatch(item.match_id)
+      return
+    }
     router.push({
       pathname: '/completed/Match',
       params: {

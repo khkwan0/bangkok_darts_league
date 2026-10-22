@@ -1,5 +1,8 @@
 import CompletedMatch from '@/components/Completed/CompletedMatch'
+import CompletedMatchDetails from '@/components/Completed/CompletedMatchDetails'
 import CompletedMatchesOther from '@/components/Completed/CompletedMatchesOther'
+import {AdaptiveSplit} from '@/components/layout/AdaptiveSplit'
+import {EmptySplitDetail} from '@/components/layout/EmptySplitDetail'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
 import {useStatColors} from '@/components/PlayerStatistics/statUi'
@@ -10,6 +13,7 @@ import {
   filterMatchesByScope,
   useStatsScope,
 } from '@/context/StatsScopeContext'
+import {useIsRegularLayout} from '@/hooks/useLayoutMode'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
 import {useLeague} from '@/hooks/useLeague'
 import {Colors} from '@/constants/Colors'
@@ -100,13 +104,34 @@ export default function CompletedHome() {
   const league = useLeague()
   const user = state.user
   const {scope} = useStatsScope()
+  const {t} = useTranslation()
+  const isRegular = useIsRegularLayout()
+  const router = useRouter()
   const [matches, setMatches] = React.useState<CompletedMatchType[]>([])
   const [refreshing, setRefreshing] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
+  const [selectedMatchId, setSelectedMatchId] = React.useState<number | null>(
+    null,
+  )
   const listContentStyle = useTabListContentContainerStyle()
   const pageBg =
     Colors[useColorScheme() === 'dark' ? 'dark' : 'light'].background
   const seasonSelection = useLeagueSeasonSelection()
+
+  const selectedMatchIdRef = React.useRef(selectedMatchId)
+  React.useEffect(() => {
+    selectedMatchIdRef.current = selectedMatchId
+  }, [selectedMatchId])
+  React.useEffect(() => {
+    if (isRegular) return
+    const id = selectedMatchIdRef.current
+    if (id == null) return
+    setSelectedMatchId(null)
+    router.push({
+      pathname: '/completed/Match',
+      params: {params: JSON.stringify({matchId: id})},
+    })
+  }, [isRegular, router])
 
   const filteredMatches = useMemo(
     () => filterMatchesByScope(matches, scope),
@@ -146,14 +171,18 @@ export default function CompletedHome() {
     return <CompletedMatchesOther seasonSelection={seasonSelection} />
   }
 
-  return (
+  const list = (
     <View className="flex-1" style={{backgroundColor: pageBg}}>
       <FlatList
         style={{backgroundColor: pageBg}}
         data={filteredMatches}
         keyExtractor={item => item.match_id.toString()}
         renderItem={({item, index}) => (
-          <CompletedMatch item={item} index={index} />
+          <CompletedMatch
+            item={item}
+            index={index}
+            onSelectMatch={isRegular ? setSelectedMatchId : undefined}
+          />
         )}
         refreshing={refreshing}
         onRefresh={() => getCompletedMatches(user.teams || [])}
@@ -174,9 +203,21 @@ export default function CompletedHome() {
             </>
           ) : null
         }
-        ListEmptyComponent={!isMounted ? null : <EmptyCompletedMessage />}
+        ListEmptyComponent={!isMounted ? undefined : <EmptyCompletedMessage />}
         ListFooterComponent={<View className="h-4" />}
       />
     </View>
+  )
+
+  return (
+    <AdaptiveSplit
+      list={list}
+      detail={
+        selectedMatchId != null ? (
+          <CompletedMatchDetails matchId={selectedMatchId} />
+        ) : null
+      }
+      emptyDetail={<EmptySplitDetail message={t('select_a_match')} />}
+    />
   )
 }

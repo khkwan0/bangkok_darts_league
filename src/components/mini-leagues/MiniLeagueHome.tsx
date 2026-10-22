@@ -2,7 +2,6 @@ import Button from '@/components/Button'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import {MiniMatchCard} from '@/components/mini-leagues/MiniMatchCard'
-import LiveScores from '@/components/upcoming/LiveScores'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useLeague} from '@/hooks'
 import {useMiniLeagues} from '@/hooks/useMiniLeagues'
@@ -162,12 +161,8 @@ export function MiniLeagueHome({miniLeagueId}: {miniLeagueId: number}) {
   const softBorder = isDark ? palette.borderDark : palette.border
   const panelMuted = isDark ? 'rgba(248,250,252,0.78)' : 'rgba(15,23,42,0.7)'
   const panelTitle = isDark ? '#F8FAFC' : '#0F172A'
-  const showLiveScores =
-    typeof state.showLiveScores === 'undefined' || state.showLiveScores
-
   return (
     <View className="flex-1" style={{backgroundColor: screenBg}}>
-      {showLiveScores ? <LiveScores /> : null}
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={accent} />

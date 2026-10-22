@@ -14,9 +14,14 @@ import {
   ScrollView,
   View,
 } from 'react-native'
+import {useSafeAreaInsets} from 'react-native-safe-area-context'
+
+/** Form column width on Duo landscape / iPad — bar phones stay full-bleed. */
+const AUTH_FORM_MAX_WIDTH = 420
 
 export default function Email() {
   const {t} = useTranslation()
+  const insets = useSafeAreaInsets()
   const [email, setEmail] = React.useState('')
   const [password, setPassword] = React.useState('')
   const [error, setError] = React.useState('')
@@ -71,8 +76,22 @@ export default function Email() {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1">
-      <ScrollView className="flex-1 bg-white dark:bg-gray-900">
-        <View className="flex-1 p-6">
+      <ScrollView
+        className="flex-1 bg-white dark:bg-gray-900"
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+          paddingLeft: Math.max(insets.left, 24),
+          paddingRight: Math.max(insets.right, 24),
+          paddingVertical: 24,
+        }}
+        keyboardShouldPersistTaps="handled">
+        <View
+          style={{
+            width: '100%',
+            maxWidth: AUTH_FORM_MAX_WIDTH,
+            alignSelf: 'center',
+          }}>
           {/* Header */}
           <View className="mb-8">
             <Text type="title" className="text-center text-3xl mb-2">

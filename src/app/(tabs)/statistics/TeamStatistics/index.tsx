@@ -134,7 +134,11 @@ const TeamStatisticsHeader = () => {
     </View>
   )
 }
-const TeamStatistics = () => {
+const TeamStatistics = ({
+  embedded = false,
+}: {
+  embedded?: boolean
+} = {}) => {
   const league = useLeague()
   const {scope} = useStatsScope()
   const [stats, setStats] = React.useState<TeamStats>({})
@@ -145,11 +149,12 @@ const TeamStatistics = () => {
     useLeagueSeasonSelection()
 
   React.useEffect(() => {
+    if (embedded) return
     navigation.setOptions({
       headerTitle: t('statistics'),
       headerBackTitle: t('back'),
     })
-  }, [])
+  }, [embedded])
 
   React.useEffect(() => {
     ;(async () => {

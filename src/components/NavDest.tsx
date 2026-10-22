@@ -13,23 +13,27 @@ interface NavDestProps {
   onPress?: () => void
   iconColor?: string
   iconBackground?: string
+  /** Highlight as the active master-detail selection. */
+  selected?: boolean
 }
 
 export default function NavDest(props: NavDestProps) {
   const {colors} = useTheme()
   const router = useRouter()
-  const {messageCount = 0, text} = props
+  const {messageCount = 0, text, selected = false} = props
   const isDark = (useColorScheme() ?? 'light') === 'dark'
   const [pressed, setPressed] = React.useState(false)
   const iconColor = props.iconColor ?? colors.text
   const iconBackground =
     props.iconBackground ??
     (isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.08)')
+  const showActive = selected || pressed
 
   return (
     <Pressable
       className="my-3 overflow-hidden rounded-xl"
       accessibilityRole="button"
+      accessibilityState={{selected}}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       onPress={() => {
@@ -40,16 +44,16 @@ export default function NavDest(props: NavDestProps) {
         }
       }}
       style={{
-        backgroundColor: pressed ? iconBackground : 'transparent',
+        backgroundColor: showActive ? iconBackground : 'transparent',
         borderWidth: 1,
-        borderColor: pressed ? iconColor : 'transparent',
+        borderColor: showActive ? iconColor : 'transparent',
         transform: [{scale: pressed ? 0.985 : 1}],
       }}>
       <View className="flex-row p-4 items-center">
         <View className="flex-0 w-10 ">
           <MCI
             name={props.icon}
-            color={pressed ? iconColor : colors.text}
+            color={showActive ? iconColor : colors.text}
             size={20}
           />
         </View>

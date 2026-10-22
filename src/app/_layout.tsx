@@ -1,4 +1,5 @@
 import {LeagueProvider} from '@/context/LeagueContext'
+import {LayoutModeProvider} from '@/context/LayoutModeContext'
 import {MatchProvider} from '@/context/MatchContext'
 import OTAUpdatePrompt from '@/components/OTAUpdatePrompt'
 import {SystemNavigationBar} from '@/components/SystemNavigationBar'
@@ -38,7 +39,9 @@ import {GestureHandlerRootView} from 'react-native-gesture-handler'
 import {SafeAreaProvider} from 'react-native-safe-area-context'
 import '../../global.css'
 
-// SDK 58 defaults to transparent Liquid Glass headers on iOS 26+; restore opaque.
+// SDK 58 defaults to transparent Liquid Glass headers on iOS 26+.
+// Keep opaque branding for now; re-test on Duo Device Hub — remove only if this
+// blocks the system vertical side-rail nav bars on iPhone Duo.
 enableLegacyHeaderAppearance()
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN
@@ -333,22 +336,24 @@ function RootLayout() {
             value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <SystemNavigationBar />
             <LeagueProvider>
-              <MatchProvider>
-                <OTAUpdatePrompt />
-                <Stack>
-                  <Stack.Screen
-                    name="(tabs)"
-                    options={{
-                      headerTitle: t('bangkok_darts_league'),
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="history"
-                    options={{title: t('history')}}
-                  />
-                </Stack>
-              </MatchProvider>
+              <LayoutModeProvider>
+                <MatchProvider>
+                  <OTAUpdatePrompt />
+                  <Stack>
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{
+                        headerTitle: t('bangkok_darts_league'),
+                        headerShown: false,
+                      }}
+                    />
+                    <Stack.Screen
+                      name="history"
+                      options={{title: t('history')}}
+                    />
+                  </Stack>
+                </MatchProvider>
+              </LayoutModeProvider>
             </LeagueProvider>
           </ThemeProvider>
         </BottomSheetModalProvider>

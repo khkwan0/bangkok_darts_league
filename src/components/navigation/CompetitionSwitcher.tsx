@@ -9,7 +9,13 @@ import {
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import {useNavigation} from 'expo-router/react-navigation'
 import React from 'react'
-import {Pressable, useColorScheme, View} from 'react-native'
+import {
+  Pressable,
+  useColorScheme,
+  useWindowDimensions,
+  View,
+} from 'react-native'
+import {useSafeAreaInsets} from 'react-native-safe-area-context'
 
 type Props = {
   /** Override label; defaults to active competition name */
@@ -17,11 +23,16 @@ type Props = {
   compact?: boolean
 }
 
-export function CompetitionSwitcher({title, compact}: Props) {
+/** Room for header buttons (settings / back) on each side. */
+const HEADER_SIDE_CHROME = 56
+
+export function CompetitionSwitcher({title, compact = true}: Props) {
   const {state, openCompetitionPicker} = useLeagueContext()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const navigation = useNavigation()
+  const {width: windowWidth} = useWindowDimensions()
+  const insets = useSafeAreaInsets()
   const competition = state.competition
   const canonical = isCanonicalCompetition(competition)
   const modeLabel = competitionModeLabel(competition)
@@ -33,6 +44,13 @@ export function CompetitionSwitcher({title, compact}: Props) {
   const softBg = palette.soft
   const softHeader = palette.softHeader
 
+  // Title area between leading/trailing header items + Duo rail insets.
+  const titleMaxWidth = Math.max(
+    140,
+    windowWidth - insets.left - insets.right - HEADER_SIDE_CHROME * 2,
+  )
+
+  // Custom title only — do not override headerLeft so Duo/system Back stays native.
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerStyle: {
@@ -40,8 +58,12 @@ export function CompetitionSwitcher({title, compact}: Props) {
       },
       headerShadowVisible: true,
       headerTintColor: labelOnSoft,
+      headerTitleAlign: 'center',
+      headerTitleContainerStyle: {
+        maxWidth: titleMaxWidth,
+      },
     })
-  }, [navigation, softHeader, labelOnSoft])
+  }, [navigation, softHeader, labelOnSoft, titleMaxWidth])
 
   if (canonical) {
     return (
@@ -50,25 +72,34 @@ export function CompetitionSwitcher({title, compact}: Props) {
         accessibilityRole="button"
         accessibilityLabel="Switch competition"
         hitSlop={8}
-        style={{maxWidth: compact ? 220 : 280}}>
+        style={{maxWidth: titleMaxWidth}}>
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 4,
+            maxWidth: titleMaxWidth,
           }}>
           <Text
-            numberOfLines={1}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
             style={{
               fontWeight: '700',
               fontSize: compact ? 15 : 16,
               color: labelOnSoft,
               flexShrink: 1,
+              textAlign: 'center',
             }}>
             {label}
           </Text>
-          <MCI name="chevron-down" size={18} color={labelOnSoft} />
+          <MCI
+            name="chevron-down"
+            size={18}
+            color={labelOnSoft}
+            style={{flexShrink: 0}}
+          />
         </View>
       </Pressable>
     )
@@ -80,7 +111,7 @@ export function CompetitionSwitcher({title, compact}: Props) {
       accessibilityRole="button"
       accessibilityLabel={`Switch competition. Currently ${modeLabel}: ${label}`}
       hitSlop={6}
-      style={{maxWidth: compact ? 240 : 300}}>
+      style={{maxWidth: titleMaxWidth}}>
       <View
         style={{
           backgroundColor: softBg,
@@ -90,6 +121,7 @@ export function CompetitionSwitcher({title, compact}: Props) {
           paddingHorizontal: 10,
           paddingVertical: compact ? 4 : 6,
           alignItems: 'center',
+          maxWidth: titleMaxWidth,
         }}>
         <View
           style={{
@@ -106,17 +138,19 @@ export function CompetitionSwitcher({title, compact}: Props) {
               fontWeight: '800',
               letterSpacing: 0.8,
             }}>
-            {modeLabel}
+            {modeLabel ?? ''}
           </Text>
           <MCI name="chevron-down" size={14} color={labelOnSoft} />
         </View>
         <Text
-          numberOfLines={1}
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
           style={{
             fontWeight: '700',
             fontSize: compact ? 13 : 14,
             color: labelOnSoft,
-            maxWidth: compact ? 200 : 260,
+            textAlign: 'center',
           }}>
           {label}
         </Text>

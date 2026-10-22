@@ -6,12 +6,16 @@ import {
   ScoresheetHeader,
   ScoresheetStatsViewSelector,
 } from '@/components/Match/components'
+import {ScoresheetLayout} from '@/components/Match/components/ScoresheetLayout'
 import {useScoresheetTheme} from '@/components/Match/components/scoresheetTheme'
 import { FrameType } from '@/components/Match/types'
 import { useLeagueContext } from '@/context/LeagueContext'
 import { useMatchContext } from '@/context/MatchContext'
+import {ScoresheetPadProvider} from '@/context/ScoresheetPadContext'
+import { useIsRegularLayout } from '@/hooks/useLayoutMode'
 import { useMatch } from '@/hooks/useMatch'
 import { useTabListContentContainerStyle } from '@/hooks/useTabListContentContainerStyle'
+import {resolveMatchInfoFromParams} from '@/lib/matchRouteParams'
 import {
   anyPlayerStatFlags,
   buildFrameTypeMetaByType,
@@ -21,7 +25,7 @@ import {
   resolveScoreSheetStatFlags,
 } from '@/lib/matchFormat'
 import {
-  DEFAULT_SCORESHEET_STATS_VIEW,
+  defaultScoresheetStatsView,
   loadScoresheetStatsView,
   saveScoresheetStatsView,
   type ScoresheetStatsView,
@@ -31,32 +35,41 @@ import { router, useLocalSearchParams } from 'expo-router'
 import React from 'react'
 import { AppState, FlatList, View } from 'react-native'
 
-export default function ScoreSheet() {
+export type ScoreSheetProps = {
+  /** When set, show this match in a parent AdaptiveSplit instead of reading the route. */
+  embedMatchInfo?: Record<string, unknown>
+  /** Embedded in home split: full-width sheet + modal pad (no nested Duo split). */
+  embedded?: boolean
+}
+
+export default function ScoreSheet({
+  embedMatchInfo,
+  embedded = false,
+}: ScoreSheetProps = {}) {
   const {state, dispatch, SocketConnect, SocketDisconnect, UpdateTeams}: any =
     useMatchContext()
   const {RefreshUpcoming}: any = useLeagueContext()
   const match = useMatch()
-  const {params} = useLocalSearchParams()
+  const routeParams = useLocalSearchParams()
   const [isMounted, setIsMounted] = React.useState(false)
   const [headerSticky, setHeaderSticky] = React.useState(true)
-  const [statsView, setStatsView] = React.useState<ScoresheetStatsView>(
-    DEFAULT_SCORESHEET_STATS_VIEW,
-  )
   const navigation = useNavigation()
   const theme = useScoresheetTheme()
+  const isRegular = useIsRegularLayout()
+  const [statsView, setStatsView] = React.useState<ScoresheetStatsView>(() =>
+    defaultScoresheetStatsView(isRegular),
+  )
   const listContentStyle = useTabListContentContainerStyle({paddingBottom: 16})
   // Route params can be cleared (e.g. dismissTo('/Match') after picking a
   // player) while MatchContext still holds the active scoresheet.
-  const routeMatchInfo = React.useMemo(() => {
-    try {
-      if (typeof params === 'string') {
-        return JSON.parse(params)
-      }
-    } catch {
-      // ignore malformed route params
-    }
-    return {}
-  }, [params])
+  const routeMatchInfo = React.useMemo(
+    () =>
+      resolveMatchInfoFromParams(
+        routeParams as Record<string, unknown>,
+        embedMatchInfo,
+      ),
+    [routeParams, embedMatchInfo],
+  )
   const matchInfo =
     routeMatchInfo?.match_id != null
       ? routeMatchInfo
@@ -70,17 +83,20 @@ export default function ScoreSheet() {
   const frames = React.useRef<FrameType[]>([])
   const appState = React.useRef(AppState.currentState)
   const [refreshing, setRefreshing] = React.useState(false)
+  // Side pad only on a full-screen regular layout — not inside home’s detail pane.
+  const useSidePad = isRegular && !embedded
 
+  // Compact (closed Duo / bar-phone portrait) → Ledger; regular → Classic.
   React.useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const view = await loadScoresheetStatsView()
+      const view = await loadScoresheetStatsView(isRegular)
       if (!cancelled) setStatsView(view)
     })()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isRegular])
 
   const showStatsViewSelector = React.useMemo(() => {
     const list = state.frameData ?? frames.current ?? []
@@ -92,16 +108,17 @@ export default function ScoreSheet() {
 
   function handleStatsViewChange(view: ScoresheetStatsView) {
     setStatsView(view)
-    saveScoresheetStatsView(view)
+    saveScoresheetStatsView(view, isRegular)
   }
 
   React.useEffect(() => {
+    if (embedded) return
     if (resolvedMatchId) {
       navigation.setOptions({title: '#' + resolvedMatchId})
     } else if (!state?.matchInfo?.match_id) {
       router.back()
     }
-  }, [resolvedMatchId])
+  }, [resolvedMatchId, embedded, navigation, state?.matchInfo?.match_id])
 
   React.useEffect(() => {
     // Listen for app state changes (background to foreground)
@@ -384,7 +401,7 @@ export default function ScoreSheet() {
     </View>
   )
 
-  return (
+  const framesList = (
     <View style={{flex: 1, backgroundColor: theme.canvas}}>
       {headerSticky ? header : null}
       <FlatList
@@ -410,5 +427,11 @@ export default function ScoreSheet() {
         )}
       />
     </View>
+  )
+
+  return (
+    <ScoresheetPadProvider useSidePad={useSidePad}>
+      <ScoresheetLayout framesList={framesList} />
+    </ScoresheetPadProvider>
   )
 }

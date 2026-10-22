@@ -1,6 +1,9 @@
 import {Colors} from '@/constants/Colors'
 import {CompetitionModeBanner} from '@/components/navigation/CompetitionModeBanner'
-import {TabActionSheet} from '@/components/navigation/TabActionSheet'
+import {
+  TabActionSheet,
+  type QuickActionsSheetHandle,
+} from '@/components/navigation/TabActionSheet'
 import {
   TAB_FAB_RING_SIZE,
   TAB_FAB_SIZE,
@@ -22,7 +25,6 @@ import {
   type BottomTabNavigationOptions,
 } from "expo-router/js-tabs"
 import {PlatformPressable} from "expo-router/react-navigation"
-import {BottomSheetModal} from '@expo/ui/community/bottom-sheet'
 import * as Haptics from 'expo-haptics'
 import React from 'react'
 import {
@@ -112,7 +114,7 @@ export function CustomTabBar({
   const insets = useSafeAreaInsets()
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
-  const sheetRef = React.useRef<BottomSheetModal>(null)
+  const sheetRef = React.useRef<QuickActionsSheetHandle>(null)
   const {state: leagueState} = useLeagueContext()
   const {t} = useTranslation()
   const {refreshForumActivity} = useForumActivitySync()

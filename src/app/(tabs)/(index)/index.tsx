@@ -3,7 +3,6 @@ import Button from '@/components/Button'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import AdSpot from '@/components/upcoming/AdSpot'
-import LiveScores from '@/components/upcoming/LiveScores'
 import WeeklyHighlightsCard from '@/components/upcoming/WeeklyHighlightsCard'
 import MatchCard from '@/components/upcoming/MatchCard'
 import MatchCardOld from '@/components/upcoming/MatchCardOld'
@@ -17,6 +16,7 @@ import {MiniLeagueHome} from '@/components/mini-leagues/MiniLeagueHome'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {isMiniCompetition} from '@/types/competition'
 import {useAccount, useAd, useLeague, useSeason} from '@/hooks'
+import {useIsRegularLayout} from '@/hooks/useLayoutMode'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
 import {MaterialIcons} from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -27,13 +27,13 @@ import {useTranslation} from 'react-i18next'
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   FlatList,
   Linking,
   Platform,
   Pressable,
   RefreshControl,
   useColorScheme,
+  useWindowDimensions,
 } from 'react-native'
 
 interface ItemType {
@@ -74,7 +74,9 @@ export default function UpcomingMatches(props: any) {
   const {t} = useTranslation()
   const [needsUpdate, setNeedsUpdate] = React.useState(false)
   const router = useRouter()
-  const {width} = Dimensions.get('window')
+  const isRegular = useIsRegularLayout()
+  const {width, height} = useWindowDimensions()
+  const isLandscapeRegular = isRegular && width > height
   const colorScheme = useColorScheme()
   const screenBg = colorScheme === 'dark' ? '#1A1A1A' : '#F5F5F5'
   const listContentStyle = useTabListContentContainerStyle({
@@ -116,7 +118,7 @@ export default function UpcomingMatches(props: any) {
   }
 
   function HandlePress(idx: number) {
-    router.push({pathname: '/Match', params: fixtures[idx]})
+    router.push({pathname: '/Match', params: fixtures[idx] as any})
   }
 
   async function GetMatches(
@@ -341,30 +343,55 @@ export default function UpcomingMatches(props: any) {
     }
   }
 
+  // Duo / iPad list: fill width with a card grid; tap still pushes /Match.
+  const matchGridColumns = React.useMemo(() => {
+    if (!isRegular || matchesView === 'calendar') {
+      return 1
+    }
+    if (width >= 1100) return 3
+    return 2
+  }, [isRegular, matchesView, width])
+  const useMatchGrid = matchGridColumns > 1
+
+  const listFixtures = React.useMemo(() => {
+    if (!useMatchGrid) return fixtures
+    // Ads don't span columns cleanly in a multi-column FlatList.
+    return (fixtures as ItemType[]).filter(item => !item.ad_spot)
+  }, [fixtures, useMatchGrid])
+
   const renderItem = React.useCallback(
     ({item, index}: {item: any; index: number}) => {
       if (typeof item.ad_spot !== 'undefined' && item.ad_spot) {
         return <AdSpot item={item} />
-      } else if (state.isNewMatchCard) {
-        return (
-          <MatchCard
-            matchInfo={item}
-            idx={index}
-            handlePress={HandlePress}
-            showMineOnly={showMineOnly}
-          />
-        )
-      } else {
-        return (
+      }
+
+      // Grid cells: compact card tiles. Full-bleed pager card is phone-only.
+      if (useMatchGrid || !state.isNewMatchCard) {
+        const card = (
           <MatchCardOld
             matchInfo={item}
             idx={index}
             handlePress={HandlePress}
           />
         )
+        if (!useMatchGrid) return card
+        return (
+          <View style={{flex: 1, paddingHorizontal: 6, paddingBottom: 12}}>
+            {card}
+          </View>
+        )
       }
+
+      return (
+        <MatchCard
+          matchInfo={item}
+          idx={index}
+          handlePress={HandlePress}
+          showMineOnly={showMineOnly}
+        />
+      )
     },
-    [showMineOnly, state.isNewMatchCard],
+    [showMineOnly, state.isNewMatchCard, useMatchGrid],
   )
 
   const toggleFilters = () => {
@@ -398,10 +425,9 @@ export default function UpcomingMatches(props: any) {
           flex: 1,
           backgroundColor: screenBg,
         }}>
-        <LiveScores />
         <View className="flex-1 items-center justify-center px-6">
           <Text style={{textAlign: 'center', opacity: 0.5}}>
-            DEBUG_MINIMAL_MATCHES_SCREEN — only ticker visible
+            DEBUG_MINIMAL_MATCHES_SCREEN — live scores via tab accessory
           </Text>
         </View>
       </View>
@@ -409,7 +435,7 @@ export default function UpcomingMatches(props: any) {
   }
 
   if (isMounted) {
-    return (
+    const homeList = (
       <View
         style={{
           flex: 1,
@@ -436,8 +462,6 @@ export default function UpcomingMatches(props: any) {
                   </Button>
                 </View>
               )}
-              {(typeof state.showLiveScores === 'undefined' ||
-                state.showLiveScores) && <LiveScores />}
               {(typeof state.showPlayerOfTheWeek === 'undefined' ||
                 state.showPlayerOfTheWeek) && <WeeklyHighlightsCard />}
               {(typeof user?.teams === 'undefined' || user.teams.length < 1) &&
@@ -463,6 +487,9 @@ export default function UpcomingMatches(props: any) {
                     : colorScheme === 'dark'
                       ? '#FFFFFF'
                       : '#37003C'
+                  const listLabel = isLandscapeRegular
+                    ? t('grid_view')
+                    : t('list_view')
                   return (
                     <Pressable
                       key={mode}
@@ -474,13 +501,19 @@ export default function UpcomingMatches(props: any) {
                         backgroundColor: active ? '#37003C' : 'transparent',
                       }}>
                       <MaterialIcons
-                        name={mode === 'list' ? 'view-list' : 'calendar-today'}
+                        name={
+                          mode === 'list'
+                            ? isLandscapeRegular
+                              ? 'grid-view'
+                              : 'view-list'
+                            : 'calendar-today'
+                        }
                         size={18}
                         color={labelColor}
                         style={{marginRight: 6}}
                       />
                       <Text className="font-semibold" style={{color: labelColor}}>
-                        {mode === 'list' ? t('list_view') : t('calendar')}
+                        {mode === 'list' ? listLabel : t('calendar')}
                       </Text>
                     </Pressable>
                   )
@@ -611,9 +644,11 @@ export default function UpcomingMatches(props: any) {
                 </View>
               ) : (
                 <FlatList
+                  key={`matches-cols-${matchGridColumns}-${state.isNewMatchCard ? 'new' : 'old'}`}
                   contentContainerStyle={[
                     listContentStyle,
-                    fixtures.length === 0
+                    useMatchGrid ? {paddingHorizontal: 10, paddingTop: 8} : null,
+                    listFixtures.length === 0
                       ? {
                           justifyContent: 'center',
                           alignItems: 'center',
@@ -622,8 +657,16 @@ export default function UpcomingMatches(props: any) {
                       : null,
                   ]}
                   style={{flex: 1, backgroundColor: screenBg}}
+                  numColumns={matchGridColumns}
+                  columnWrapperStyle={
+                    useMatchGrid
+                      ? {alignItems: 'stretch'}
+                      : undefined
+                  }
                   horizontal={
-                    fixtures.length > 0 && state.isNewMatchCard ? true : false
+                    !useMatchGrid &&
+                    listFixtures.length > 0 &&
+                    state.isNewMatchCard
                   }
                   showsVerticalScrollIndicator={false}
                   showsHorizontalScrollIndicator={false}
@@ -631,20 +674,28 @@ export default function UpcomingMatches(props: any) {
                   // On the vertical list these fight variable card heights and
                   // cause jump/readjust when scrolling up.
                   pagingEnabled={
-                    fixtures.length > 0 && state.isNewMatchCard ? true : false
+                    !useMatchGrid &&
+                    listFixtures.length > 0 &&
+                    state.isNewMatchCard
                   }
                   snapToInterval={
-                    fixtures.length > 0 && state.isNewMatchCard
+                    !useMatchGrid &&
+                    listFixtures.length > 0 &&
+                    state.isNewMatchCard
                       ? width
                       : undefined
                   }
                   decelerationRate={
-                    fixtures.length > 0 && state.isNewMatchCard
+                    !useMatchGrid &&
+                    listFixtures.length > 0 &&
+                    state.isNewMatchCard
                       ? 'fast'
                       : 'normal'
                   }
                   snapToAlignment={
-                    fixtures.length > 0 && state.isNewMatchCard
+                    !useMatchGrid &&
+                    listFixtures.length > 0 &&
+                    state.isNewMatchCard
                       ? 'center'
                       : undefined
                   }
@@ -653,8 +704,8 @@ export default function UpcomingMatches(props: any) {
                   alwaysBounceVertical={false}
                   removeClippedSubviews={false}
                   windowSize={11}
-                  maxToRenderPerBatch={8}
-                  initialNumToRender={6}
+                  maxToRenderPerBatch={useMatchGrid ? 12 : 8}
+                  initialNumToRender={useMatchGrid ? 8 : 6}
                   onScrollBeginDrag={closeFilters}
                   refreshControl={
                     <RefreshControl
@@ -670,7 +721,7 @@ export default function UpcomingMatches(props: any) {
                     const matchId = (item as any).match_id
                     return `${matchId ?? ''}_${item.home_team_id}_${item.away_team_id}_${item.date}_${index}`
                   }}
-                  data={fixtures}
+                  data={listFixtures}
                   renderItem={renderItem}
                   ListEmptyComponent={
                     <View className="items-center px-6 py-10">
@@ -698,6 +749,8 @@ export default function UpcomingMatches(props: any) {
         )}
       </View>
     )
+
+    return homeList
   } else {
     return null
   }

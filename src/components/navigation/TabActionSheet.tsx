@@ -33,6 +33,11 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context'
 /** iOS onDismiss can fire before the sheet animation finishes (expo/expo#48389). */
 const SHEET_DISMISS_NAV_DELAY_MS = Platform.OS === 'ios' ? 300 : 0
 
+export type QuickActionsSheetHandle = {
+  present: () => void
+  dismiss: () => void
+}
+
 type QuickActionItemProps = {
   icon: React.ComponentProps<typeof MCI>['name']
   label: string
@@ -96,7 +101,11 @@ function QuickActionItem({
   )
 }
 
-export const TabActionSheet = React.forwardRef<BottomSheetModal>(
+/**
+ * Quick actions as a bottom sheet on every layout (including Duo landscape).
+ * A side Modal fights NativeTabs focus/selection — keep one presentation.
+ */
+export const TabActionSheet = React.forwardRef<QuickActionsSheetHandle>(
   function TabActionSheet(_props, ref) {
     const colorScheme = useColorScheme() ?? 'light'
     const colors = Colors[colorScheme]
@@ -112,6 +121,8 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
     const hasSupportActivity = useHasSupportActivity()
     const competition = state.competition
     const loggedIn = Boolean(user?.id)
+    const sheetRef = React.useRef<BottomSheetModal>(null)
+
     const actionIds = React.useMemo(
       () =>
         resolveFabQuickActions(state.user?.preferences?.fab_quick_actions),
@@ -138,7 +149,6 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
       loggedIn,
     ])
 
-    // Cap height so short phones (SE, etc.) always get scrollable overflow.
     const snapPoints = React.useMemo(() => {
       const estimatedContentHeight =
         160 + visibleIds.length * 72 + Math.max(insets.bottom, 16)
@@ -150,6 +160,7 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
       )
       return [`${Math.round(ratio * 100)}%`]
     }, [insets.bottom, windowHeight, visibleIds.length])
+
     const pendingRouteRef = React.useRef<string | null>(null)
     const navTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(
       null,
@@ -163,14 +174,22 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
       }
     }, [])
 
+    React.useImperativeHandle(
+      ref,
+      () => ({
+        present: () => {
+          sheetRef.current?.present()
+        },
+        dismiss: () => {
+          sheetRef.current?.dismiss()
+        },
+      }),
+      [],
+    )
+
     const navigate = (url: string) => {
       pendingRouteRef.current = url
-      if (ref && 'current' in ref && ref.current) {
-        ref.current.dismiss()
-        return
-      }
-      pendingRouteRef.current = null
-      router.push(url as any)
+      sheetRef.current?.dismiss()
     }
 
     const handleSheetDismiss = () => {
@@ -195,9 +214,7 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
 
     const dismissThen = (fn: () => void) => {
       pendingRouteRef.current = null
-      if (ref && 'current' in ref && ref.current) {
-        ref.current.dismiss()
-      }
+      sheetRef.current?.dismiss()
       if (SHEET_DISMISS_NAV_DELAY_MS > 0) {
         setTimeout(fn, SHEET_DISMISS_NAV_DELAY_MS)
       } else {
@@ -306,7 +323,7 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
 
     return (
       <BottomSheetModal
-        ref={ref}
+        ref={sheetRef}
         snapPoints={snapPoints}
         enableDynamicSizing={false}
         enablePanDownToClose
@@ -317,11 +334,9 @@ export const TabActionSheet = React.forwardRef<BottomSheetModal>(
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingBottom: Math.max(insets.bottom, 16) + 16,
-            // Don't flexGrow — that expands content to fill and can hide overflow.
             flexGrow: 0,
           }}
           showsVerticalScrollIndicator
-          // Android: keep bar visible. iOS: indicator still shows while scrolling.
           persistentScrollbar={Platform.OS === 'android'}
           indicatorStyle={colorScheme === 'dark' ? 'white' : 'black'}
           bounces

@@ -1,11 +1,21 @@
 import AnnouncementDialog from '@/components/Announcements/AnnouncementDialog'
 import TimezoneMismatchDialog from '@/components/TimezoneMismatchDialog'
 import LanguageOption from '@/components/LanguageOption'
+import {CompetitionBottomAccessory} from '@/components/navigation/CompetitionBottomAccessory'
 import {CompetitionPickerModal} from '@/components/navigation/CompetitionPickerModal'
 import {CompetitionValidator} from '@/components/navigation/CompetitionValidator'
-import {CustomTabBar} from '@/components/navigation/CustomTabBar'
-import {TabBarIcon} from '@/components/navigation/TabBarIcon'
+import {LiveScoresBottomAccessory} from '@/components/navigation/LiveScoresBottomAccessory'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {LiveScoresProvider} from '@/context/LiveScoresContext'
+import {QuickActionsSheetProvider} from '@/context/QuickActionsSheetContext'
+import {useForumActivitySync} from '@/hooks/useForumActivity'
+import {useShowLiveScoresAccessory} from '@/hooks/useShowLiveScoresAccessory'
+import {useHasNewForumPosts} from '@/lib/forumActivity'
+import {useHasSupportActivity} from '@/lib/supportUnread'
+import {
+  getCompetitionPalette,
+  isCanonicalCompetition,
+} from '@/types/competition'
 import {useAccount} from '@/hooks/useAccount'
 import {useAnnouncements} from '@/hooks/useAnnouncements'
 import {useBetting} from '@/hooks/useBetting'
@@ -40,13 +50,14 @@ import {
   onTokenRefresh,
 } from '@react-native-firebase/messaging'
 import * as Notifications from 'expo-notifications'
-import {Tabs} from 'expo-router'
+import {NativeTabs} from 'expo-router/native-tabs'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
-import {AppState, Platform, View} from 'react-native'
+import {AppState, DynamicColorIOS, Platform, useColorScheme, View} from 'react-native'
 
 export default function TabLayout() {
   const {t, i18n} = useTranslation()
+  const colorScheme = useColorScheme() ?? 'light'
   const {state, dispatch} = useLeagueContext()
   const account = useAccount()
   const {refreshAccount} = useBetting()
@@ -54,6 +65,36 @@ export default function TabLayout() {
     useAnnouncements()
   const {getUnreadCount: getSupportUnreadCount} = useSupportTickets()
   const {getUnreadCount: getAdminSupportUnreadCount} = useAdminSupportTickets()
+  const {refreshForumActivity} = useForumActivitySync()
+  const hasNewForumPosts = useHasNewForumPosts()
+  const hasSupportActivity = useHasSupportActivity()
+  const showMoreBadge =
+    ((state.showForumFabBadge ?? true) && hasNewForumPosts) || hasSupportActivity
+  const messageBadge =
+    state.messageCount > 0
+      ? state.messageCount > 99
+        ? '99+'
+        : String(state.messageCount)
+      : undefined
+  const tintColor = Platform.select({
+    ios: DynamicColorIOS({
+      light: isCanonicalCompetition(state.competition)
+        ? '#0a7ea4'
+        : getCompetitionPalette(state.competition, false).accent,
+      dark: isCanonicalCompetition(state.competition)
+        ? '#fff'
+        : getCompetitionPalette(state.competition, true).accent,
+    }),
+    default: isCanonicalCompetition(state.competition)
+      ? colorScheme === 'dark'
+        ? '#fff'
+        : '#0a7ea4'
+      : getCompetitionPalette(state.competition, colorScheme === 'dark').accent,
+  })
+
+  React.useEffect(() => {
+    refreshForumActivity()
+  }, [refreshForumActivity])
   const [isMounted, setIsMounted] = React.useState(false)
   const [showLanguageOption, setShowLanguageOption] = React.useState(false)
   const [unreadAnnouncement, setUnreadAnnouncement] = React.useState<{
@@ -497,89 +538,107 @@ export default function TabLayout() {
   }
 
   return (
-    <>
-      <CompetitionValidator />
-      <CompetitionPickerModal />
-      <AnnouncementDialog
-        announcement={unreadAnnouncement}
-        visible={showAnnouncementDialog && !showLanguageOption}
-        submitting={markingAnnouncementRead}
-        onDismiss={handleAnnouncementDismiss}
-      />
-      <TimezoneMismatchDialog />
-      {showLanguageOption ? (
-        <View className="flex-1 justify-center mx-4">
-          <LanguageOption handleLanguageOption={handleLanguageOption} />
-        </View>
-      ) : (
-        <Tabs tabBar={props => <CustomTabBar {...props} />}>
-      <Tabs.Screen
-        name="(index)"
-        options={{
-          headerTitle: t('bangkok_darts_league'),
-          headerShown: false,
-          tabBarIcon: ({color, focused}) => (
-            <TabBarIcon
-              name={focused ? 'home' : 'home-outline'}
-              color={color}
-            />
-          ),
-          tabBarLabel: t('home'),
-        }}
-      />
-      <Tabs.Screen
-        name="statistics"
-        options={{
-          title: t('statistics'),
-          headerShown: false,
-          tabBarIcon: ({color, focused}) => (
-            <TabBarIcon
-              name={focused ? 'stats-chart' : 'stats-chart-outline'}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="completed"
-        options={{
-          title: t('completed'),
-          headerShown: false,
-          tabBarIcon: ({color, focused}) => (
-            <TabBarIcon
-              name={focused ? 'code-slash' : 'code-slash-outline'}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="teams"
-        options={{
-          // Do not use href: null — SDK 58 treats that as hidden and
-          // redirects focus back to the initial tab (upcoming matches).
-          // Hide the tab button only; Teams remains reachable from the FAB.
-          headerShown: false,
-          tabBarButton: () => null,
-          tabBarItemStyle: {display: 'none'},
-        }}
-      />
-      <Tabs.Screen
-        name="messages"
-        options={{
-          title: t('messages'),
-          headerShown: false,
-          tabBarIcon: ({color, focused}) => (
-            <TabBarIcon
-              name={focused ? 'mail' : 'mail-outline'}
-              color={color}
-            />
-          ),
-          tabBarLabel: t('messages'),
-        }}
-      />
-    </Tabs>
-      )}
-    </>
+    <LiveScoresProvider>
+      <QuickActionsSheetProvider>
+        <CompetitionValidator />
+        <CompetitionPickerModal />
+        <AnnouncementDialog
+          announcement={unreadAnnouncement}
+          visible={showAnnouncementDialog && !showLanguageOption}
+          submitting={markingAnnouncementRead}
+          onDismiss={handleAnnouncementDismiss}
+        />
+        <TimezoneMismatchDialog />
+        {showLanguageOption ? (
+          <View className="flex-1 justify-center mx-4">
+            <LanguageOption handleLanguageOption={handleLanguageOption} />
+          </View>
+        ) : (
+          <TabsWithLiveScoresAccessory
+            tintColor={tintColor}
+            messageBadge={messageBadge}
+            showMoreBadge={showMoreBadge}
+            t={t}
+            showCompetitionAccessory={!isCanonicalCompetition(state.competition)}
+          />
+        )}
+      </QuickActionsSheetProvider>
+    </LiveScoresProvider>
+  )
+}
+
+function TabsWithLiveScoresAccessory({
+  tintColor,
+  messageBadge,
+  showMoreBadge,
+  t,
+  showCompetitionAccessory,
+}: {
+  tintColor: React.ComponentProps<typeof NativeTabs>['tintColor']
+  messageBadge: string | undefined
+  showMoreBadge: boolean
+  t: (key: string) => string
+  showCompetitionAccessory: boolean
+}) {
+  const showLiveAccessory = useShowLiveScoresAccessory()
+
+  return (
+    <NativeTabs tintColor={tintColor} minimizeBehavior="onScrollDown">
+      {/* Empty BottomAccessory reserves a blank bar — only mount with content. */}
+      {showLiveAccessory ? (
+        <NativeTabs.BottomAccessory>
+          <LiveScoresBottomAccessory />
+        </NativeTabs.BottomAccessory>
+      ) : showCompetitionAccessory ? (
+        <NativeTabs.BottomAccessory>
+          <CompetitionBottomAccessory />
+        </NativeTabs.BottomAccessory>
+      ) : null}
+      <NativeTabs.Trigger name="(index)">
+        <NativeTabs.Trigger.Icon
+          sf={{default: 'house', selected: 'house.fill'}}
+          md={{default: 'home', selected: 'home_filled'}}
+        />
+        <NativeTabs.Trigger.Label>{t('home')}</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="statistics">
+        <NativeTabs.Trigger.Icon
+          sf={{default: 'chart.bar', selected: 'chart.bar.fill'}}
+          md={{default: 'bar_chart', selected: 'bar_chart'}}
+        />
+        <NativeTabs.Trigger.Label>{t('statistics')}</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="completed">
+        <NativeTabs.Trigger.Icon
+          sf={{
+            default: 'checkmark.circle',
+            selected: 'checkmark.circle.fill',
+          }}
+          md={{default: 'check_circle', selected: 'check_circle'}}
+        />
+        <NativeTabs.Trigger.Label>{t('completed')}</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="messages">
+        <NativeTabs.Trigger.Icon
+          sf={{default: 'envelope', selected: 'envelope.fill'}}
+          md={{default: 'mail', selected: 'mail'}}
+        />
+        <NativeTabs.Trigger.Label>{t('messages')}</NativeTabs.Trigger.Label>
+        {messageBadge ? (
+          <NativeTabs.Trigger.Badge>{messageBadge}</NativeTabs.Trigger.Badge>
+        ) : null}
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="more" role="more">
+        <NativeTabs.Trigger.Icon
+          sf={{
+            default: 'ellipsis.circle',
+            selected: 'ellipsis.circle.fill',
+          }}
+          md={{default: 'more_horiz', selected: 'more_horiz'}}
+        />
+        <NativeTabs.Trigger.Label>{t('quick_actions')}</NativeTabs.Trigger.Label>
+        {showMoreBadge ? <NativeTabs.Trigger.Badge /> : null}
+      </NativeTabs.Trigger>
+    </NativeTabs>
   )
 }

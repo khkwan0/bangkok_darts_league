@@ -182,9 +182,23 @@ function MessageLine({
   )
 }
 
-export default function MessagesThread() {
-  
-  const { from, playerId} = useLocalSearchParams()
+export type MessagesThreadEmbedProps = {
+  /** When set, embed in AdaptiveSplit instead of reading route params. */
+  embedPlayerId?: string | number
+  embedFrom?: string
+  /** Hide stack header chrome when shown beside the thread list. */
+  embedded?: boolean
+}
+
+export default function MessagesThread({
+  embedPlayerId,
+  embedFrom,
+  embedded = false,
+}: MessagesThreadEmbedProps = {}) {
+  const params = useLocalSearchParams()
+  const from = embedFrom ?? params.from
+  const playerId =
+    embedPlayerId != null ? String(embedPlayerId) : params.playerId
   const { t } = useTranslation()
   const navigation = useNavigation()
   const [messages, setMessages] = useState<Message[]>([])
@@ -196,10 +210,11 @@ export default function MessagesThread() {
   const [senderId, setSenderId] = useState<number | null>(null)
 
   useEffect(() => {
+    if (embedded) return
     navigation.setOptions({
       title: senderName ? `${senderName}` : from ? `${from}` : t('messages'),
     })
-  }, [navigation, t, senderName])
+  }, [navigation, t, senderName, from, embedded])
 
 
   const {state, dispatch} = useLeagueContext()

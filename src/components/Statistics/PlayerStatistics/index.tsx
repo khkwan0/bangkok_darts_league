@@ -311,7 +311,11 @@ function PlayerStatsHeader({
   )
 }
 
-export default function PlayerStatistics(props: any) {
+export default function PlayerStatistics({
+  embedded = false,
+}: {
+  embedded?: boolean
+} = {}) {
   const navigation = useNavigation()
   const {t} = useTranslation()
   const {scope} = useStatsScope()
@@ -349,10 +353,11 @@ export default function PlayerStatistics(props: any) {
   }
 
   React.useEffect(() => {
+    if (embedded) return
     navigation.setOptions({
       title: t('player_statistics'),
     })
-  }, [navigation])
+  }, [navigation, embedded, t])
 
   React.useEffect(() => {
     getPlayerStats()

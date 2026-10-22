@@ -6,6 +6,7 @@ import {Colors} from '@/constants/Colors'
 import {useStatsScope} from '@/context/StatsScopeContext'
 import {useLeague} from '@/hooks'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
+import {useIsRegularLayout} from '@/hooks/useLayoutMode'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
 import type {DivisionData, Team} from '@/types'
 import {Ionicons} from '@expo/vector-icons'
@@ -18,8 +19,10 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  ScrollView,
   Text,
   useColorScheme,
+  useWindowDimensions,
   View,
 } from 'react-native'
 
@@ -317,7 +320,12 @@ function DivisionStandings({data}: {data: DivisionData}) {
   )
 }
 
-export default function LeagueStandings() {
+export default function LeagueStandings({
+  embedded = false,
+}: {
+  /** When true, fit a split detail pane (no header title / forced min-width). */
+  embedded?: boolean
+} = {}) {
   const navigation = useNavigation()
   const {t} = useTranslation()
   const league = useLeague()
@@ -332,13 +340,19 @@ export default function LeagueStandings() {
     ready && (loadedSeasonId !== pastSeasonId || loadedScope !== scope)
   const listContentStyle = useTabListContentContainerStyle({paddingTop: 8})
   const pageBg = Colors[useColorScheme() === 'dark' ? 'dark' : 'light'].background
+  const isRegular = useIsRegularLayout()
+  const {width: windowWidth} = useWindowDimensions()
+  // Full-screen regular only — embedded detail already has a limited width.
+  const landscapeMinWidth =
+    !embedded && isRegular ? Math.max(windowWidth, 720) : undefined
 
   React.useEffect(() => {
+    if (embedded) return
     navigation.setOptions({
       title: t('league_standings'),
       headerBackTitle: t('back'),
     })
-  }, [])
+  }, [embedded])
 
   React.useEffect(() => {
     league
@@ -367,9 +381,13 @@ export default function LeagueStandings() {
     )
   }
 
-  return (
+  const list = (
     <FlatList
-      style={{flex: 1, backgroundColor: pageBg}}
+      style={{
+        flex: 1,
+        backgroundColor: pageBg,
+        width: landscapeMinWidth,
+      }}
       contentContainerStyle={listContentStyle}
       data={standings}
       keyExtractor={item => item.division}
@@ -399,12 +417,27 @@ export default function LeagueStandings() {
         </View>
       }
       ListEmptyComponent={
-        scope === 'cup' ? null : (
+        scope === 'cup' ? undefined : (
           <Text style={{textAlign: 'center', opacity: 0.6, marginTop: 24}}>
             {t('no_data_available')}
           </Text>
         )
       }
     />
+  )
+
+  if (!isRegular || embedded) {
+    return list
+  }
+
+  // Unfolded full-screen: allow the standings column to expand past cover width.
+  return (
+    <ScrollView
+      horizontal
+      style={{flex: 1, backgroundColor: pageBg}}
+      contentContainerStyle={{flexGrow: 1}}
+      showsHorizontalScrollIndicator={false}>
+      {list}
+    </ScrollView>
   )
 }

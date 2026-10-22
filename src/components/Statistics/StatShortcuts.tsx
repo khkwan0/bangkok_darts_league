@@ -72,16 +72,164 @@ function tint(hex: string, alpha: number) {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
+export type StatShortcutKey = (typeof SHORTCUTS)[number]['key']
+
 export default function StatShortcuts({
   variant,
   showSignIn = false,
+  onSelectShortcut,
+  selectedKey,
 }: {
-  variant: 'grid' | 'compact'
+  variant: 'grid' | 'compact' | 'list'
   showSignIn?: boolean
+  /** Regular-width: select in-pane instead of stack push. */
+  onSelectShortcut?: (key: StatShortcutKey, href: Href) => void
+  selectedKey?: StatShortcutKey | null
 }) {
   const {t} = useTranslation()
   const colors = useStatColors()
   const pathname = usePathname()
+
+  const open = (item: Shortcut) => {
+    if (onSelectShortcut) {
+      onSelectShortcut(item.key, item.href)
+      return
+    }
+    router.push(item.href)
+  }
+
+  if (variant === 'list') {
+    return (
+      <View style={{paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12}}>
+        {SHORTCUTS.map(item => {
+          const selected = selectedKey === item.key
+          return (
+            <Pressable
+              key={item.key}
+              accessibilityRole="button"
+              accessibilityState={{selected}}
+              accessibilityLabel={t(item.labelKey)}
+              onPress={() => open(item)}
+              style={({pressed}) => ({
+                opacity: pressed ? 0.85 : 1,
+                marginBottom: 8,
+                borderRadius: 14,
+                borderWidth: selected ? 1.5 : 1,
+                borderColor: selected ? item.color : colors.border,
+                backgroundColor: selected
+                  ? tint(item.color, colors.isDark ? 0.22 : 0.1)
+                  : colors.card,
+              })}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 12,
+                  paddingHorizontal: 12,
+                  gap: 12,
+                }}>
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: tint(
+                      item.color,
+                      colors.isDark ? 0.28 : 0.14,
+                    ),
+                  }}>
+                  <Ionicons name={item.icon} size={18} color={item.color} />
+                </View>
+                <View style={{flex: 1, minWidth: 0}}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontSize: 15,
+                      fontWeight: '700',
+                      color: colors.text,
+                    }}>
+                    {t(item.labelKey)}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      marginTop: 2,
+                      fontSize: 12,
+                      color: colors.muted,
+                    }}>
+                    {t(item.hintKey)}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={selected ? item.color : colors.muted}
+                />
+              </View>
+            </Pressable>
+          )
+        })}
+        {showSignIn ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('stats_sign_in_title')}
+            onPress={() =>
+              router.push({pathname: '/Auth', params: {from: pathname}})
+            }
+            style={({pressed}) => ({
+              opacity: pressed ? 0.85 : 1,
+              marginTop: 4,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.card,
+            })}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 12,
+                paddingHorizontal: 12,
+                gap: 12,
+              }}>
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: tint(
+                    colors.accent,
+                    colors.isDark ? 0.28 : 0.12,
+                  ),
+                }}>
+                <Ionicons
+                  name="log-in-outline"
+                  size={18}
+                  color={colors.accent}
+                />
+              </View>
+              <View style={{flex: 1, minWidth: 0}}>
+                <Text
+                  style={{fontSize: 15, fontWeight: '700', color: colors.text}}>
+                  {t('stats_sign_in_title')}
+                </Text>
+                <Text
+                  numberOfLines={2}
+                  style={{marginTop: 2, fontSize: 12, color: colors.muted}}>
+                  {t('stats_sign_in_hint')}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+            </View>
+          </Pressable>
+        ) : null}
+      </View>
+    )
+  }
 
   if (variant === 'compact') {
     return (
@@ -98,8 +246,14 @@ export default function StatShortcuts({
             key={item.key}
             accessibilityRole="button"
             accessibilityLabel={t(item.labelKey)}
-            onPress={() => router.push(item.href)}
-            style={({pressed}) => ({flex: 1, opacity: pressed ? 0.72 : 1})}>
+            onPress={() => open(item)}
+            style={({pressed}) => ({
+              flex: 1,
+              opacity: pressed ? 0.72 : 1,
+              borderWidth: selectedKey === item.key ? 2 : 0,
+              borderColor: item.color,
+              borderRadius: 14,
+            })}>
             <View
               style={{
                 alignItems: 'center',
@@ -138,14 +292,15 @@ export default function StatShortcuts({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t(item.labelKey)}
-              onPress={() => router.push(item.href)}
+              onPress={() => open(item)}
               style={({pressed}) => ({opacity: pressed ? 0.75 : 1})}>
               <View
                 style={{
                   minHeight: 148,
                   borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: colors.border,
+                  borderWidth: selectedKey === item.key ? 2 : 1,
+                  borderColor:
+                    selectedKey === item.key ? item.color : colors.border,
                   backgroundColor: colors.card,
                   padding: 16,
                 }}>

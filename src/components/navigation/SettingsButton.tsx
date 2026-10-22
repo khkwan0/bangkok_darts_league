@@ -21,7 +21,7 @@ export const SettingsButton = () => {
       hitSlop={8}
       onPress={() => router.push('/Settings')}
       style={styles.button}>
-      <MCI name="menu" size={32} color={textColor} />
+      <MCI name="menu" size={26} color={textColor} />
       {hasSupportActivity ? (
         <View
           accessibilityElementsHidden

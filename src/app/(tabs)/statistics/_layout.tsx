@@ -2,6 +2,7 @@ import {Stack} from 'expo-router'
 import {CompetitionSwitcher} from '@/components/navigation/CompetitionSwitcher'
 import {SettingsButton} from '@/components/navigation/SettingsButton'
 import {StatsScopeProvider} from '@/context/StatsScopeContext'
+import {useStackContentSafeStyle} from '@/hooks/useStackContentSafeStyle'
 import {useTranslation} from 'react-i18next'
 
 export const unstable_settings = {
@@ -10,12 +11,14 @@ export const unstable_settings = {
 
 export default function StatisticsLayout() {
   const {t} = useTranslation()
+  const contentStyle = useStackContentSafeStyle()
 
   return (
     <StatsScopeProvider>
       <Stack
         screenOptions={{
           headerBackTitle: t('back'),
+          contentStyle,
         }}>
         <Stack.Screen
           name="index"

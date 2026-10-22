@@ -1,5 +1,6 @@
+import {useScoresheetPad} from '@/context/ScoresheetPadContext'
 import * as Haptics from 'expo-haptics'
-import {useEffect, useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {Modal, Platform, Pressable, Text, View} from 'react-native'
 import {
@@ -185,6 +186,41 @@ export default function StatNumberPad({
   visible,
   ...sheetProps
 }: StatNumberPadProps) {
+  const pad = useScoresheetPad()
+  const propsRef = React.useRef(sheetProps)
+  useEffect(() => {
+    propsRef.current = sheetProps
+  }, [sheetProps])
+
+  useEffect(() => {
+    if (!pad?.useSidePad) return
+    if (!visible) {
+      pad.closePad()
+      return
+    }
+    const p = propsRef.current
+    pad.openPad({
+      title: p.title,
+      value: p.value,
+      max: p.max ?? 999,
+      accent: p.accent,
+      onCancel: () => propsRef.current.onCancel(),
+      onConfirm: value => propsRef.current.onConfirm(value),
+    })
+  }, [
+    pad,
+    visible,
+    sheetProps.title,
+    sheetProps.value,
+    sheetProps.max,
+    sheetProps.accent,
+  ])
+
+  // Duo / regular width: pad lives in the trailing pane.
+  if (pad?.useSidePad) {
+    return null
+  }
+
   return (
     <Modal
       visible={visible}
