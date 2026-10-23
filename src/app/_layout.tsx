@@ -347,6 +347,27 @@ function RootLayout() {
                         headerShown: false,
                       }}
                     />
+                    {/*
+                      Stack nested in Stack: iOS only paints the outer header,
+                      Android paints both. Show root chrome on iOS; nested owns
+                      Android (see Settings/_layout and teams/_layout).
+                    */}
+                    <Stack.Screen
+                      name="Settings"
+                      options={{
+                        headerShown: Platform.OS === 'ios',
+                        title: t('settings'),
+                        headerBackTitle: t('back'),
+                      }}
+                    />
+                    <Stack.Screen
+                      name="teams"
+                      options={{
+                        headerShown: Platform.OS === 'ios',
+                        title: t('teams'),
+                        headerBackTitle: t('back'),
+                      }}
+                    />
                     <Stack.Screen
                       name="history"
                       options={{title: t('history')}}

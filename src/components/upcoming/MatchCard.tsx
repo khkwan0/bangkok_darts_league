@@ -21,20 +21,22 @@ import {
 } from '@/lib/postponedProposal'
 import {Ionicons, MaterialIcons} from '@expo/vector-icons'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
+import * as Haptics from 'expo-haptics'
 import {LinearGradient} from 'expo-linear-gradient'
-import {Link, useRouter} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
   Dimensions,
   Image,
-  Pressable,
+  Pressable as RNPressable,
   ScrollView,
   Share,
   StyleSheet,
   useColorScheme,
   View,
 } from 'react-native'
+import {Pressable} from 'react-native-gesture-handler'
 import {showLocation} from 'react-native-map-link'
 
 const ACCENTS = [
@@ -515,27 +517,39 @@ export default function MatchCard({
       />
 
       <View style={{paddingHorizontal: pad, paddingTop: pad}}>
-        <Link
-          href={{
-            pathname: scoresheetPathname as any,
-            params: {params: JSON.stringify(matchInfo)},
+        <Pressable
+          onPressIn={() => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
           }}
-          asChild>
-          <Pressable style={({pressed}) => ({opacity: pressed ? 0.96 : 1})}>
-            <View
-              style={[
-                styles.board,
-                {
-                  backgroundColor: isTournament ? cupBoardBg : theme.boardBg,
-                  borderColor: isTournament ? cupTier.border : theme.boardBorder,
-                },
-                isTournament
-                  ? {
-                      borderWidth: 2,
-                      paddingTop: 0,
-                    }
-                  : null,
-              ]}>
+          onPress={() => {
+            router.push({
+              pathname: scoresheetPathname as any,
+              params: {params: JSON.stringify(matchInfo)},
+            })
+          }}
+          style={({pressed}) => [
+            styles.board,
+            {
+              backgroundColor: pressed
+                ? isDark
+                  ? `${accent}40`
+                  : `${accent}28`
+                : isTournament
+                  ? cupBoardBg
+                  : theme.boardBg,
+              borderColor: pressed
+                ? accent
+                : isTournament
+                  ? cupTier.border
+                  : theme.boardBorder,
+            },
+            isTournament
+              ? {
+                  borderWidth: 2,
+                  paddingTop: 0,
+                }
+              : null,
+          ]}>
               {!isTournament ? (
                 <View style={[styles.stripe, {backgroundColor: accent}]} />
               ) : null}
@@ -717,7 +731,7 @@ export default function MatchCard({
                 </View>
               ) : null}
 
-              <Pressable
+              <RNPressable
                 onPress={() =>
                   ShowLocation(
                     matchInfo.latitude,
@@ -745,11 +759,9 @@ export default function MatchCard({
                   numberOfLines={2}>
                   {matchInfo.location}
                 </Text>
-              </Pressable>
+              </RNPressable>
               </View>
-            </View>
           </Pressable>
-        </Link>
 
         <View style={{paddingHorizontal: pad}}>
           <MatchBettingRow

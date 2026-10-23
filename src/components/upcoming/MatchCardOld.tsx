@@ -21,8 +21,9 @@ import {
 } from '@/lib/postponedProposal'
 import {Ionicons, MaterialIcons} from '@expo/vector-icons'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
+import * as Haptics from 'expo-haptics'
 import {LinearGradient} from 'expo-linear-gradient'
-import {Link, useRouter} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -35,6 +36,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
+import {Pressable as GHPressable} from 'react-native-gesture-handler'
 import {showLocation} from 'react-native-map-link'
 
 const ACCENTS = [
@@ -648,17 +650,27 @@ export default function MatchCardOld({
           />
         ) : null}
 
-        <Link
-          href={{
-            pathname: scoresheetPathname as any,
-            params: {params: JSON.stringify(matchInfo)},
+        <GHPressable
+          onPressIn={() => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
           }}
-          asChild>
-          <Pressable
-            style={({pressed}) => ({
-              opacity: pressed ? 0.96 : 1,
-              paddingTop: isTournament ? 14 : 0,
-            })}>
+          onPress={() => {
+            router.push({
+              pathname: scoresheetPathname as any,
+              params: {params: JSON.stringify(matchInfo)},
+            })
+          }}
+          style={({pressed}) => ({
+            paddingTop: isTournament ? 14 : 0,
+            marginHorizontal: -6,
+            paddingHorizontal: 6,
+            borderRadius: 14,
+            backgroundColor: pressed
+              ? isDark
+                ? `${accent}33`
+                : `${accent}22`
+              : 'transparent',
+          })}>
             <View style={styles.metaRow}>
               <View style={styles.chipsWrap}>
                 {bothConfirmed ? (
@@ -853,8 +865,7 @@ export default function MatchCardOld({
                 />
               </View>
             ) : null}
-          </Pressable>
-        </Link>
+        </GHPressable>
 
         <View style={{paddingHorizontal: 10, marginTop: 4}}>
           <MatchBettingRow

@@ -16,7 +16,6 @@ import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import {useRouter} from 'expo-router'
 import React from 'react'
 import {
-  Pressable,
   ScrollView,
   Text as RNText,
   useColorScheme,
@@ -24,6 +23,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
+import {Pressable} from 'react-native-gesture-handler'
 import {useTranslation} from 'react-i18next'
 import {useSafeAreaInsets} from 'react-native-safe-area-context'
 
@@ -49,22 +49,27 @@ function QuickActionItem({
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
   const isDark = colorScheme === 'dark'
-  const [pressed, setPressed] = React.useState(false)
 
   return (
     <Pressable
-      className="my-2 flex-row items-center overflow-hidden rounded-xl border px-3 py-3"
       accessibilityRole="button"
       accessibilityHint={showBadge ? badgeLabel : undefined}
       android_ripple={{color: iconBackground}}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
       onPress={onPress}
-      style={{
+      style={({pressed}) => ({
+        marginVertical: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        overflow: 'hidden',
+        borderRadius: 12,
+        borderWidth: 1,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        // Avoid setState-on-pressIn — that re-render delays navigation in __DEV__.
         backgroundColor: pressed ? iconBackground : 'transparent',
         borderColor: pressed ? iconColor : isDark ? '#334155' : '#e2e8f0',
         transform: [{scale: pressed ? 0.985 : 1}],
-      }}>
+      })}>
       <RNView className="relative mr-4">
         <View
           className="h-11 w-11 items-center justify-center rounded-full"
@@ -92,13 +97,11 @@ function QuickActionItem({
 
 type Props = {
   contentContainerStyle?: StyleProp<ViewStyle>
-  /** When true, wrap in ScrollView (screen). Sheet hosts pass false and wrap themselves. */
+  /** When true, wrap in ScrollView (default for the More tab screen). */
   scroll?: boolean
 }
 
-/**
- * Shared quick-actions list for the More tab screen and the optional sheet.
- */
+/** Quick-actions list for the More tab screen. */
 export function QuickActionsContent({
   contentContainerStyle,
   scroll = true,

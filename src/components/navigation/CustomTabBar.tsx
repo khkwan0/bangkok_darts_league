@@ -1,21 +1,13 @@
 import {Colors} from '@/constants/Colors'
 import {CompetitionModeBanner} from '@/components/navigation/CompetitionModeBanner'
 import {
-  TabActionSheet,
-  type QuickActionsSheetHandle,
-} from '@/components/navigation/TabActionSheet'
-import {
   TAB_FAB_RING_SIZE,
   TAB_FAB_SIZE,
 } from '@/components/navigation/tabBarMetrics'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useForumActivitySync} from '@/hooks/useForumActivity'
-import {useSupportTickets} from '@/hooks/useSupportTickets'
-import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
 import {useHasNewForumPosts} from '@/lib/forumActivity'
-import {refreshSupportUnread, useHasSupportActivity} from '@/lib/supportUnread'
-import {refreshAdminSupportUnread} from '@/lib/adminSupportUnread'
-import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
+import {useHasSupportActivity} from '@/lib/supportUnread'
 import {
   getCompetitionPalette,
   isCanonicalCompetition,
@@ -114,12 +106,9 @@ export function CustomTabBar({
   const insets = useSafeAreaInsets()
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
-  const sheetRef = React.useRef<QuickActionsSheetHandle>(null)
   const {state: leagueState} = useLeagueContext()
   const {t} = useTranslation()
   const {refreshForumActivity} = useForumActivitySync()
-  const {getUnreadCount: getSupportUnreadCount} = useSupportTickets()
-  const {getUnreadCount: getAdminSupportUnreadCount} = useAdminSupportTickets()
   const hasNewForumPosts = useHasNewForumPosts()
   const hasSupportActivity = useHasSupportActivity()
   const showForumFabBadge =
@@ -163,16 +152,19 @@ export function CustomTabBar({
     }
   }, [state.routes, isTabVisible])
 
-  const openSheet = () => {
+  const moreRouteKey = React.useMemo(
+    () => state.routes.find(route => route.name === 'more')?.key,
+    [state.routes],
+  )
+
+  const openQuickActions = () => {
     if (process.env.EXPO_OS === 'ios') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     }
     refreshForumActivity()
-    void refreshSupportUnread(getSupportUnreadCount)
-    if (isLeagueAdmin(leagueState.user)) {
-      void refreshAdminSupportUnread(getAdminSupportUnreadCount)
+    if (moreRouteKey) {
+      navigateToTab(moreRouteKey)
     }
-    sheetRef.current?.present()
   }
 
   const renderRoute = (
@@ -276,7 +268,7 @@ export function CustomTabBar({
                     ? t('support_quick_actions_unread')
                     : t('quick_actions')
             }
-            onPress={openSheet}
+            onPress={openQuickActions}
             style={({pressed}) => [
               styles.fabButton,
               pressed && styles.fabButtonPressed,
@@ -307,8 +299,6 @@ export function CustomTabBar({
           </Pressable>
         </View>
       </View>
-
-      <TabActionSheet ref={sheetRef} />
     </>
   )
 }

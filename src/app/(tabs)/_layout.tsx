@@ -7,7 +7,6 @@ import {CompetitionValidator} from '@/components/navigation/CompetitionValidator
 import {LiveScoresBottomAccessory} from '@/components/navigation/LiveScoresBottomAccessory'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {LiveScoresProvider} from '@/context/LiveScoresContext'
-import {QuickActionsSheetProvider} from '@/context/QuickActionsSheetContext'
 import {useForumActivitySync} from '@/hooks/useForumActivity'
 import {useIsRegularLayout} from '@/hooks/useLayoutMode'
 import {useShowLiveScoresAccessory} from '@/hooks/useShowLiveScoresAccessory'
@@ -77,21 +76,22 @@ export default function TabLayout() {
         ? '99+'
         : String(state.messageCount)
       : undefined
-  const tintColor = Platform.select({
-    ios: DynamicColorIOS({
-      light: isCanonicalCompetition(state.competition)
-        ? '#0a7ea4'
-        : getCompetitionPalette(state.competition, false).accent,
-      dark: isCanonicalCompetition(state.competition)
-        ? '#fff'
-        : getCompetitionPalette(state.competition, true).accent,
-    }),
-    default: isCanonicalCompetition(state.competition)
-      ? colorScheme === 'dark'
-        ? '#fff'
-        : '#0a7ea4'
-      : getCompetitionPalette(state.competition, colorScheme === 'dark').accent,
-  })
+  // Platform.select evaluates every branch; DynamicColorIOS throws off iOS.
+  const tintColor =
+    Platform.OS === 'ios'
+      ? DynamicColorIOS({
+          light: isCanonicalCompetition(state.competition)
+            ? '#0a7ea4'
+            : getCompetitionPalette(state.competition, false).accent,
+          dark: isCanonicalCompetition(state.competition)
+            ? '#fff'
+            : getCompetitionPalette(state.competition, true).accent,
+        })
+      : isCanonicalCompetition(state.competition)
+        ? colorScheme === 'dark'
+          ? '#fff'
+          : '#0a7ea4'
+        : getCompetitionPalette(state.competition, colorScheme === 'dark').accent
 
   React.useEffect(() => {
     refreshForumActivity()
@@ -540,30 +540,28 @@ export default function TabLayout() {
 
   return (
     <LiveScoresProvider>
-      <QuickActionsSheetProvider>
-        <CompetitionValidator />
-        <CompetitionPickerModal />
-        <AnnouncementDialog
-          announcement={unreadAnnouncement}
-          visible={showAnnouncementDialog && !showLanguageOption}
-          submitting={markingAnnouncementRead}
-          onDismiss={handleAnnouncementDismiss}
+      <CompetitionValidator />
+      <CompetitionPickerModal />
+      <AnnouncementDialog
+        announcement={unreadAnnouncement}
+        visible={showAnnouncementDialog && !showLanguageOption}
+        submitting={markingAnnouncementRead}
+        onDismiss={handleAnnouncementDismiss}
+      />
+      <TimezoneMismatchDialog />
+      {showLanguageOption ? (
+        <View className="flex-1 justify-center mx-4">
+          <LanguageOption handleLanguageOption={handleLanguageOption} />
+        </View>
+      ) : (
+        <TabsWithLiveScoresAccessory
+          tintColor={tintColor}
+          messageBadge={messageBadge}
+          showMoreBadge={showMoreBadge}
+          t={t}
+          showCompetitionAccessory={!isCanonicalCompetition(state.competition)}
         />
-        <TimezoneMismatchDialog />
-        {showLanguageOption ? (
-          <View className="flex-1 justify-center mx-4">
-            <LanguageOption handleLanguageOption={handleLanguageOption} />
-          </View>
-        ) : (
-          <TabsWithLiveScoresAccessory
-            tintColor={tintColor}
-            messageBadge={messageBadge}
-            showMoreBadge={showMoreBadge}
-            t={t}
-            showCompetitionAccessory={!isCanonicalCompetition(state.competition)}
-          />
-        )}
-      </QuickActionsSheetProvider>
+      )}
     </LiveScoresProvider>
   )
 }
@@ -619,7 +617,27 @@ function TabsWithLiveScoresAccessory({
       <NativeTabs.Trigger
         name="more"
         role={isRegular ? 'more' : undefined}
-        accessibilityLabel={t('quick_actions')}>
+        accessibilityLabel={t('quick_actions')}
+        // expo-router does not map renderingMode → Android tinting; Material then
+        // SRC_IN-tints src icons and the multicolor asset disappears into the bar.
+        unstable_nativeProps={
+          !isRegular
+            ? {
+                android: {
+                  icon: {
+                    type: 'imageSource',
+                    imageSource: QUICK_ACTIONS_TAB_ICON,
+                    tinting: 'original',
+                  },
+                  selectedIcon: {
+                    type: 'imageSource',
+                    imageSource: QUICK_ACTIONS_TAB_ICON,
+                    tinting: 'original',
+                  },
+                },
+              }
+            : undefined
+        }>
         {isRegular ? (
           <NativeTabs.Trigger.Icon
             sf={{
