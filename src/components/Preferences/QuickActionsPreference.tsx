@@ -25,9 +25,11 @@ import {useTranslation} from 'react-i18next'
 import {useTheme} from 'expo-router/react-navigation'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useAccount} from '@/hooks/useAccount'
+import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import {
-  ALL_QUICK_ACTIONS,
   DEFAULT_FAB_QUICK_ACTIONS,
+  filterPreferenceQuickActions,
+  getPreferenceQuickActionIds,
   QUICK_ACTION_DEFS,
   resolveFabQuickActions,
   type QuickActionId,
@@ -328,10 +330,18 @@ export default function QuickActionsPreference() {
   const {colors} = useTheme()
   const {state} = useLeagueContext()
   const account = useAccount()
+  const isAdmin = isLeagueAdmin(state.user)
+  const catalogIds = useMemo(
+    () => getPreferenceQuickActionIds(isAdmin),
+    [isAdmin],
+  )
 
   const storedFab = state.user?.preferences?.fab_quick_actions
-  const storedKey = JSON.stringify(storedFab ?? null)
-  const resolved = resolveFabQuickActions(storedFab)
+  const storedKey = `${JSON.stringify(storedFab ?? null)}:${isAdmin ? 1 : 0}`
+  const resolved = filterPreferenceQuickActions(
+    resolveFabQuickActions(storedFab),
+    isAdmin,
+  )
   const [actions, setActions] = useState<QuickActionId[]>(resolved)
   const [syncedKey, setSyncedKey] = useState(storedKey)
   if (storedKey !== syncedKey) {
@@ -402,20 +412,27 @@ export default function QuickActionsPreference() {
 
   const persist = useCallback(
     async (next: QuickActionId[] | null) => {
-      if (next != null && next.length === 0) {
-        next = null
+      if (next != null) {
+        next = filterPreferenceQuickActions(next, isAdmin)
+        if (next.length === 0) next = null
       }
       if (next == null) {
-        setActions([...DEFAULT_FAB_QUICK_ACTIONS])
+        setActions(
+          filterPreferenceQuickActions(
+            [...DEFAULT_FAB_QUICK_ACTIONS],
+            isAdmin,
+          ),
+        )
       } else {
         setActions(next)
       }
       await account.SetFabQuickActions(next)
     },
-    [account],
+    [account, isAdmin],
   )
 
   function toggle(id: QuickActionId) {
+    if (!catalogIds.includes(id)) return
     if (selected.has(id)) {
       const next = actions.filter(a => a !== id)
       if (next.length === 0) return
@@ -617,7 +634,7 @@ export default function QuickActionsPreference() {
             marginTop: 8,
             marginBottom: 32,
           }}>
-          {ALL_QUICK_ACTIONS.filter(id => !selected.has(id)).map(id => {
+          {catalogIds.filter(id => !selected.has(id)).map(id => {
             const def = QUICK_ACTION_DEFS[id]
             return (
               <Pressable

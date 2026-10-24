@@ -20,7 +20,10 @@ import {useAccount} from '@/hooks/useAccount'
 import {useAnnouncements} from '@/hooks/useAnnouncements'
 import {useBetting} from '@/hooks/useBetting'
 import i18n from '@/i18n'
-import {syncAnnouncementUnreadFromList} from '@/lib/announcementUnread'
+import {
+  setHasUnreadAnnouncements,
+  syncAnnouncementUnreadFromList,
+} from '@/lib/announcementUnread'
 import {
   findLatestAnnouncementForDialog,
   getLocalAnnouncementReads,
@@ -61,8 +64,14 @@ export default function TabLayout() {
   const {state, dispatch} = useLeagueContext()
   const account = useAccount()
   const {refreshAccount} = useBetting()
-  const {markRead, syncReads, getAnnouncements, getAnnouncement} =
-    useAnnouncements()
+  const {
+    markRead,
+    syncReads,
+    getAnnouncements,
+    getAnnouncement,
+    getUnread,
+    hasUnread,
+  } = useAnnouncements()
   const {getUnreadCount: getSupportUnreadCount} = useSupportTickets()
   const {getUnreadCount: getAdminSupportUnreadCount} = useAdminSupportTickets()
   const {refreshForumActivity} = useForumActivitySync()
@@ -120,6 +129,8 @@ export default function TabLayout() {
     syncReads,
     getAnnouncements,
     getAnnouncement,
+    getUnread,
+    hasUnread,
   })
 
   React.useEffect(() => {
@@ -130,6 +141,8 @@ export default function TabLayout() {
       syncReads,
       getAnnouncements,
       getAnnouncement,
+      getUnread,
+      hasUnread,
     }
   })
 
@@ -225,17 +238,20 @@ export default function TabLayout() {
         if (generation !== announcementCheckGenerationRef.current) {
           return
         }
-        const [localReads, result] = await Promise.all([
+        // Server unread endpoint applies 3-day + build/version dialog gates.
+        const [localReads, unread, badgeUnread] = await Promise.all([
           getLocalAnnouncementReads(),
-          announcementsRef.current.getAnnouncements(1, 50),
+          presentDialog
+            ? announcementsRef.current.getUnread()
+            : Promise.resolve(null),
+          announcementsRef.current.hasUnread(),
         ])
         if (generation !== announcementCheckGenerationRef.current) {
           return
         }
-        const items = result.items ?? []
-        syncAnnouncementUnreadFromList(items, localReads)
+        setHasUnreadAnnouncements(badgeUnread)
         if (presentDialog) {
-          await resolveDialogAnnouncement(items, localReads)
+          applyAnnouncement(unread, localReads)
         }
         return
       }
@@ -274,6 +290,9 @@ export default function TabLayout() {
       }
       if (state.user?.id) {
         await announcementsRef.current.syncReads()
+        const badgeUnread = await announcementsRef.current.hasUnread()
+        setHasUnreadAnnouncements(badgeUnread)
+        return
       }
       const [localReads, result] = await Promise.all([
         getLocalAnnouncementReads(),

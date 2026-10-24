@@ -246,3 +246,24 @@ export function resolveFabQuickActions(
 ): QuickActionId[] {
   return sanitizeQuickActions(stored) ?? [...DEFAULT_FAB_QUICK_ACTIONS]
 }
+
+/**
+ * Actions offered in Settings → Preferences → Quick actions.
+ * Betting is hidden from the catalog; Admin only for league admins.
+ */
+export function getPreferenceQuickActionIds(isAdmin: boolean): QuickActionId[] {
+  return ALL_QUICK_ACTIONS.filter(id => {
+    if (id === 'betting') return false
+    if (id === 'admin') return isAdmin
+    return true
+  })
+}
+
+/** Drop ids that must not appear in the preference editor for this user. */
+export function filterPreferenceQuickActions(
+  ids: QuickActionId[],
+  isAdmin: boolean,
+): QuickActionId[] {
+  const allowed = new Set(getPreferenceQuickActionIds(isAdmin))
+  return ids.filter(id => allowed.has(id))
+}

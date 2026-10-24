@@ -1,9 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import {
+  matchesAnnouncementAudience,
+  type AnnouncementAudienceFields,
+} from '@/lib/announcementAudience'
 
 export const ANNOUNCEMENT_READS_KEY = 'announcement_reads'
 
-/** Announcements older than this are never treated as unread. */
-export const ANNOUNCEMENT_DIALOG_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000
+/** Announcements older than this are never treated as unread for dialog/badge. */
+export const ANNOUNCEMENT_DIALOG_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000
 
 export type AnnouncementReadMap = Record<string, string>
 
@@ -12,7 +16,7 @@ export type AnnouncementReadSyncItem = {
   readAt: string
 }
 
-type AnnouncementTimestamps = {
+type AnnouncementTimestamps = AnnouncementAudienceFields & {
   id: number
   modified_at: string
   read_at?: string | null
@@ -141,7 +145,11 @@ export function findLatestAnnouncementForDialog<
   T extends AnnouncementTimestamps,
 >(announcements: T[], localReads: AnnouncementReadMap): T | null {
   const latest = announcements[0]
-  if (!latest || !isAnnouncementUnreadMerged(latest, localReads)) {
+  if (
+    !latest ||
+    !isAnnouncementUnreadMerged(latest, localReads) ||
+    !matchesAnnouncementAudience(latest)
+  ) {
     return null
   }
   return latest

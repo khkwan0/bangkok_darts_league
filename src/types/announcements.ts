@@ -14,6 +14,10 @@ export type AnnouncementListItem = {
   created_at: string
   modified_at: string
   read_at: string | null
+  min_build?: number | null
+  max_build?: number | null
+  min_app_version?: string | null
+  max_app_version?: string | null
 }
 
 export type AdminAnnouncementListItem = {
