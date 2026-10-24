@@ -472,96 +472,100 @@ export default function UpcomingMatches(props: any) {
                     </Text>
                   </View>
                 )}
-              <View
-                className="mx-4 mb-2 flex-row rounded-lg p-1"
-                style={{
-                  backgroundColor:
-                    colorScheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
-                  borderWidth: colorScheme === 'dark' ? 0 : 1,
-                  borderColor: '#E0E0E0',
-                }}>
-                {(['list', 'calendar'] as const).map(mode => {
-                  const active = matchesView === mode
-                  const labelColor = active
-                    ? '#FFFFFF'
-                    : colorScheme === 'dark'
+              <View className="mx-4 mb-2 flex-row items-stretch">
+                <View
+                  className="mr-2 flex-1 flex-row rounded-lg p-1"
+                  style={{
+                    backgroundColor:
+                      colorScheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
+                    borderWidth: colorScheme === 'dark' ? 0 : 1,
+                    borderColor: '#E0E0E0',
+                  }}>
+                  {(['list', 'calendar'] as const).map(mode => {
+                    const active = matchesView === mode
+                    const labelColor = active
                       ? '#FFFFFF'
-                      : '#37003C'
-                  const listLabel = isLandscapeRegular
-                    ? t('grid_view')
-                    : t('list_view')
-                  return (
-                    <Pressable
-                      key={mode}
-                      accessibilityRole="button"
-                      accessibilityState={{selected: active}}
-                      onPress={() => changeMatchesView(mode)}
-                      className="flex-1 flex-row items-center justify-center rounded-md py-2"
-                      style={{
-                        backgroundColor: active ? '#37003C' : 'transparent',
-                      }}>
-                      <MaterialIcons
-                        name={
-                          mode === 'list'
-                            ? isLandscapeRegular
-                              ? 'grid-view'
-                              : 'view-list'
-                            : 'calendar-today'
-                        }
-                        size={18}
-                        color={labelColor}
-                        style={{marginRight: 6}}
-                      />
-                      <Text className="font-semibold" style={{color: labelColor}}>
-                        {mode === 'list' ? listLabel : t('calendar')}
-                      </Text>
-                    </Pressable>
-                  )
-                })}
-              </View>
-              <View className="mx-4 mb-2">
+                      : colorScheme === 'dark'
+                        ? '#FFFFFF'
+                        : '#37003C'
+                    const listLabel = isLandscapeRegular
+                      ? t('grid_view')
+                      : t('list_view')
+                    return (
+                      <Pressable
+                        key={mode}
+                        accessibilityRole="button"
+                        accessibilityState={{selected: active}}
+                        onPress={() => changeMatchesView(mode)}
+                        className="flex-1 flex-row items-center justify-center rounded-md py-2"
+                        style={{
+                          backgroundColor: active ? '#37003C' : 'transparent',
+                        }}>
+                        <MaterialIcons
+                          name={
+                            mode === 'list'
+                              ? isLandscapeRegular
+                                ? 'grid-view'
+                                : 'view-list'
+                              : 'calendar-today'
+                          }
+                          size={18}
+                          color={labelColor}
+                          style={{marginRight: 6}}
+                        />
+                        <Text
+                          className="font-semibold"
+                          style={{color: labelColor}}>
+                          {mode === 'list' ? listLabel : t('calendar')}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityState={{expanded: showFilters}}
+                  accessibilityLabel={
+                    showFilters ? t('hide_filters') : t('show_filters')
+                  }
                   onPress={toggleFilters}
-                  className="flex-row items-center justify-center py-3 px-5 rounded-lg w-full"
+                  className="flex-row items-center justify-center rounded-lg px-3"
                   style={({pressed}) => {
                     const isDark = colorScheme === 'dark'
+                    const active = showFilters
                     return {
-                      backgroundColor: isDark
-                        ? pressed
-                          ? '#2A002E'
-                          : '#37003C'
-                        : pressed
-                          ? '#E8D4EA'
-                          : '#FFFFFF',
-                      borderWidth: isDark ? 0 : 2,
-                      borderColor: '#37003C',
-                      shadowColor: '#000',
-                      shadowOffset: {width: 0, height: 2},
-                      shadowOpacity: isDark ? 0.35 : 0.12,
-                      shadowRadius: 4,
-                      elevation: 4,
-                      transform: [{scale: pressed ? 0.98 : 1}],
+                      backgroundColor: active
+                        ? '#37003C'
+                        : isDark
+                          ? pressed
+                            ? '#2A2A2A'
+                            : '#1E1E1E'
+                          : pressed
+                            ? '#F0F0F0'
+                            : '#FFFFFF',
+                      borderWidth: isDark ? 0 : 1,
+                      borderColor: active ? '#37003C' : '#E0E0E0',
+                      minWidth: 48,
                     }
                   }}>
                   <MaterialIcons
                     name="filter-list"
-                    size={22}
-                    style={{marginRight: 8}}
-                    color={colorScheme === 'dark' ? '#FFFFFF' : '#37003C'}
+                    size={20}
+                    color={
+                      showFilters || colorScheme === 'dark'
+                        ? '#FFFFFF'
+                        : '#37003C'
+                    }
                   />
-                  <Text
-                    className="font-semibold text-base"
-                    style={{
-                      color: colorScheme === 'dark' ? '#FFFFFF' : '#37003C',
-                    }}>
-                    {showFilters ? t('hide_filters') : t('show_filters')}
-                  </Text>
                   <MaterialIcons
                     name={showFilters ? 'expand-less' : 'expand-more'}
-                    size={22}
-                    style={{marginLeft: 6}}
-                    color={colorScheme === 'dark' ? '#FFFFFF' : '#37003C'}
+                    size={18}
+                    style={{marginLeft: 2}}
+                    color={
+                      showFilters || colorScheme === 'dark'
+                        ? '#FFFFFF'
+                        : '#37003C'
+                    }
                   />
                 </Pressable>
               </View>

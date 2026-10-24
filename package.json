@@ -17,7 +17,7 @@
     "ota_publish": "bash ./scripts/ota_publish.sh",
     "web": "expo start --web",
     "lint": "expo lint",
-    "postinstall": "node ./scripts/patch-react-native-line-android.js && node ./scripts/dedupe-expo-three-native-modules.js"
+    "postinstall": "node ./scripts/patch-react-native-line-android.js && node ./scripts/dedupe-expo-three-native-modules.js && node ./scripts/patch-expo-modules-scan.js"
   },
   "dependencies": {
     "@animatereactnative/marquee": "^0.5.2",
