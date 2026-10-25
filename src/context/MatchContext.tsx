@@ -666,6 +666,16 @@ export const MatchProvider = (props: any) => {
       newPlayer: false,
     }
     SocketSend('framestats', data)
+
+    // A 180 is also a ton — mirror 180 adjustments onto tons.
+    if (field === 'heavyTons') {
+      if (delta < 0) {
+        const statsKey = side === 'home' ? 'homePlayerStats' : 'awayPlayerStats'
+        const tons = Number(frame?.[statsKey]?.[playerIdx]?.tons ?? 0)
+        if (tons <= 0) return
+      }
+      SocketSend('framestats', {...data, field: 'tons'})
+    }
   }
 
   function ClearFrameWinner(frameIdx: number) {
