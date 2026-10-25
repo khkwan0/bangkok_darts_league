@@ -235,6 +235,18 @@ export default function Frame({
           width: '100%',
           alignItems: 'center',
         }}>
+        {showLegTallies ? (
+          <LegLines
+            frameIndex={index}
+            side={side}
+            games={games}
+            seriesMode={seriesMode}
+            trackTons={tallyTons}
+            trackHeavyTons={tallyHeavy}
+            trackCloses={tallyCloses}
+            locked={locked}
+          />
+        ) : null}
         <View
           style={{
             flexDirection: 'row',
@@ -263,18 +275,6 @@ export default function Frame({
             />
           ) : null}
         </View>
-        {showLegTallies ? (
-          <LegLines
-            frameIndex={index}
-            side={side}
-            games={games}
-            seriesMode={seriesMode}
-            trackTons={tallyTons}
-            trackHeavyTons={tallyHeavy}
-            trackCloses={tallyCloses}
-            locked={locked}
-          />
-        ) : null}
       </View>
     )
   }
