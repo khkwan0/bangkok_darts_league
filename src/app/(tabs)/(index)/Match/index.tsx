@@ -188,7 +188,7 @@ export default function ScoreSheet({
               },
         )
         for (let i = 0; i < section.frames; i++) {
-          const _frame: FrameType = {
+          const _frame: FrameType = hydrateFrameLegs({
             frameNumber: frameNumber,
             section: sectionCount,
             mfpp: section.mfpp,
@@ -221,7 +221,7 @@ export default function ScoreSheet({
             homeBoardScore: 0,
             awayBoardScore: 0,
             firstDart: 0,
-          }
+          })
           _frames.push(_frame)
           frameNumber++
         }
@@ -296,8 +296,10 @@ export default function ScoreSheet({
               noPlayers: frame.noPlayers ?? template?.noPlayers,
               minPlayers: frame.minPlayers ?? template?.minPlayers,
               maxPlayers: frame.maxPlayers ?? template?.maxPlayers,
-              games: frame.games ?? template?.games,
-              seriesMode: frame.seriesMode ?? template?.seriesMode,
+              // Format template is source of truth for series length/mode.
+              // Live redis often defaults games=1 on first player assign.
+              games: template?.games ?? frame.games,
+              seriesMode: template?.seriesMode ?? frame.seriesMode,
               trackTons: frame.trackTons ?? template?.trackTons,
               trackHeavyTons: frame.trackHeavyTons ?? template?.trackHeavyTons,
               trackCloses: frame.trackCloses ?? template?.trackCloses,

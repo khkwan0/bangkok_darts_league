@@ -329,7 +329,7 @@
   "scoresheet_view_full": "Classic",
   "scoresheet_view_focus": "Chips",
   "scoresheet_focus_hint": "Tap a player to tally tons & closes",
-  "scoresheet_legs_hint": "Add a leg win to open a line for tons, 180s & closes",
+  "scoresheet_legs_hint": "Leg lines appear for Race to N / BoN games",
   "change_player": "Change player",
   "legs": "Legs",
   "score": "Score",

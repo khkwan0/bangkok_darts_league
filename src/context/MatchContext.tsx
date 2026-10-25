@@ -553,6 +553,7 @@ export const MatchProvider = (props: any) => {
       */
 
     const initial = state.matchInfo.initialFrames?.[frameIdx]
+    const frame = state.frameData?.[frameIdx]
     const data = {
       frameNumber: frameNumber ?? initial?.frameNumber ?? 0,
       frameIdx: frameIdx,
@@ -564,6 +565,8 @@ export const MatchProvider = (props: any) => {
       newPlayer: newPlayer,
       frameType: frameType || initial?.type || '',
       mfpp: initial?.mfpp || 0,
+      games: frame?.games ?? initial?.games ?? 1,
+      seriesMode: frame?.seriesMode ?? initial?.seriesMode,
     }
     SocketSend('players', data)
   }

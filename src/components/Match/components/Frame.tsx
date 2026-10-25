@@ -201,7 +201,8 @@ export default function Frame({
   const awayWon = winner === awayTeamId
   const kind = frameKindLabel(minPlayers, maxPlayers, t)
   const need = seriesWinsNeeded(seriesMode, games)
-  const showSeries = games > 1
+  const showSeries =
+    games > 1 || seriesMode === 'race_to' || seriesMode === 'best_of'
   const seriesLabel =
     seriesMode === 'race_to' ? `Race to ${games}` : `Bo${games}`
   /** Series: tons/180s/closes live on each leg line, not beside player names. */

@@ -110,8 +110,9 @@ export type FrameType = {
    */
   awayPlayerStats?: PlayerLegStat[]
   /**
-   * One entry per completed leg in a BoN / race-to series.
-   * Length should equal homeScore + awayScore; each row has its own tons/180s/closes.
+   * Per-leg tons/180s/closes.
+   * Race to N: always N rows (open rows allowed before a winner is set).
+   * Best of N: grows with completed legs (homeScore + awayScore).
    */
   legs?: LegRow[]
   homeBoardScore?: number
@@ -129,9 +130,9 @@ export type PlayerLegStat = {
   closes: number
 }
 
-/** One completed leg inside a series game; `winner` is which side took the leg. */
+/** One leg inside a series game. `winner` is null until that leg is decided. */
 export type LegRow = {
-  winner: 'home' | 'away'
+  winner: 'home' | 'away' | null
   homePlayerStats: PlayerLegStat[]
   awayPlayerStats: PlayerLegStat[]
 }

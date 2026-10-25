@@ -4,6 +4,7 @@ import {
   MAX_DART_CHECKOUT,
 } from '@/lib/dartCheckouts'
 import type {LegRow, PlayerLegStat} from '@/components/Match/types'
+import {hydrateFrameLegs} from '@/lib/hydrateFrameLegs'
 import {useTranslation} from 'react-i18next'
 import {Text, View} from 'react-native'
 import {useScoresheetTheme} from './scoresheetTheme'
@@ -52,7 +53,15 @@ function SideLegStats({
       ? state.matchInfo.home_team_id
       : state.matchInfo.away_team_id
   const slots = (playerIds ?? []).filter(id => id != null && Number(id) > 0)
-  if (slots.length === 0) return null
+  if (slots.length === 0) {
+    return (
+      <View style={{flex: 1, minWidth: 0}}>
+        <Text style={{color: theme.muted, fontSize: 11, fontWeight: '600'}}>
+          {t('player')}
+        </Text>
+      </View>
+    )
+  }
   if (!showTons && !showHeavyTons && !showCloses) return null
 
   return (
@@ -63,17 +72,15 @@ function SideLegStats({
         const slotStat = stats[slot] ?? emptyStat()
         return (
           <View key={`${side}-${slot}`} style={{gap: 2}}>
-            {slots.length > 1 ? (
-              <Text
-                numberOfLines={1}
-                style={{
-                  color: palette.ink,
-                  fontSize: 11,
-                  fontWeight: '700',
-                }}>
-                {nickname}
-              </Text>
-            ) : null}
+            <Text
+              numberOfLines={1}
+              style={{
+                color: palette.ink,
+                fontSize: 11,
+                fontWeight: '700',
+              }}>
+              {nickname}
+            </Text>
             <View
               style={{
                 flexDirection: 'row',
@@ -164,7 +171,9 @@ export default function LegLines({
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
   const live = state.frameData?.[frameIndex]
-  const legs: LegRow[] = Array.isArray(live?.legs) ? live.legs : []
+  // Race to N must always show N lines even at 0–0.
+  const hydrated = live ? hydrateFrameLegs(live) : null
+  const legs: LegRow[] = Array.isArray(hydrated?.legs) ? hydrated!.legs! : []
 
   if (legs.length === 0) {
     return (
@@ -185,18 +194,28 @@ export default function LegLines({
     <View style={{gap: 8, marginTop: 4}}>
       {legs.map((leg, legIndex) => {
         const homeWon = leg.winner === 'home'
-        const palette = homeWon ? theme.home : theme.away
+        const awayWon = leg.winner === 'away'
+        const open = !homeWon && !awayWon
+        const palette = homeWon
+          ? theme.home
+          : awayWon
+            ? theme.away
+            : null
         return (
           <View
             key={`leg-${legIndex}`}
             style={{
               borderRadius: 12,
               padding: 10,
-              backgroundColor: homeWon
-                ? theme.home.panelWinner
-                : theme.away.panelWinner,
-              borderWidth: 1.5,
-              borderColor: palette.accent,
+              backgroundColor: open
+                ? theme.faint
+                : homeWon
+                  ? theme.home.panelWinner
+                  : theme.away.panelWinner,
+              borderWidth: open ? 1 : 1.5,
+              borderColor: open
+                ? theme.cardBorder
+                : palette!.accent,
               gap: 8,
             }}>
             <View
@@ -207,7 +226,7 @@ export default function LegLines({
               }}>
               <Text
                 style={{
-                  color: palette.ink,
+                  color: open ? theme.muted : palette!.ink,
                   fontSize: 12,
                   fontWeight: '800',
                   letterSpacing: 0.4,
@@ -217,12 +236,14 @@ export default function LegLines({
               </Text>
               <Text
                 style={{
-                  color: palette.accent,
+                  color: open
+                    ? theme.muted
+                    : palette!.accent,
                   fontSize: 12,
                   fontWeight: '800',
                   textTransform: 'uppercase',
                 }}>
-                {homeWon ? t('home') : t('away')}
+                {homeWon ? t('home') : awayWon ? t('away') : '—'}
               </Text>
             </View>
             <View
