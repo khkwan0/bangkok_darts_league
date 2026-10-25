@@ -47,10 +47,13 @@ export default function Frame({
   const minPlayers = item.minPlayers ?? item.noPlayers ?? initial?.minPlayers
   const maxPlayers = item.maxPlayers ?? initial?.maxPlayers ?? minPlayers
   const games = item.games ?? initial?.games ?? 1
+  const seriesModeRaw = item.seriesMode ?? initial?.seriesMode
   const seriesMode =
-    games > 1
-      ? item.seriesMode ?? initial?.seriesMode ?? 'best_of'
-      : undefined
+    seriesModeRaw === 'race_to' || seriesModeRaw === 'best_of'
+      ? seriesModeRaw
+      : games > 1
+        ? 'best_of'
+        : undefined
   const configuredFlags = {
     trackTons: item.trackTons ?? initial?.trackTons,
     trackHeavyTons: item.trackHeavyTons ?? initial?.trackHeavyTons,
@@ -205,12 +208,23 @@ export default function Frame({
     games > 1 || seriesMode === 'race_to' || seriesMode === 'best_of'
   const seriesLabel =
     seriesMode === 'race_to' ? `Race to ${games}` : `Bo${games}`
-  /** Series: tons/180s/closes live on each leg line, not beside player names. */
-  const hidePlayerStats = showSeries && trackStats
+  /**
+   * Series: tons/180s/closes live on each leg line, not beside player names.
+   * If format flags are missing, still show leg tallies for series games.
+   */
+  const showLegTallies =
+    showSeries &&
+    (trackStats ||
+      !hasConfiguredFlags ||
+      configuredFlags.trackStats !== false)
+  const hidePlayerStats = showLegTallies
 
   function seriesLegLines(opts?: {padded?: boolean}) {
-    if (!hidePlayerStats) return null
+    if (!showLegTallies) return null
     const padded = opts?.padded !== false
+    const tallyTons = trackStats ? statFlags.trackTons : true
+    const tallyHeavy = trackStats ? statFlags.trackHeavyTons : true
+    const tallyCloses = trackStats ? statFlags.trackCloses : true
     return (
       <View
         style={
@@ -220,9 +234,11 @@ export default function Frame({
         }>
         <LegLines
           frameIndex={index}
-          trackTons={statFlags.trackTons}
-          trackHeavyTons={statFlags.trackHeavyTons}
-          trackCloses={statFlags.trackCloses}
+          games={games}
+          seriesMode={seriesMode}
+          trackTons={tallyTons}
+          trackHeavyTons={tallyHeavy}
+          trackCloses={tallyCloses}
           locked={locked}
         />
       </View>

@@ -3,7 +3,7 @@ import {
   isValidDartCheckout,
   MAX_DART_CHECKOUT,
 } from '@/lib/dartCheckouts'
-import type {LegRow, PlayerLegStat} from '@/components/Match/types'
+import type {FrameType, LegRow, PlayerLegStat} from '@/components/Match/types'
 import {hydrateFrameLegs} from '@/lib/hydrateFrameLegs'
 import {useTranslation} from 'react-i18next'
 import {Text, View} from 'react-native'
@@ -13,6 +13,9 @@ import StatValueInput from './StatValueInput'
 
 type Props = {
   frameIndex: number
+  /** From format template — live redis frames often omit these. */
+  games?: number
+  seriesMode?: 'best_of' | 'race_to'
   trackTons?: boolean
   trackHeavyTons?: boolean
   trackCloses?: boolean
@@ -53,6 +56,8 @@ function SideLegStats({
       ? state.matchInfo.home_team_id
       : state.matchInfo.away_team_id
   const slots = (playerIds ?? []).filter(id => id != null && Number(id) > 0)
+  if (!showTons && !showHeavyTons && !showCloses) return null
+
   if (slots.length === 0) {
     return (
       <View style={{flex: 1, minWidth: 0}}>
@@ -62,7 +67,6 @@ function SideLegStats({
       </View>
     )
   }
-  if (!showTons && !showHeavyTons && !showCloses) return null
 
   return (
     <View style={{gap: 6, flex: 1, minWidth: 0}}>
@@ -162,6 +166,8 @@ function SideLegStats({
 
 export default function LegLines({
   frameIndex,
+  games,
+  seriesMode,
   trackTons = true,
   trackHeavyTons = true,
   trackCloses = true,
@@ -170,10 +176,38 @@ export default function LegLines({
   const {state}: any = useMatchContext()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
-  const live = state.frameData?.[frameIndex]
-  // Race to N must always show N lines even at 0–0.
-  const hydrated = live ? hydrateFrameLegs(live) : null
-  const legs: LegRow[] = Array.isArray(hydrated?.legs) ? hydrated!.legs! : []
+  const live = state.frameData?.[frameIndex] as FrameType | undefined
+  const initial = state.matchInfo?.initialFrames?.[frameIndex] as
+    | FrameType
+    | undefined
+
+  // Live redis often omits games/seriesMode — merge format template before hydrate.
+  const merged: FrameType = {
+    ...(initial ?? ({} as FrameType)),
+    ...(live ?? ({} as FrameType)),
+    games: Number(games ?? live?.games ?? initial?.games ?? 1),
+    seriesMode:
+      seriesMode ??
+      live?.seriesMode ??
+      initial?.seriesMode ??
+      (Number(games ?? live?.games ?? initial?.games ?? 1) > 1
+        ? 'best_of'
+        : undefined),
+    homeScore: Number(live?.homeScore ?? 0),
+    awayScore: Number(live?.awayScore ?? 0),
+    homePlayerIds: live?.homePlayerIds ?? initial?.homePlayerIds ?? [],
+    awayPlayerIds: live?.awayPlayerIds ?? initial?.awayPlayerIds ?? [],
+    legs: live?.legs ?? initial?.legs ?? [],
+    homePlayerStats: live?.homePlayerStats,
+    awayPlayerStats: live?.awayPlayerStats,
+    homeTons: live?.homeTons,
+    awayTons: live?.awayTons,
+    homeHeavyTons: live?.homeHeavyTons,
+    awayHeavyTons: live?.awayHeavyTons,
+    homeCloses: live?.homeCloses,
+    awayCloses: live?.awayCloses,
+  }
+  const legs: LegRow[] = hydrateFrameLegs(merged).legs ?? []
 
   if (legs.length === 0) {
     return (
@@ -213,9 +247,7 @@ export default function LegLines({
                   ? theme.home.panelWinner
                   : theme.away.panelWinner,
               borderWidth: open ? 1 : 1.5,
-              borderColor: open
-                ? theme.cardBorder
-                : palette!.accent,
+              borderColor: open ? theme.cardBorder : palette!.accent,
               gap: 8,
             }}>
             <View
@@ -236,9 +268,7 @@ export default function LegLines({
               </Text>
               <Text
                 style={{
-                  color: open
-                    ? theme.muted
-                    : palette!.accent,
+                  color: open ? theme.muted : palette!.accent,
                   fontSize: 12,
                   fontWeight: '800',
                   textTransform: 'uppercase',
@@ -256,7 +286,7 @@ export default function LegLines({
                 frameIndex={frameIndex}
                 legIndex={legIndex}
                 side="home"
-                playerIds={live?.homePlayerIds ?? []}
+                playerIds={merged.homePlayerIds ?? []}
                 stats={leg.homePlayerStats ?? []}
                 showTons={trackTons}
                 showHeavyTons={trackHeavyTons}
@@ -267,7 +297,7 @@ export default function LegLines({
                 frameIndex={frameIndex}
                 legIndex={legIndex}
                 side="away"
-                playerIds={live?.awayPlayerIds ?? []}
+                playerIds={merged.awayPlayerIds ?? []}
                 stats={leg.awayPlayerStats ?? []}
                 showTons={trackTons}
                 showHeavyTons={trackHeavyTons}
