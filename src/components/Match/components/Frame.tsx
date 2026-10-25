@@ -219,64 +219,60 @@ export default function Frame({
       configuredFlags.trackStats !== false)
   const hidePlayerStats = showLegTallies
 
-  function seriesLegLines(opts?: {padded?: boolean}) {
-    if (!showLegTallies) return null
-    const padded = opts?.padded !== false
-    const tallyTons = trackStats ? statFlags.trackTons : true
-    const tallyHeavy = trackStats ? statFlags.trackHeavyTons : true
-    const tallyCloses = trackStats ? statFlags.trackCloses : true
-    return (
-      <View
-        style={
-          padded
-            ? {paddingHorizontal: 10, paddingBottom: 12}
-            : {paddingBottom: 4}
-        }>
-        <LegLines
-          frameIndex={index}
-          games={games}
-          seriesMode={seriesMode}
-          trackTons={tallyTons}
-          trackHeavyTons={tallyHeavy}
-          trackCloses={tallyCloses}
-          locked={locked}
-        />
-      </View>
-    )
-  }
-
   function sideMetaExtras(side: 'home' | 'away') {
     const palette = side === 'home' ? theme.home : theme.away
     const legs = side === 'home' ? live.homeScore : live.awayScore
     const board = side === 'home' ? live.homeBoardScore : live.awayBoardScore
     if (!statFlags.trackBoardScore && !showSeries) return null
+    const tallyTons = trackStats ? statFlags.trackTons : true
+    const tallyHeavy = trackStats ? statFlags.trackHeavyTons : true
+    const tallyCloses = trackStats ? statFlags.trackCloses : true
     return (
       <View
         style={{
           marginTop: 8,
           gap: 8,
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          justifyContent: 'center',
+          width: '100%',
+          alignItems: 'center',
         }}>
-        {statFlags.trackBoardScore ? (
-          <StatStepper
-            label={t('score')}
-            value={Number(board ?? 0)}
-            ink={palette.ink}
-            accent={palette.button}
-            disabled={locked}
-            onDelta={d => UpdateFrameStats(index, side, 'boardScore', d)}
-          />
-        ) : null}
-        {showSeries ? (
-          <StatStepper
-            label={t('legs')}
-            value={Number(legs ?? 0)}
-            ink={palette.ink}
-            accent={palette.button}
-            disabled={locked}
-            onDelta={d => UpdateFrameStats(index, side, 'games', d)}
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: 8,
+          }}>
+          {statFlags.trackBoardScore ? (
+            <StatStepper
+              label={t('score')}
+              value={Number(board ?? 0)}
+              ink={palette.ink}
+              accent={palette.button}
+              disabled={locked}
+              onDelta={d => UpdateFrameStats(index, side, 'boardScore', d)}
+            />
+          ) : null}
+          {showSeries ? (
+            <StatStepper
+              label={t('legs')}
+              value={Number(legs ?? 0)}
+              ink={palette.ink}
+              accent={palette.button}
+              disabled={locked}
+              onDelta={d => UpdateFrameStats(index, side, 'games', d)}
+            />
+          ) : null}
+        </View>
+        {showLegTallies ? (
+          <LegLines
+            frameIndex={index}
+            side={side}
+            games={games}
+            seriesMode={seriesMode}
+            trackTons={tallyTons}
+            trackHeavyTons={tallyHeavy}
+            trackCloses={tallyCloses}
+            locked={locked}
           />
         ) : null}
       </View>
@@ -475,7 +471,6 @@ export default function Frame({
           />
           {sideMetaExtras('away')}
         </View>
-        {seriesLegLines({padded: false})}
       </View>,
       {showSharedFirstDart: false},
     )
@@ -614,7 +609,6 @@ export default function Frame({
           {sideMetaExtras('away')}
           {winFor('away')}
         </View>
-        {seriesLegLines({padded: false})}
       </View>,
       {showSharedFirstDart: false},
     )
@@ -640,65 +634,62 @@ export default function Frame({
   }
 
   return cardShell(
-    <>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'stretch',
-          gap: 8,
-          paddingHorizontal: 10,
-          paddingBottom: 10,
-        }}>
-        <View style={panel('home')}>
-          <Player
-            teamId={homeTeamId ?? 0}
-            side="home"
-            frameIndex={index}
-            frameNumber={item.frameNumber}
-            frameType={frameType}
-            minPlayers={minPlayers}
-            maxPlayers={maxPlayers}
-            noPlayers={minPlayers}
-            playerIds={live.homePlayerIds}
-            trackStats={trackStats}
-            trackTons={statFlags.trackTons}
-            trackHeavyTons={statFlags.trackHeavyTons}
-            trackCloses={statFlags.trackCloses}
-            hideStats={hidePlayerStats}
-            layout="panel"
-            refreshing={refreshing}
-            ink={theme.home.ink}
-            mark={theme.home.button}
-          />
-          {sideMetaExtras('home')}
-          {winFor('home')}
-        </View>
-        <View style={panel('away')}>
-          <Player
-            teamId={awayTeamId ?? 0}
-            side="away"
-            frameIndex={index}
-            frameNumber={item.frameNumber}
-            frameType={frameType}
-            minPlayers={minPlayers}
-            maxPlayers={maxPlayers}
-            noPlayers={minPlayers}
-            playerIds={live.awayPlayerIds}
-            trackStats={trackStats}
-            trackTons={statFlags.trackTons}
-            trackHeavyTons={statFlags.trackHeavyTons}
-            trackCloses={statFlags.trackCloses}
-            hideStats={hidePlayerStats}
-            layout="panel"
-            refreshing={refreshing}
-            ink={theme.away.ink}
-            mark={theme.away.button}
-          />
-          {sideMetaExtras('away')}
-          {winFor('away')}
-        </View>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'stretch',
+        gap: 8,
+        paddingHorizontal: 10,
+        paddingBottom: 10,
+      }}>
+      <View style={panel('home')}>
+        <Player
+          teamId={homeTeamId ?? 0}
+          side="home"
+          frameIndex={index}
+          frameNumber={item.frameNumber}
+          frameType={frameType}
+          minPlayers={minPlayers}
+          maxPlayers={maxPlayers}
+          noPlayers={minPlayers}
+          playerIds={live.homePlayerIds}
+          trackStats={trackStats}
+          trackTons={statFlags.trackTons}
+          trackHeavyTons={statFlags.trackHeavyTons}
+          trackCloses={statFlags.trackCloses}
+          hideStats={hidePlayerStats}
+          layout="panel"
+          refreshing={refreshing}
+          ink={theme.home.ink}
+          mark={theme.home.button}
+        />
+        {sideMetaExtras('home')}
+        {winFor('home')}
       </View>
-      {seriesLegLines()}
-    </>,
+      <View style={panel('away')}>
+        <Player
+          teamId={awayTeamId ?? 0}
+          side="away"
+          frameIndex={index}
+          frameNumber={item.frameNumber}
+          frameType={frameType}
+          minPlayers={minPlayers}
+          maxPlayers={maxPlayers}
+          noPlayers={minPlayers}
+          playerIds={live.awayPlayerIds}
+          trackStats={trackStats}
+          trackTons={statFlags.trackTons}
+          trackHeavyTons={statFlags.trackHeavyTons}
+          trackCloses={statFlags.trackCloses}
+          hideStats={hidePlayerStats}
+          layout="panel"
+          refreshing={refreshing}
+          ink={theme.away.ink}
+          mark={theme.away.button}
+        />
+        {sideMetaExtras('away')}
+        {winFor('away')}
+      </View>
+    </View>,
   )
 }

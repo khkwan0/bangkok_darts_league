@@ -13,6 +13,8 @@ import StatValueInput from './StatValueInput'
 
 type Props = {
   frameIndex: number
+  /** Only this side’s tallies (lives next to that side’s Legs stepper). */
+  side: 'home' | 'away'
   /** From format template — live redis frames often omit these. */
   games?: number
   seriesMode?: 'best_of' | 'race_to'
@@ -60,36 +62,38 @@ function SideLegStats({
 
   if (slots.length === 0) {
     return (
-      <View style={{flex: 1, minWidth: 0}}>
-        <Text style={{color: theme.muted, fontSize: 11, fontWeight: '600'}}>
-          {t('player')}
-        </Text>
-      </View>
+      <Text style={{color: theme.muted, fontSize: 11, fontWeight: '600'}}>
+        {t('player')}
+      </Text>
     )
   }
 
   return (
-    <View style={{gap: 6, flex: 1, minWidth: 0}}>
+    <View style={{gap: 6, width: '100%'}}>
       {slots.map((playerId, slot) => {
         const nickname =
           state?.teams?.[teamId]?.[playerId]?.nickname ?? t('player')
         const slotStat = stats[slot] ?? emptyStat()
         return (
           <View key={`${side}-${slot}`} style={{gap: 2}}>
-            <Text
-              numberOfLines={1}
-              style={{
-                color: palette.ink,
-                fontSize: 11,
-                fontWeight: '700',
-              }}>
-              {nickname}
-            </Text>
+            {slots.length > 1 ? (
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: palette.ink,
+                  fontSize: 11,
+                  fontWeight: '700',
+                  textAlign: 'center',
+                }}>
+                {nickname}
+              </Text>
+            ) : null}
             <View
               style={{
                 flexDirection: 'row',
                 flexWrap: 'wrap',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 8,
               }}>
               {showTons ? (
@@ -166,6 +170,7 @@ function SideLegStats({
 
 export default function LegLines({
   frameIndex,
+  side,
   games,
   seriesMode,
   trackTons = true,
@@ -176,12 +181,12 @@ export default function LegLines({
   const {state}: any = useMatchContext()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
+  const palette = side === 'home' ? theme.home : theme.away
   const live = state.frameData?.[frameIndex] as FrameType | undefined
   const initial = state.matchInfo?.initialFrames?.[frameIndex] as
     | FrameType
     | undefined
 
-  // Live redis often omits games/seriesMode — merge format template before hydrate.
   const merged: FrameType = {
     ...(initial ?? ({} as FrameType)),
     ...(live ?? ({} as FrameType)),
@@ -208,103 +213,60 @@ export default function LegLines({
     awayCloses: live?.awayCloses,
   }
   const legs: LegRow[] = hydrateFrameLegs(merged).legs ?? []
+  const playerIds =
+    side === 'home' ? (merged.homePlayerIds ?? []) : (merged.awayPlayerIds ?? [])
 
-  if (legs.length === 0) {
-    return (
-      <Text
-        style={{
-          marginTop: 4,
-          color: theme.muted,
-          fontSize: 11,
-          fontWeight: '600',
-          textAlign: 'center',
-        }}>
-        {t('scoresheet_legs_hint')}
-      </Text>
-    )
-  }
+  if (legs.length === 0) return null
 
   return (
-    <View style={{gap: 8, marginTop: 4}}>
+    <View style={{gap: 6, width: '100%', marginTop: 4}}>
       {legs.map((leg, legIndex) => {
-        const homeWon = leg.winner === 'home'
-        const awayWon = leg.winner === 'away'
-        const open = !homeWon && !awayWon
-        const palette = homeWon
-          ? theme.home
-          : awayWon
-            ? theme.away
-            : null
+        const won = leg.winner === side
+        const lost = leg.winner != null && leg.winner !== side
+        const stats =
+          side === 'home'
+            ? (leg.homePlayerStats ?? [])
+            : (leg.awayPlayerStats ?? [])
         return (
           <View
-            key={`leg-${legIndex}`}
+            key={`leg-${side}-${legIndex}`}
             style={{
-              borderRadius: 12,
-              padding: 10,
-              backgroundColor: open
-                ? theme.faint
-                : homeWon
-                  ? theme.home.panelWinner
-                  : theme.away.panelWinner,
-              borderWidth: open ? 1 : 1.5,
-              borderColor: open ? theme.cardBorder : palette!.accent,
-              gap: 8,
+              borderRadius: 10,
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+              backgroundColor: won
+                ? palette.panelWinner
+                : lost
+                  ? theme.faint
+                  : theme.card,
+              borderWidth: won ? 1.5 : 1,
+              borderColor: won ? palette.accent : theme.cardBorder,
+              opacity: lost ? 0.7 : 1,
+              gap: 4,
+              alignItems: 'center',
             }}>
-            <View
+            <Text
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
+                color: won ? palette.accent : theme.muted,
+                fontSize: 11,
+                fontWeight: '800',
+                letterSpacing: 0.4,
+                textTransform: 'uppercase',
               }}>
-              <Text
-                style={{
-                  color: open ? theme.muted : palette!.ink,
-                  fontSize: 12,
-                  fontWeight: '800',
-                  letterSpacing: 0.4,
-                  textTransform: 'uppercase',
-                }}>
-                {t('legs')} {legIndex + 1}
-              </Text>
-              <Text
-                style={{
-                  color: open ? theme.muted : palette!.accent,
-                  fontSize: 12,
-                  fontWeight: '800',
-                  textTransform: 'uppercase',
-                }}>
-                {homeWon ? t('home') : awayWon ? t('away') : '—'}
-              </Text>
-            </View>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'flex-start',
-                gap: 10,
-              }}>
-              <SideLegStats
-                frameIndex={frameIndex}
-                legIndex={legIndex}
-                side="home"
-                playerIds={merged.homePlayerIds ?? []}
-                stats={leg.homePlayerStats ?? []}
-                showTons={trackTons}
-                showHeavyTons={trackHeavyTons}
-                showCloses={trackCloses}
-                locked={locked}
-              />
-              <SideLegStats
-                frameIndex={frameIndex}
-                legIndex={legIndex}
-                side="away"
-                playerIds={merged.awayPlayerIds ?? []}
-                stats={leg.awayPlayerStats ?? []}
-                showTons={trackTons}
-                showHeavyTons={trackHeavyTons}
-                showCloses={trackCloses}
-                locked={locked}
-              />
-            </View>
+              {t('legs')} {legIndex + 1}
+              {won ? ` · ${t('win')}` : ''}
+            </Text>
+            <SideLegStats
+              frameIndex={frameIndex}
+              legIndex={legIndex}
+              side={side}
+              playerIds={playerIds}
+              stats={stats}
+              showTons={trackTons}
+              showHeavyTons={trackHeavyTons}
+              showCloses={trackCloses}
+              locked={locked}
+            />
           </View>
         )
       })}
