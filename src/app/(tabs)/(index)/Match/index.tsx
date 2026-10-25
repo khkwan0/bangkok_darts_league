@@ -24,6 +24,7 @@ import {
   resolveNoPlayers,
   resolveScoreSheetStatFlags,
 } from '@/lib/matchFormat'
+import {hydrateFrameLegs} from '@/lib/hydrateFrameLegs'
 import {
   defaultScoresheetStatsView,
   loadScoresheetStatsView,
@@ -216,6 +217,7 @@ export default function ScoreSheet({
             awayCloses: 0,
             homePlayerStats: [],
             awayPlayerStats: [],
+            legs: [],
             homeBoardScore: 0,
             awayBoardScore: 0,
             firstDart: 0,
@@ -285,7 +287,7 @@ export default function ScoreSheet({
                 : -1
           if (idx >= 0 && idx < __frames.length) {
             const template = __frames[idx]
-            __frames[idx] = {
+            __frames[idx] = hydrateFrameLegs({
               ...template,
               ...frame,
               type: frame.type ?? template?.type,
@@ -303,7 +305,7 @@ export default function ScoreSheet({
                 frame.trackBoardScore ?? template?.trackBoardScore,
               trackStats: frame.trackStats ?? template?.trackStats,
               firstDart: Number(frame.firstDart ?? template?.firstDart ?? 0),
-            }
+            })
           }
         })
       }

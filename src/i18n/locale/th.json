@@ -330,6 +330,7 @@
   "scoresheet_view_full": "คลาสสิก",
   "scoresheet_view_focus": "ชิป",
   "scoresheet_focus_hint": "แตะผู้เล่นเพื่อบันทึกตันและคลोज",
+  "scoresheet_legs_hint": "เพิ่มเลกที่ชนะเพื่อเปิดบรรทัดบันทึกตัน 180 และคลोज",
   "change_player": "เปลี่ยนผู้เล่น",
   "legs": "เลก",
   "score": "คะแนน",

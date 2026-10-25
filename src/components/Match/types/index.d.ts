@@ -99,10 +99,21 @@ export type FrameType = {
   awayHeavyTons?: number
   homeCloses?: number
   awayCloses?: number
-  /** Per-slot tons/closes (aligned with homePlayerIds). */
+  /**
+   * Per-slot tons/closes (aligned with homePlayerIds).
+   * For series (games > 1) these are aggregates of `legs`.
+   */
   homePlayerStats?: PlayerLegStat[]
-  /** Per-slot tons/closes (aligned with awayPlayerIds). */
+  /**
+   * Per-slot tons/closes (aligned with awayPlayerIds).
+   * For series (games > 1) these are aggregates of `legs`.
+   */
   awayPlayerStats?: PlayerLegStat[]
+  /**
+   * One entry per completed leg in a BoN / race-to series.
+   * Length should equal homeScore + awayScore; each row has its own tons/180s/closes.
+   */
+  legs?: LegRow[]
   homeBoardScore?: number
   awayBoardScore?: number
   /** Team id that throws first dart in this game (darts only). */
@@ -116,6 +127,13 @@ export type PlayerLegStat = {
   tons: number
   heavyTons: number
   closes: number
+}
+
+/** One completed leg inside a series game; `winner` is which side took the leg. */
+export type LegRow = {
+  winner: 'home' | 'away'
+  homePlayerStats: PlayerLegStat[]
+  awayPlayerStats: PlayerLegStat[]
 }
 
 export interface FrameProps {

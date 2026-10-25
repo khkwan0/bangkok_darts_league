@@ -42,6 +42,10 @@ interface PlayerProps {
   /** Focus layout: which slot is expanded for stats */
   focusedSlot?: number | null
   onFocusSlot?: (slot: number | null) => void
+  /**
+   * Series games show tons/180s/closes on per-leg rows instead of beside names.
+   */
+  hideStats?: boolean
 }
 
 function PlayerSkeleton({ink}: {ink: string}) {
@@ -170,6 +174,7 @@ export default function Player({
   mark,
   focusedSlot = null,
   onFocusSlot,
+  hideStats = false,
 }: PlayerProps) {
   const {state, UpdateFramePlayers, UpdateFrameStats}: any = useMatchContext()
   const {t} = useTranslation()
@@ -189,9 +194,9 @@ export default function Player({
     ? Math.min(maxCount, assigned.length + 1)
     : maxCount
   const locked = !!(state.finalizedHome && state.finalizedAway)
-  const showTons = trackTons ?? trackStats
-  const showHeavyTons = trackHeavyTons ?? trackStats
-  const showCloses = trackCloses ?? trackStats
+  const showTons = !hideStats && (trackTons ?? trackStats)
+  const showHeavyTons = !hideStats && (trackHeavyTons ?? trackStats)
+  const showCloses = !hideStats && (trackCloses ?? trackStats)
   const showAnyPlayerStats = showTons || showHeavyTons || showCloses
   const statsKey = side === 'home' ? 'homePlayerStats' : 'awayPlayerStats'
   const playerStats = state.frameData?.[frameIndex]?.[statsKey] ?? []

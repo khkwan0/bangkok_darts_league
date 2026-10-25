@@ -10,6 +10,7 @@ import {useTranslation} from 'react-i18next'
 import {Text, View} from 'react-native'
 import {FrameProps} from '../types'
 import FirstDart from './FirstDart'
+import LegLines from './LegLines'
 import Player from './Player'
 import {useScoresheetTheme} from './scoresheetTheme'
 import StatStepper from './StatStepper'
@@ -203,6 +204,29 @@ export default function Frame({
   const showSeries = games > 1
   const seriesLabel =
     seriesMode === 'race_to' ? `Race to ${games}` : `Bo${games}`
+  /** Series: tons/180s/closes live on each leg line, not beside player names. */
+  const hidePlayerStats = showSeries && trackStats
+
+  function seriesLegLines(opts?: {padded?: boolean}) {
+    if (!hidePlayerStats) return null
+    const padded = opts?.padded !== false
+    return (
+      <View
+        style={
+          padded
+            ? {paddingHorizontal: 10, paddingBottom: 12}
+            : {paddingBottom: 4}
+        }>
+        <LegLines
+          frameIndex={index}
+          trackTons={statFlags.trackTons}
+          trackHeavyTons={statFlags.trackHeavyTons}
+          trackCloses={statFlags.trackCloses}
+          locked={locked}
+        />
+      </View>
+    )
+  }
 
   function sideMetaExtras(side: 'home' | 'away') {
     const palette = side === 'home' ? theme.home : theme.away
@@ -370,6 +394,7 @@ export default function Frame({
             trackTons={statFlags.trackTons}
             trackHeavyTons={statFlags.trackHeavyTons}
             trackCloses={statFlags.trackCloses}
+            hideStats={hidePlayerStats}
             layout="ledger"
             refreshing={refreshing}
             ink={theme.home.ink}
@@ -425,6 +450,7 @@ export default function Frame({
             trackTons={statFlags.trackTons}
             trackHeavyTons={statFlags.trackHeavyTons}
             trackCloses={statFlags.trackCloses}
+            hideStats={hidePlayerStats}
             layout="ledger"
             refreshing={refreshing}
             ink={theme.away.ink}
@@ -432,6 +458,7 @@ export default function Frame({
           />
           {sideMetaExtras('away')}
         </View>
+        {seriesLegLines({padded: false})}
       </View>,
       {showSharedFirstDart: false},
     )
@@ -486,6 +513,7 @@ export default function Frame({
             trackTons={statFlags.trackTons}
             trackHeavyTons={statFlags.trackHeavyTons}
             trackCloses={statFlags.trackCloses}
+            hideStats={hidePlayerStats}
             layout="chips"
             focusedSlot={focusHome}
             onFocusSlot={setFocusHome}
@@ -558,6 +586,7 @@ export default function Frame({
             trackTons={statFlags.trackTons}
             trackHeavyTons={statFlags.trackHeavyTons}
             trackCloses={statFlags.trackCloses}
+            hideStats={hidePlayerStats}
             layout="chips"
             focusedSlot={focusAway}
             onFocusSlot={setFocusAway}
@@ -568,6 +597,7 @@ export default function Frame({
           {sideMetaExtras('away')}
           {winFor('away')}
         </View>
+        {seriesLegLines({padded: false})}
       </View>,
       {showSharedFirstDart: false},
     )
@@ -593,60 +623,65 @@ export default function Frame({
   }
 
   return cardShell(
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'stretch',
-        gap: 8,
-        paddingHorizontal: 10,
-        paddingBottom: 10,
-      }}>
-      <View style={panel('home')}>
-        <Player
-          teamId={homeTeamId ?? 0}
-          side="home"
-          frameIndex={index}
-          frameNumber={item.frameNumber}
-          frameType={frameType}
-          minPlayers={minPlayers}
-          maxPlayers={maxPlayers}
-          noPlayers={minPlayers}
-          playerIds={live.homePlayerIds}
-          trackStats={trackStats}
-          trackTons={statFlags.trackTons}
-          trackHeavyTons={statFlags.trackHeavyTons}
-          trackCloses={statFlags.trackCloses}
-          layout="panel"
-          refreshing={refreshing}
-          ink={theme.home.ink}
-          mark={theme.home.button}
-        />
-        {sideMetaExtras('home')}
-        {winFor('home')}
+    <>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'stretch',
+          gap: 8,
+          paddingHorizontal: 10,
+          paddingBottom: 10,
+        }}>
+        <View style={panel('home')}>
+          <Player
+            teamId={homeTeamId ?? 0}
+            side="home"
+            frameIndex={index}
+            frameNumber={item.frameNumber}
+            frameType={frameType}
+            minPlayers={minPlayers}
+            maxPlayers={maxPlayers}
+            noPlayers={minPlayers}
+            playerIds={live.homePlayerIds}
+            trackStats={trackStats}
+            trackTons={statFlags.trackTons}
+            trackHeavyTons={statFlags.trackHeavyTons}
+            trackCloses={statFlags.trackCloses}
+            hideStats={hidePlayerStats}
+            layout="panel"
+            refreshing={refreshing}
+            ink={theme.home.ink}
+            mark={theme.home.button}
+          />
+          {sideMetaExtras('home')}
+          {winFor('home')}
+        </View>
+        <View style={panel('away')}>
+          <Player
+            teamId={awayTeamId ?? 0}
+            side="away"
+            frameIndex={index}
+            frameNumber={item.frameNumber}
+            frameType={frameType}
+            minPlayers={minPlayers}
+            maxPlayers={maxPlayers}
+            noPlayers={minPlayers}
+            playerIds={live.awayPlayerIds}
+            trackStats={trackStats}
+            trackTons={statFlags.trackTons}
+            trackHeavyTons={statFlags.trackHeavyTons}
+            trackCloses={statFlags.trackCloses}
+            hideStats={hidePlayerStats}
+            layout="panel"
+            refreshing={refreshing}
+            ink={theme.away.ink}
+            mark={theme.away.button}
+          />
+          {sideMetaExtras('away')}
+          {winFor('away')}
+        </View>
       </View>
-      <View style={panel('away')}>
-        <Player
-          teamId={awayTeamId ?? 0}
-          side="away"
-          frameIndex={index}
-          frameNumber={item.frameNumber}
-          frameType={frameType}
-          minPlayers={minPlayers}
-          maxPlayers={maxPlayers}
-          noPlayers={minPlayers}
-          playerIds={live.awayPlayerIds}
-          trackStats={trackStats}
-          trackTons={statFlags.trackTons}
-          trackHeavyTons={statFlags.trackHeavyTons}
-          trackCloses={statFlags.trackCloses}
-          layout="panel"
-          refreshing={refreshing}
-          ink={theme.away.ink}
-          mark={theme.away.button}
-        />
-        {sideMetaExtras('away')}
-        {winFor('away')}
-      </View>
-    </View>,
+      {seriesLegLines()}
+    </>,
   )
 }

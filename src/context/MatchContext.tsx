@@ -1,6 +1,7 @@
 import {FrameType, MatchInfoDataType} from '@/components/Match/types'
 import {useMatch, useTeams} from '@/hooks'
 import i18n from '@/i18n'
+import {hydrateFrameLegs} from '@/lib/hydrateFrameLegs'
 import React, {createContext, useContext, useReducer} from 'react'
 import {Alert} from 'react-native'
 import {io} from 'socket.io-client'
@@ -98,6 +99,21 @@ const MatchReducer = (state: StateType, action: any) => {
       const statsKey = side === 'home' ? 'homePlayerStats' : 'awayPlayerStats'
       const ids = [...(frame[sideKey] ?? [])]
       const stats = [...(frame[statsKey] ?? [])]
+      const emptyStat = () => ({tons: 0, heavyTons: 0, closes: 0})
+      const patchLegs = (
+        mutate: (legStats: {tons: number; heavyTons: number; closes: number}[]) => void,
+      ) => {
+        if (!Array.isArray(frame.legs) || frame.legs.length === 0) return
+        frame.legs = frame.legs.map(leg => {
+          const next = {
+            ...leg,
+            homePlayerStats: [...(leg.homePlayerStats ?? [])],
+            awayPlayerStats: [...(leg.awayPlayerStats ?? [])],
+          }
+          mutate(side === 'home' ? next.homePlayerStats : next.awayPlayerStats)
+          return next
+        })
+      }
       if (!playerId || Number(playerId) <= 0) {
         if (slot >= 0 && slot < ids.length) {
           ids.splice(slot, 1)
@@ -107,15 +123,22 @@ const MatchReducer = (state: StateType, action: any) => {
           (id: number) => id != null && Number(id) > 0,
         )
         frame[statsKey] = stats
+        patchLegs(legStats => {
+          if (slot >= 0 && slot < legStats.length) legStats.splice(slot, 1)
+        })
       } else {
         const prev = Number(ids[slot] ?? 0)
         ids[slot] = playerId
         frame[sideKey] = ids
         while (stats.length <= slot) {
-          stats.push({tons: 0, heavyTons: 0, closes: 0})
+          stats.push(emptyStat())
         }
         if (prev !== Number(playerId)) {
-          stats[slot] = {tons: 0, heavyTons: 0, closes: 0}
+          stats[slot] = emptyStat()
+          patchLegs(legStats => {
+            while (legStats.length <= slot) legStats.push(emptyStat())
+            legStats[slot] = emptyStat()
+          })
         }
         frame[statsKey] = stats
       }
@@ -144,7 +167,10 @@ const MatchReducer = (state: StateType, action: any) => {
       for (const [k, v] of Object.entries(stats)) {
         if (v !== undefined) next[k] = v
       }
-      const frame = {...state.frameData[frameIndex], ...next}
+      const frame = hydrateFrameLegs({
+        ...state.frameData[frameIndex],
+        ...next,
+      } as FrameType)
       const _frameData = [...state.frameData]
       _frameData[frameIndex] = frame
       return {
@@ -158,6 +184,7 @@ const MatchReducer = (state: StateType, action: any) => {
       frame.winner = 0
       frame.homeScore = 0
       frame.awayScore = 0
+      frame.legs = []
       const _frameData = [...state.frameData]
       _frameData[frameIdx] = frame
       return {
@@ -182,9 +209,12 @@ const MatchReducer = (state: StateType, action: any) => {
       }
     }
     case 'SET_FRAMES': {
+      const frames = Array.isArray(action.payload)
+        ? action.payload.map((f: FrameType) => hydrateFrameLegs(f))
+        : action.payload
       return {
         ...state,
-        frameData: action.payload,
+        frameData: frames,
       }
     }
     case 'SET_STATS': {
@@ -387,6 +417,7 @@ export const MatchProvider = (props: any) => {
               awayCloses: data.awayCloses,
               homePlayerStats: data.homePlayerStats,
               awayPlayerStats: data.awayPlayerStats,
+              legs: data.legs,
               homeScore: data.homeScore,
               awayScore: data.awayScore,
               homeBoardScore: data.homeBoardScore,
@@ -643,6 +674,7 @@ export const MatchProvider = (props: any) => {
     field: 'tons' | 'heavyTons' | 'closes' | 'games' | 'boardScore',
     delta: number,
     playerIdx: number = 0,
+    legIndex?: number,
   ) {
     const frame = state.frameData[frameIdx]
     const initial = state.matchInfo.initialFrames?.[frameIdx]
@@ -660,6 +692,7 @@ export const MatchProvider = (props: any) => {
       homeTeamId: state.matchInfo.home_team_id,
       awayTeamId: state.matchInfo.away_team_id,
       playerIdx,
+      ...(typeof legIndex === 'number' ? {legIndex} : {}),
       playerId: 0,
       winnerTeamId: 0,
       goldenBreak: false,
@@ -671,7 +704,14 @@ export const MatchProvider = (props: any) => {
     if (field === 'heavyTons') {
       if (delta < 0) {
         const statsKey = side === 'home' ? 'homePlayerStats' : 'awayPlayerStats'
-        const tons = Number(frame?.[statsKey]?.[playerIdx]?.tons ?? 0)
+        const tonsFromLeg =
+          typeof legIndex === 'number'
+            ? Number(frame?.legs?.[legIndex]?.[statsKey]?.[playerIdx]?.tons ?? 0)
+            : null
+        const tons =
+          tonsFromLeg != null
+            ? tonsFromLeg
+            : Number(frame?.[statsKey]?.[playerIdx]?.tons ?? 0)
         if (tons <= 0) return
       }
       SocketSend('framestats', {...data, field: 'tons'})
