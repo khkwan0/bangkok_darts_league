@@ -8,14 +8,33 @@ export default function Score() {
 
   let homeScore = 0
   let awayScore = 0
-  state.frameData.forEach((frame: {winner?: number}) => {
-    if (frame.winner === state.matchInfo.home_team_id) {
-      homeScore++
-    }
-    if (frame.winner === state.matchInfo.away_team_id) {
-      awayScore++
-    }
-  })
+  const homeTeamId = state.matchInfo?.home_team_id
+  const awayTeamId = state.matchInfo?.away_team_id
+
+  ;(state.frameData ?? []).forEach(
+    (frame: {
+      frameNumber?: number
+      homeScore?: number
+      awayScore?: number
+      winner?: number
+      games?: number
+    }) => {
+      // Section dividers
+      if (frame?.frameNumber === -1) return
+
+      const homeLegs = Number(frame.homeScore ?? 0)
+      const awayLegs = Number(frame.awayScore ?? 0)
+      if (homeLegs > 0 || awayLegs > 0) {
+        homeScore += Math.max(0, homeLegs)
+        awayScore += Math.max(0, awayLegs)
+        return
+      }
+
+      // Single-game rows may only have winner set (no series leg counters yet).
+      if (frame.winner === homeTeamId) homeScore++
+      else if (frame.winner === awayTeamId) awayScore++
+    },
+  )
 
   const tied = homeScore === awayScore
   const total = homeScore + awayScore
