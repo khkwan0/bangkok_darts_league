@@ -150,4 +150,6 @@ export interface FrameProps {
   index: number
   refreshing: boolean
   statsView?: import('@/lib/scoresheetStatsView').ScoresheetStatsView
+  /** First unfinished game — keep expanded (e.g. on scoresheet open). */
+  preferExpanded?: boolean
 }

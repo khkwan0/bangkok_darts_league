@@ -42,6 +42,7 @@ export default function Frame({
   index,
   refreshing,
   statsView = 'full',
+  preferExpanded = false,
 }: FrameProps) {
   const {state, UpdateFrameWin, ClearFrameWinner, UpdateFrameStats}: any =
     useMatchContext()
@@ -49,8 +50,8 @@ export default function Frame({
   const theme = useScoresheetTheme()
   const [focusHome, setFocusHome] = React.useState<number | null>(null)
   const [focusAway, setFocusAway] = React.useState<number | null>(null)
-  /** Manual expand for completed games (auto-collapses when a winner is set). */
-  const [userExpanded, setUserExpanded] = React.useState(false)
+  /** Manual expand for completed / upcoming (auto-collapses when a winner is set). */
+  const [userExpanded, setUserExpanded] = React.useState(preferExpanded)
   const livePreview = state.frameData?.[index] ?? item
   const winnerPreview = Number(livePreview?.winner ?? 0)
   const prevWinnerRef = React.useRef(winnerPreview)
@@ -58,9 +59,11 @@ export default function Frame({
     if (prevWinnerRef.current <= 0 && winnerPreview > 0) {
       setUserExpanded(false)
     }
-    if (winnerPreview <= 0) setUserExpanded(false)
     prevWinnerRef.current = winnerPreview
   }, [winnerPreview])
+  React.useEffect(() => {
+    if (preferExpanded) setUserExpanded(true)
+  }, [preferExpanded])
   const initial = state.matchInfo.initialFrames[index]
   const frameType = initial?.type
   const frameLabel = item.label || initial?.label || frameType
@@ -246,7 +249,11 @@ export default function Frame({
   const hidePlayerStats = showLegTallies
 
   const gate = resolveFrameGate(state.frameData, index)
-  const showFullBody = gate === 'active' || (gate === 'complete' && userExpanded)
+  // Active / preferExpanded stays open; completed / upcoming default collapsed but can expand.
+  const showFullBody =
+    preferExpanded || gate === 'active' || userExpanded
+  const canToggle =
+    !preferExpanded && (gate === 'complete' || gate === 'upcoming')
 
   function toggleExpanded() {
     Haptics.selectionAsync()
@@ -343,8 +350,7 @@ export default function Frame({
     )
   }
 
-  function titleBar(opts?: {collapsed?: boolean; locked?: boolean}) {
-    const canToggle = gate === 'complete'
+  function titleBar(opts?: {collapsed?: boolean}) {
     const title = (
       <Text
         style={{
@@ -361,9 +367,7 @@ export default function Frame({
         {frameLabel ? ` · ${frameLabel}` : ''}
       </Text>
     )
-    const trailing = opts?.locked ? (
-      <MCI name="lock-outline" size={18} color={theme.muted} />
-    ) : canToggle ? (
+    const trailing = canToggle ? (
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={opts?.collapsed ? t('expand') : t('collapse')}
@@ -401,7 +405,7 @@ export default function Frame({
           justifyContent: 'space-between',
           paddingHorizontal: 14,
           paddingTop: 12,
-          paddingBottom: opts?.collapsed || opts?.locked ? 12 : 8,
+          paddingBottom: opts?.collapsed ? 12 : 8,
         }}>
         {title}
         {trailing}
@@ -423,7 +427,7 @@ export default function Frame({
 
   const cardShell = (
     children: React.ReactNode,
-    opts?: {showSharedFirstDart?: boolean; collapsed?: boolean; locked?: boolean},
+    opts?: {showSharedFirstDart?: boolean; collapsed?: boolean},
   ) => (
     <View
       style={[
@@ -438,14 +442,11 @@ export default function Frame({
             : awayWon
               ? theme.away.accent
               : theme.cardBorder,
-          opacity: opts?.locked ? 0.72 : 1,
         },
         theme.shadow,
       ]}>
-      {titleBar({collapsed: opts?.collapsed, locked: opts?.locked})}
-      {!opts?.collapsed &&
-      !opts?.locked &&
-      opts?.showSharedFirstDart !== false ? (
+      {titleBar({collapsed: opts?.collapsed})}
+      {!opts?.collapsed && opts?.showSharedFirstDart !== false ? (
         <FirstDart frameIndex={index} />
       ) : null}
       {children}
@@ -497,18 +498,7 @@ export default function Frame({
     )
   }
 
-  if (gate === 'locked') {
-    return cardShell(
-      <View style={{paddingHorizontal: 14, paddingBottom: 12}}>
-        <Text style={{color: theme.muted, fontSize: 12, fontWeight: '600'}}>
-          {t('frame_locked_until_previous')}
-        </Text>
-      </View>,
-      {locked: true, showSharedFirstDart: false},
-    )
-  }
-
-  if (gate === 'complete' && !showFullBody) {
+  if (!showFullBody) {
     const homeTons = Number(live.homeTons ?? 0)
     const awayTons = Number(live.awayTons ?? 0)
     const homeHeavy = Number(live.homeHeavyTons ?? 0)
@@ -535,6 +525,9 @@ export default function Frame({
     const showHeavy = statFlags.trackHeavyTons || homeHeavy + awayHeavy > 0
     const showClosesSummary =
       statFlags.trackCloses || homeCloses.length + awayCloses.length > 0
+    const hasSummaryStats =
+      gate === 'complete' &&
+      (showTons || showHeavy || showClosesSummary || showSeries)
 
     return cardShell(
       <Pressable
@@ -542,47 +535,57 @@ export default function Frame({
         accessibilityLabel={t('expand')}
         onPress={toggleExpanded}
         style={{paddingHorizontal: 14, paddingBottom: 12, gap: 8}}>
-        <Text
-          style={{
-            color: homeWon
-              ? theme.home.accent
-              : awayWon
-                ? theme.away.accent
-                : theme.muted,
-            fontSize: 13,
-            fontWeight: '800',
-          }}>
-          {winnerLabel}
-          {winnerNames.length > 0 ? ` · ${winnerNames.join(' / ')}` : ''}
-        </Text>
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: 12,
-            alignItems: 'center',
-          }}>
-          {showTons
-            ? coloredStatPair(t('stat_abbr_tons'), homeTons, awayTons)
-            : null}
-          {showHeavy
-            ? coloredStatPair(t('stat_abbr_heavy'), homeHeavy, awayHeavy)
-            : null}
-          {showClosesSummary
-            ? coloredStatPair(
-                t('stat_abbr_closes'),
-                homeCloses.length > 0 ? homeCloses.join(', ') : '—',
-                awayCloses.length > 0 ? awayCloses.join(', ') : '—',
-              )
-            : null}
-          {showSeries
-            ? coloredStatPair(
-                t('legs'),
-                Number(live.homeScore ?? 0),
-                Number(live.awayScore ?? 0),
-              )
-            : null}
-        </View>
+        {gate === 'complete' ? (
+          <Text
+            style={{
+              color: homeWon
+                ? theme.home.accent
+                : awayWon
+                  ? theme.away.accent
+                  : theme.muted,
+              fontSize: 13,
+              fontWeight: '800',
+            }}>
+            {winnerLabel}
+            {winnerNames.length > 0 ? ` · ${winnerNames.join(' / ')}` : ''}
+          </Text>
+        ) : (
+          <Text style={{color: theme.muted, fontSize: 12, fontWeight: '600'}}>
+            {[homeNames.join(' / ') || '—', awayNames.join(' / ') || '—'].join(
+              ' vs ',
+            )}
+          </Text>
+        )}
+        {hasSummaryStats ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: 12,
+              alignItems: 'center',
+            }}>
+            {showTons
+              ? coloredStatPair(t('stat_abbr_tons'), homeTons, awayTons)
+              : null}
+            {showHeavy
+              ? coloredStatPair(t('stat_abbr_heavy'), homeHeavy, awayHeavy)
+              : null}
+            {showClosesSummary
+              ? coloredStatPair(
+                  t('stat_abbr_closes'),
+                  homeCloses.length > 0 ? homeCloses.join(', ') : '—',
+                  awayCloses.length > 0 ? awayCloses.join(', ') : '—',
+                )
+              : null}
+            {showSeries
+              ? coloredStatPair(
+                  t('legs'),
+                  Number(live.homeScore ?? 0),
+                  Number(live.awayScore ?? 0),
+                )
+              : null}
+          </View>
+        ) : null}
       </Pressable>,
       {collapsed: true, showSharedFirstDart: false},
     )

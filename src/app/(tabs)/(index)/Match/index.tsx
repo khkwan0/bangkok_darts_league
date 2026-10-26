@@ -7,6 +7,7 @@ import {
   ScoresheetStatsViewSelector,
 } from '@/components/Match/components'
 import {ScoresheetLayout} from '@/components/Match/components/ScoresheetLayout'
+import {findActiveFrameIndex} from '@/components/Match/components/frameCollapse'
 import {useScoresheetTheme} from '@/components/Match/components/scoresheetTheme'
 import { FrameType } from '@/components/Match/types'
 import { useLeagueContext } from '@/context/LeagueContext'
@@ -55,7 +56,7 @@ export default function ScoreSheet({
   const match = useMatch()
   const routeParams = useLocalSearchParams()
   const [isMounted, setIsMounted] = React.useState(false)
-  const [headerSticky, setHeaderSticky] = React.useState(true)
+  const [headerSticky, setHeaderSticky] = React.useState(false)
   const navigation = useNavigation()
   const theme = useScoresheetTheme()
   const isRegular = useIsRegularLayout()
@@ -85,9 +86,37 @@ export default function ScoreSheet({
   })()
   const frames = React.useRef<FrameType[]>([])
   const appState = React.useRef(AppState.currentState)
+  const listRef = React.useRef<FlatList<FrameType>>(null)
+  const didScrollToActiveRef = React.useRef(false)
   const [refreshing, setRefreshing] = React.useState(false)
   // Side pad only on a full-screen regular layout — not inside home’s detail pane.
   const useSidePad = isRegular && !embedded
+
+  // Allow one auto-scroll per match open.
+  React.useEffect(() => {
+    didScrollToActiveRef.current = false
+  }, [resolvedMatchId])
+
+  const activeFrameIndex = React.useMemo(
+    () => findActiveFrameIndex(state.frameData),
+    [state.frameData],
+  )
+
+  // On mount (once frames are ready), jump to the first unfinished game.
+  React.useEffect(() => {
+    if (didScrollToActiveRef.current) return
+    if (activeFrameIndex < 0) return
+    if (!Array.isArray(state.frameData) || state.frameData.length === 0) return
+    didScrollToActiveRef.current = true
+    const timer = setTimeout(() => {
+      listRef.current?.scrollToIndex({
+        index: activeFrameIndex,
+        animated: true,
+        viewPosition: 0.1,
+      })
+    }, 80)
+    return () => clearTimeout(timer)
+  }, [state.frameData, activeFrameIndex, resolvedMatchId])
 
   // Compact (closed Duo / bar-phone portrait) → Ledger; regular → Classic.
   React.useEffect(() => {
@@ -450,6 +479,7 @@ export default function ScoreSheet({
     <View style={{flex: 1, backgroundColor: theme.canvas}}>
       {headerSticky ? header : null}
       <FlatList
+        ref={listRef}
         style={{flex: 1}}
         contentContainerStyle={listContentStyle}
         refreshing={refreshing}
@@ -462,12 +492,22 @@ export default function ScoreSheet({
           </>
         }
         data={state.frameData}
+        onScrollToIndexFailed={({index}) => {
+          setTimeout(() => {
+            listRef.current?.scrollToIndex({
+              index,
+              animated: true,
+              viewPosition: 0.1,
+            })
+          }, 120)
+        }}
         renderItem={({item, index}) => (
           <Frame
             item={item}
             index={index}
             refreshing={refreshing}
             statsView={statsView}
+            preferExpanded={index === activeFrameIndex}
           />
         )}
       />

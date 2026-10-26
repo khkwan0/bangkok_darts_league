@@ -1,6 +1,6 @@
 import type {FrameType, PlayerLegStat} from '@/components/Match/types'
 
-export type FrameGate = 'section' | 'locked' | 'active' | 'complete'
+export type FrameGate = 'section' | 'upcoming' | 'active' | 'complete'
 
 function isPlayable(frame: FrameType | undefined | null): boolean {
   return frame != null && Number(frame.frameNumber) !== -1
@@ -10,7 +10,7 @@ export function isFrameComplete(frame: FrameType | undefined | null): boolean {
   return Number(frame?.winner ?? 0) > 0
 }
 
-/** First unfinished playable frame whose prior playable frames are all complete. */
+/** First unfinished playable frame — auto-expanded on the scoresheet. */
 export function findActiveFrameIndex(
   frames: FrameType[] | undefined | null,
 ): number {
@@ -18,15 +18,7 @@ export function findActiveFrameIndex(
   for (let i = 0; i < list.length; i++) {
     if (!isPlayable(list[i])) continue
     if (isFrameComplete(list[i])) continue
-    let blocked = false
-    for (let j = 0; j < i; j++) {
-      if (!isPlayable(list[j])) continue
-      if (!isFrameComplete(list[j])) {
-        blocked = true
-        break
-      }
-    }
-    if (!blocked) return i
+    return i
   }
   return -1
 }
@@ -38,9 +30,8 @@ export function resolveFrameGate(
   const frame = frames?.[index]
   if (!isPlayable(frame)) return 'section'
   if (isFrameComplete(frame)) return 'complete'
-  const active = findActiveFrameIndex(frames)
-  if (active === index) return 'active'
-  return 'locked'
+  if (findActiveFrameIndex(frames) === index) return 'active'
+  return 'upcoming'
 }
 
 function slotCloses(stats: PlayerLegStat[] | undefined): number[] {
