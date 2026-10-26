@@ -72,9 +72,13 @@ function TeamMark({team}: {team: TeamType}) {
 function TeamCard({
   team,
   seasonId,
+  selected,
+  onSelectTeam,
 }: {
   team: TeamType
   seasonId: number | null
+  selected?: boolean
+  onSelectTeam?: (teamId: number, seasonId: number | null) => void
 }) {
   const colors = useStatColors()
   const {t} = useTranslation()
@@ -83,6 +87,10 @@ function TeamCard({
   const playersLabel = `${count} ${count === 1 ? t('player') : t('players')}`
 
   function handlePress() {
+    if (onSelectTeam) {
+      onSelectTeam(team.id, seasonId)
+      return
+    }
     router.push(
       {
         pathname: './Team',
@@ -103,6 +111,7 @@ function TeamCard({
     <View style={{paddingHorizontal: 16, paddingBottom: 12}}>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{selected: !!selected}}
         onPress={handlePress}
         style={({pressed}) => ({opacity: pressed ? 0.75 : 1})}>
         <View
@@ -110,8 +119,8 @@ function TeamCard({
             flexDirection: 'row',
             alignItems: 'center',
             backgroundColor: colors.card,
-            borderColor: colors.border,
-            borderWidth: 1,
+            borderColor: selected ? colors.accent : colors.border,
+            borderWidth: selected ? 1.5 : 1,
             borderRadius: 16,
             padding: 14,
           }}>
@@ -139,7 +148,9 @@ function TeamCard({
               {playersLabel}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          {!onSelectTeam ? (
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          ) : null}
         </View>
       </Pressable>
     </View>
@@ -194,7 +205,16 @@ function TeamsHeader() {
   )
 }
 
-export default function TeamList() {
+type TeamListProps = {
+  /** When set (landscape split), select in-pane instead of pushing. */
+  onSelectTeam?: (teamId: number, seasonId: number | null) => void
+  selectedTeamId?: number | null
+}
+
+export default function TeamList({
+  onSelectTeam,
+  selectedTeamId = null,
+}: TeamListProps = {}) {
   const {state} = useLeagueContext()
   const user = state.user
   const [teams, setTeams] = React.useState<TeamType[]>([])
@@ -291,9 +311,14 @@ export default function TeamList() {
 
   const renderItem = React.useCallback(
     ({item}: {item: TeamType}) => (
-      <TeamCardMemo team={item} seasonId={seasonId} />
+      <TeamCardMemo
+        team={item}
+        seasonId={seasonId}
+        selected={selectedTeamId === item.id}
+        onSelectTeam={onSelectTeam}
+      />
     ),
-    [seasonId],
+    [seasonId, selectedTeamId, onSelectTeam],
   )
 
   const listHeader = React.useMemo(
