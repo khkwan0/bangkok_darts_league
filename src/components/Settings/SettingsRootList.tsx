@@ -333,14 +333,6 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
           onPress={() => openHref('/Settings/Forums')}
         />
         <NavDest
-          icon="chart-areaspline-variant"
-          text={t('statistics')}
-          url="/statistics"
-          iconColor="#2196F3"
-          iconBackground="rgba(33, 150, 243, 0.15)"
-          onPress={() => openHref('/statistics')}
-        />
-        <NavDest
           icon="trophy-outline"
           text={t('change_league')}
           url=""
