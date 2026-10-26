@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   useColorScheme,
   Text,
+  Pressable,
 } from 'react-native'
 import {useSeason} from '@/hooks/useSeason'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
@@ -19,6 +20,7 @@ import {
 import MatchDateItem from './MatchDateItem'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
+import {Ionicons} from '@expo/vector-icons'
 import {useTranslation} from 'react-i18next'
 import {useStatColors} from '@/components/PlayerStatistics/statUi'
 
@@ -40,9 +42,17 @@ export type SeasonSelection = ReturnType<typeof useLeagueSeasonSelection>
 
 export default function CompletedMatchesOther({
   seasonSelection,
+  onSelectMatch,
+  selectedMatchId = null,
+  onBack,
 }: {
   /** Share a parent's season chips state instead of owning one. */
   seasonSelection?: SeasonSelection
+  /** When set (regular-width split), select finalized matches in-pane. */
+  onSelectMatch?: (matchId: number) => void
+  selectedMatchId?: number | null
+  /** Optional back control above season chips (e.g. leave "all matches"). */
+  onBack?: () => void
 }) {
   const {GetCompletedMatchesBySeason} = useSeason()
   const {state} = useLeagueContext()
@@ -102,10 +112,49 @@ export default function CompletedMatchesOther({
       style={{backgroundColor: pageBg, flex: 1}}
       data={isLoading ? [] : filteredMatchDates}
       contentContainerStyle={listContentStyle}
-      renderItem={({item}) => <MatchDateItem date={item} />}
+      renderItem={({item}) => (
+        <MatchDateItem
+          date={item}
+          onSelectMatch={onSelectMatch}
+          selectedMatchId={selectedMatchId}
+        />
+      )}
       keyExtractor={(item, index) => `${index.toString()}_${item.date}`}
       ListHeaderComponent={
         <View style={{paddingHorizontal: 16, paddingTop: 8}}>
+          {onBack ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onBack}
+              style={({pressed}) => ({
+                opacity: pressed ? 0.75 : 1,
+                marginBottom: 12,
+              })}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  borderRadius: 16,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                }}>
+                <Ionicons name="chevron-back" size={18} color={colors.accent} />
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: 15,
+                    fontWeight: '600',
+                    color: colors.text,
+                  }}>
+                  {t('back')}
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
           <MiniSeasonChips
             seasons={seasons}
             seasonId={seasonId}

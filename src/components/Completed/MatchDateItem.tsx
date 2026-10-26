@@ -31,6 +31,9 @@ type MatchDateItemProps = {
     date: string
     matches: MatchRow[]
   }
+  /** When set (regular-width split), select finalized matches in-pane. */
+  onSelectMatch?: (matchId: number) => void
+  selectedMatchId?: number | null
 }
 
 function isPastUnfinalized(match: MatchRow, groupDate: string): boolean {
@@ -40,7 +43,11 @@ function isPastUnfinalized(match: MatchRow, groupDate: string): boolean {
   return matchDay < nowInBangkok().startOf('day')
 }
 
-export default function MatchDateItem({date}: MatchDateItemProps) {
+export default function MatchDateItem({
+  date,
+  onSelectMatch,
+  selectedMatchId = null,
+}: MatchDateItemProps) {
   const dateLabel = formatBangkokDateMed(date.date)
   const [show, setShow] = React.useState(false)
   const colors = useStatColors()
@@ -134,12 +141,18 @@ export default function MatchDateItem({date}: MatchDateItemProps) {
         ? date.matches.map((match, index) => {
             const final = match.match_status_id === 3
             const postponed = isPastUnfinalized(match, date.date)
+            const selected = selectedMatchId === match.match_id
             return (
               <Pressable
                 key={`${match.match_id}`}
                 accessibilityRole="button"
+                accessibilityState={{selected}}
                 onPress={() => {
                   if (final) {
+                    if (onSelectMatch) {
+                      onSelectMatch(match.match_id)
+                      return
+                    }
                     router.push({
                       pathname: '/completed/Match',
                       params: {
@@ -164,8 +177,12 @@ export default function MatchDateItem({date}: MatchDateItemProps) {
                 <View
                   style={{
                     backgroundColor: colors.card,
-                    borderColor: postponed ? POSTPONED_BADGE_TEXT : colors.border,
-                    borderWidth: 1,
+                    borderColor: postponed
+                      ? POSTPONED_BADGE_TEXT
+                      : selected
+                        ? colors.accent
+                        : colors.border,
+                    borderWidth: selected ? 1.5 : 1,
                     borderLeftWidth: 4,
                     borderLeftColor: postponed
                       ? POSTPONED_BADGE_TEXT

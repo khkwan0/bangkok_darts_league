@@ -55,7 +55,7 @@ function EmptyCompletedMessage() {
   )
 }
 
-function ShowAllMatches() {
+function ShowAllMatches({onShowAll}: {onShowAll?: () => void}) {
   const router = useRouter()
   const pathname = usePathname()
   const {t} = useTranslation()
@@ -64,9 +64,13 @@ function ShowAllMatches() {
     <View style={{paddingHorizontal: 16, paddingBottom: 20}}>
       <Pressable
         accessibilityRole="button"
-        onPress={() =>
+        onPress={() => {
+          if (onShowAll) {
+            onShowAll()
+            return
+          }
           router.push({pathname: '/completed/all', params: {from: pathname}})
-        }
+        }}
         style={({pressed}) => ({
           opacity: pressed ? 0.75 : 1,
         })}>
@@ -113,6 +117,7 @@ export default function CompletedHome() {
   const [selectedMatchId, setSelectedMatchId] = React.useState<number | null>(
     null,
   )
+  const [showAll, setShowAll] = React.useState(false)
   const listContentStyle = useTabListContentContainerStyle()
   const pageBg =
     Colors[useColorScheme() === 'dark' ? 'dark' : 'light'].background
@@ -132,6 +137,12 @@ export default function CompletedHome() {
       params: {params: JSON.stringify({matchId: id})},
     })
   }, [isRegular, router])
+
+  // Leaving regular width: drop in-pane "all matches" — compact uses stack push.
+  React.useEffect(() => {
+    if (isRegular) return
+    setShowAll(false)
+  }, [isRegular])
 
   const filteredMatches = useMemo(
     () => filterMatchesByScope(matches, scope),
@@ -162,16 +173,44 @@ export default function CompletedHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.teams, state.competition])
 
+  const handleShowAll = useCallback(() => {
+    setSelectedMatchId(null)
+    setShowAll(true)
+  }, [])
+
+  const handleBackFromAll = useCallback(() => {
+    setSelectedMatchId(null)
+    setShowAll(false)
+  }, [])
+
   if (isMiniCompetition(state.competition)) {
     return <MiniLeagueCompleted miniLeagueId={state.competition.id} />
   }
 
+  const selectInPane = isRegular ? setSelectedMatchId : undefined
+
   // Past seasons have no team-scoped results — show the full season list.
   if (seasonSelection.pastSeasonId != null) {
-    return <CompletedMatchesOther seasonSelection={seasonSelection} />
+    return (
+      <AdaptiveSplit
+        list={
+          <CompletedMatchesOther
+            seasonSelection={seasonSelection}
+            onSelectMatch={selectInPane}
+            selectedMatchId={selectedMatchId}
+          />
+        }
+        detail={
+          selectedMatchId != null ? (
+            <CompletedMatchDetails matchId={selectedMatchId} />
+          ) : null
+        }
+        emptyDetail={<EmptySplitDetail message={t('select_a_match')} />}
+      />
+    )
   }
 
-  const list = (
+  const teamList = (
     <View className="flex-1" style={{backgroundColor: pageBg}}>
       <FlatList
         style={{backgroundColor: pageBg}}
@@ -181,7 +220,7 @@ export default function CompletedHome() {
           <CompletedMatch
             item={item}
             index={index}
-            onSelectMatch={isRegular ? setSelectedMatchId : undefined}
+            onSelectMatch={selectInPane}
           />
         )}
         refreshing={refreshing}
@@ -199,7 +238,7 @@ export default function CompletedHome() {
                 />
                 <StatsScopeChips />
               </View>
-              <ShowAllMatches />
+              <ShowAllMatches onShowAll={isRegular ? handleShowAll : undefined} />
             </>
           ) : null
         }
@@ -208,6 +247,18 @@ export default function CompletedHome() {
       />
     </View>
   )
+
+  const list =
+    showAll && isRegular ? (
+      <CompletedMatchesOther
+        seasonSelection={seasonSelection}
+        onSelectMatch={selectInPane}
+        selectedMatchId={selectedMatchId}
+        onBack={handleBackFromAll}
+      />
+    ) : (
+      teamList
+    )
 
   return (
     <AdaptiveSplit
