@@ -83,6 +83,8 @@ export type FrameType = {
   noPlayers?: number
   minPlayers?: number
   maxPlayers?: number
+  /** Match-score weight for this row. Default 1. */
+  valuePerLeg?: number
   /** Series parameter: BoN length or Race-to M target */
   games?: number
   /** best_of | race_to when games > 1 */
@@ -93,6 +95,12 @@ export type FrameType = {
   trackBoardScore?: boolean
   /** Legacy: any of tons / heavy / closes. */
   trackStats?: boolean
+  /** Game-type Close: show per-leg tallies. */
+  showClose?: boolean
+  /** Game-type Score: show keypad board score. */
+  showScore?: boolean
+  /** Game-type Win: show Win button. */
+  showWin?: boolean
   homeTons?: number
   awayTons?: number
   homeHeavyTons?: number

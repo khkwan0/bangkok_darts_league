@@ -9,22 +9,14 @@ export type DivisionFormatLite = {
   mode?: MatchPlayMode
   target?: number
   frames?: number
-  /** Match-score weight per completed leg. Default 1. */
-  valuePerLeg?: number
 }
 
-/** Points awarded per completed leg. Always ≥ 1. */
+/** Points awarded per completed leg/row. Always ≥ 1. */
 export function resolveValuePerLeg(
-  format:
-    | DivisionFormatLite
-    | {valuePerLeg?: unknown; value_per_leg?: unknown}
-    | null
-    | undefined,
+  source: {valuePerLeg?: unknown; value_per_leg?: unknown} | null | undefined,
 ): number {
-  if (!format || typeof format !== 'object') return 1
-  const raw =
-    (format as {valuePerLeg?: unknown}).valuePerLeg ??
-    (format as {value_per_leg?: unknown}).value_per_leg
+  if (!source || typeof source !== 'object') return 1
+  const raw = source.valuePerLeg ?? source.value_per_leg
   const n = Math.trunc(Number(raw))
   return Number.isFinite(n) && n >= 1 ? n : 1
 }
@@ -53,7 +45,6 @@ export function parseMatchFormat(raw: unknown): DivisionFormatLite | null {
       mode,
       target: Number.isFinite(target) && (target as number) > 0 ? target : undefined,
       frames: Number.isFinite(frames) ? frames : undefined,
-      valuePerLeg: resolveValuePerLeg(record),
     }
   } catch {
     return null
@@ -73,12 +64,20 @@ export type FormatSubsection = {
   seriesMode?: FrameSeriesMode
   minPlayers?: number
   maxPlayers?: number
+  /** Match-score weight of each completed row in this section. Default 1. */
+  valuePerLeg?: number
   trackTons?: boolean
   trackHeavyTons?: boolean
   trackCloses?: boolean
   trackBoardScore?: boolean
   /** Legacy: any of tons / heavy / closes. */
   trackStats?: boolean
+  /** From game type: show per-leg tallies (tons / 180s / checkout). */
+  showClose?: boolean
+  /** From game type: show numeric-keypad board score. */
+  showScore?: boolean
+  /** From game type: show Win button. */
+  showWin?: boolean
 }
 
 export type ScoreSheetStatFlags = {
@@ -168,6 +167,78 @@ export type FrameTypeMeta = {
   track_heavy_tons?: boolean | string | number
   track_closes?: boolean | string | number
   track_board_score?: boolean | string | number
+  show_close?: boolean | string | number
+  show_score?: boolean | string | number
+  show_win?: boolean | string | number
+}
+
+export type GameTypeScoresheetFlags = {
+  showClose: boolean
+  showScore: boolean
+  showWin: boolean
+}
+
+/** Map game_types.code → Close / Score / Win scoresheet flags. */
+export function buildGameTypeFlagsByCode(
+  gameTypes: Array<{
+    code?: string
+    show_close?: boolean | string | number
+    show_score?: boolean | string | number
+    show_win?: boolean | string | number
+  }> | null | undefined,
+): Record<string, GameTypeScoresheetFlags> {
+  const map: Record<string, GameTypeScoresheetFlags> = {}
+  if (!Array.isArray(gameTypes)) return map
+  for (const gt of gameTypes) {
+    const key = String(gt?.code ?? '').trim()
+    if (!key) continue
+    map[key] = {
+      showClose: Boolean(gt.show_close),
+      showScore: Boolean(gt.show_score),
+      showWin: Boolean(gt.show_win),
+    }
+  }
+  return map
+}
+
+function readOptionalBool(
+  obj: Record<string, unknown>,
+  camel: string,
+  snake: string,
+): boolean | undefined {
+  if (obj[camel] != null) return Boolean(obj[camel])
+  if (obj[snake] != null) return Boolean(obj[snake])
+  return undefined
+}
+
+/** Resolve Close/Score/Win: section → game type by code → frame-type parent flags. */
+export function resolveScoresheetControlFlags(
+  section: Partial<FormatSubsection> | Record<string, unknown> | null | undefined,
+  typeMeta?: Partial<GameTypeScoresheetFlags> & {
+    show_close?: boolean | string | number
+    show_score?: boolean | string | number
+    show_win?: boolean | string | number
+  },
+  gameTypeFlags?: GameTypeScoresheetFlags | null,
+): GameTypeScoresheetFlags {
+  const o = (section ?? {}) as Record<string, unknown>
+  const fromSectionClose = readOptionalBool(o, 'showClose', 'show_close')
+  const fromSectionScore = readOptionalBool(o, 'showScore', 'show_score')
+  const fromSectionWin = readOptionalBool(o, 'showWin', 'show_win')
+  return {
+    showClose:
+      fromSectionClose ??
+      gameTypeFlags?.showClose ??
+      Boolean(typeMeta?.showClose ?? typeMeta?.show_close),
+    showScore:
+      fromSectionScore ??
+      gameTypeFlags?.showScore ??
+      Boolean(typeMeta?.showScore ?? typeMeta?.show_score),
+    showWin:
+      fromSectionWin ??
+      gameTypeFlags?.showWin ??
+      Boolean(typeMeta?.showWin ?? typeMeta?.show_win),
+  }
 }
 
 /** Map frame_types.short_name → no_players (min) for scoresheet slot counts. */
@@ -200,6 +271,9 @@ export function buildFrameTypeMetaByType(
     trackHeavyTons: boolean
     trackCloses: boolean
     trackBoardScore: boolean
+    showClose: boolean
+    showScore: boolean
+    showWin: boolean
   }
 > {
   const map: Record<
@@ -214,6 +288,9 @@ export function buildFrameTypeMetaByType(
       trackHeavyTons: boolean
       trackCloses: boolean
       trackBoardScore: boolean
+      showClose: boolean
+      showScore: boolean
+      showWin: boolean
     }
   > = {}
   if (!Array.isArray(frameTypes)) return map
@@ -246,6 +323,9 @@ export function buildFrameTypeMetaByType(
       trackCloses: flags.trackCloses,
       trackBoardScore: flags.trackBoardScore,
       trackStats: anyPlayerStatFlags(flags),
+      showClose: Boolean(ft.show_close),
+      showScore: Boolean(ft.show_score),
+      showWin: Boolean(ft.show_win),
     }
   }
   return map
@@ -294,7 +374,10 @@ export function resolveFormatSubsections(raw: unknown): FormatSubsection[] {
     }
     const obj = Array.isArray(parsed) ? parsed[0] : parsed
     if (!obj || typeof obj !== 'object') return []
-    const subsections = (obj as {subsections?: unknown}).subsections
+    const root = obj as Record<string, unknown>
+    // Legacy: briefly stored valuePerLeg on the format root.
+    const legacyRootValue = resolveValuePerLeg(root)
+    const subsections = root.subsections
     if (!Array.isArray(subsections)) return []
     return subsections
       .filter(item => item && typeof item === 'object')
@@ -338,11 +421,19 @@ export function resolveFormatSubsections(raw: unknown): FormatSubsection[] {
         const flags = hasStatKey
           ? resolveScoreSheetStatFlags(section)
           : undefined
+        const showClose = readOptionalBool(section, 'showClose', 'show_close')
+        const showScore = readOptionalBool(section, 'showScore', 'show_score')
+        const showWin = readOptionalBool(section, 'showWin', 'show_win')
         return {
           frames: Number(section.frames) || 0,
           type,
           label: labelRaw || undefined,
           mfpp: Number(section.mfpp) || 1,
+          valuePerLeg: resolveValuePerLeg(
+            section.valuePerLeg != null || section.value_per_leg != null
+              ? section
+              : {valuePerLeg: legacyRootValue},
+          ),
           noPlayers:
             Number.isFinite(minPlayers) && minPlayers > 0
               ? Math.trunc(minPlayers)
@@ -366,6 +457,9 @@ export function resolveFormatSubsections(raw: unknown): FormatSubsection[] {
                 trackStats: anyPlayerStatFlags(flags),
               }
             : {}),
+          ...(showClose != null ? {showClose} : {}),
+          ...(showScore != null ? {showScore} : {}),
+          ...(showWin != null ? {showWin} : {}),
         }
       })
       .filter(section => section.frames > 0)

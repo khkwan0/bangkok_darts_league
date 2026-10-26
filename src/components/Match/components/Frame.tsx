@@ -2,7 +2,6 @@ import {useMatchContext} from '@/context/MatchContext'
 import type {ScoresheetStatsView} from '@/lib/scoresheetStatsView'
 import {
   anyPlayerStatFlags,
-  parseMatchFormat,
   resolveScoreSheetStatFlags,
   resolveValuePerLeg,
   seriesWinsNeeded,
@@ -16,6 +15,7 @@ import LegLines from './LegLines'
 import Player from './Player'
 import {useScoresheetTheme} from './scoresheetTheme'
 import StatStepper from './StatStepper'
+import StatValueInput from './StatValueInput'
 import WinButton from './WinButton'
 
 function frameKindLabel(
@@ -87,9 +87,6 @@ export default function Frame({
   }
 
   if (item.frameNumber === -1) {
-    const valuePerLeg = resolveValuePerLeg(
-      parseMatchFormat(state.matchInfo?.format),
-    )
     let homeWins = 0
     let awayWins = 0
     let homeTons = 0
@@ -108,6 +105,9 @@ export default function Frame({
     while (i >= 0 && state.frameData[i]?.frameNumber !== -1) {
       const f = state.frameData[i]
       const init = state.matchInfo.initialFrames?.[i]
+      const valuePerLeg = resolveValuePerLeg(
+        f.valuePerLeg != null ? f : init,
+      )
       if (f.winner === homeTeamId) homeWins += valuePerLeg
       if (f.winner === awayTeamId) awayWins += valuePerLeg
       homeTons += Number(f.homeTons ?? 0)
@@ -213,12 +213,15 @@ export default function Frame({
     games > 1 || seriesMode === 'race_to' || seriesMode === 'best_of'
   const seriesLabel =
     seriesMode === 'race_to' ? `Race to ${games}` : `Bo${games}`
+  const showClose = !!(item.showClose ?? initial?.showClose)
+  const showScore = !!(item.showScore ?? initial?.showScore)
+  const showWin = !!(item.showWin ?? initial?.showWin)
   /**
-   * Series: tons/180s/closes live on each leg line, not beside player names.
-   * If format flags are missing, still show leg tallies for series games.
+   * Close game-type toggle: per-leg tons/180s/closes (not inferred from series).
+   * Granular trackTons/trackHeavyTons/trackCloses still filter which steppers appear.
    */
   const showLegTallies =
-    showSeries &&
+    showClose &&
     (trackStats ||
       !hasConfiguredFlags ||
       configuredFlags.trackStats !== false)
@@ -228,7 +231,7 @@ export default function Frame({
     const palette = side === 'home' ? theme.home : theme.away
     const legs = side === 'home' ? live.homeScore : live.awayScore
     const board = side === 'home' ? live.homeBoardScore : live.awayBoardScore
-    if (!statFlags.trackBoardScore && !showSeries) return null
+    if (!showScore && !showSeries && !showLegTallies) return null
     const tallyTons = trackStats ? statFlags.trackTons : true
     const tallyHeavy = trackStats ? statFlags.trackHeavyTons : true
     const tallyCloses = trackStats ? statFlags.trackCloses : true
@@ -259,14 +262,21 @@ export default function Frame({
             justifyContent: 'center',
             gap: 8,
           }}>
-          {statFlags.trackBoardScore ? (
-            <StatStepper
+          {showScore ? (
+            <StatValueInput
               label={t('score')}
               value={Number(board ?? 0)}
               ink={palette.ink}
               accent={palette.button}
               disabled={locked}
-              onDelta={d => UpdateFrameStats(index, side, 'boardScore', d)}
+              onChange={next =>
+                UpdateFrameStats(
+                  index,
+                  side,
+                  'boardScore',
+                  next - Number(board ?? 0),
+                )
+              }
             />
           ) : null}
           {showSeries ? (
@@ -284,9 +294,9 @@ export default function Frame({
     )
   }
 
-  /** Series winners come from leg counts — no explicit Win control. */
+  /** Win button only when game-type Win toggle is on. */
   function winFor(side: 'home' | 'away') {
-    if (showSeries) return null
+    if (!showWin) return null
     const teamId = side === 'home' ? homeTeamId : awayTeamId
     const palette = side === 'home' ? theme.home : theme.away
     return (

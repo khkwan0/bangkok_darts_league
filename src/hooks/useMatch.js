@@ -22,6 +22,16 @@ export const useMatch = () => {
     }
   }
 
+  const GetGameTypes = async () => {
+    try {
+      const res = await Get('/league-game-types')
+      return Array.isArray(res) ? res : []
+    } catch (e) {
+      console.log(e)
+      return []
+    }
+  }
+
   const GetMatchDetails = async matchId => {
     try {
       const res = await Get('/match/details/' + matchId)
@@ -158,6 +168,7 @@ export const useMatch = () => {
     FinalizeMatch,
     GetFrames,
     GetFrameTypes,
+    GetGameTypes,
     GetMatchInfo,
     GetMatchDetails,
     GetMatchMetadata,

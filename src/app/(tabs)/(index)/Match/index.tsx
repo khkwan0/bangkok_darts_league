@@ -19,10 +19,12 @@ import {resolveMatchInfoFromParams} from '@/lib/matchRouteParams'
 import {
   anyPlayerStatFlags,
   buildFrameTypeMetaByType,
+  buildGameTypeFlagsByCode,
   buildNoPlayersByType,
   resolveFormatSubsections,
   resolveNoPlayers,
   resolveScoreSheetStatFlags,
+  resolveScoresheetControlFlags,
 } from '@/lib/matchFormat'
 import {hydrateFrameLegs} from '@/lib/hydrateFrameLegs'
 import {
@@ -145,11 +147,15 @@ export default function ScoreSheet({
     let cancelled = false
 
     async function initScoresheet() {
-      const frameTypes = await match.GetFrameTypes()
+      const [frameTypes, gameTypes] = await Promise.all([
+        match.GetFrameTypes(),
+        match.GetGameTypes(),
+      ])
       if (cancelled) return
 
       const noPlayersByType = buildNoPlayersByType(frameTypes)
       const metaByType = buildFrameTypeMetaByType(frameTypes)
+      const gameTypeFlagsByCode = buildGameTypeFlagsByCode(gameTypes)
       const subsections = resolveFormatSubsections(matchInfo.format)
       let frameNumber = 1
       let sectionCount = 1
@@ -187,6 +193,11 @@ export default function ScoreSheet({
                 trackStats: typeMeta?.trackStats ?? true,
               },
         )
+        const controls = resolveScoresheetControlFlags(
+          section,
+          typeMeta,
+          gameTypeFlagsByCode[section.type],
+        )
         for (let i = 0; i < section.frames; i++) {
           const _frame: FrameType = hydrateFrameLegs({
             frameNumber: frameNumber,
@@ -197,6 +208,7 @@ export default function ScoreSheet({
             noPlayers: minPlayers,
             minPlayers,
             maxPlayers,
+            valuePerLeg: section.valuePerLeg ?? 1,
             games,
             seriesMode,
             trackTons: flags.trackTons,
@@ -204,6 +216,9 @@ export default function ScoreSheet({
             trackCloses: flags.trackCloses,
             trackBoardScore: flags.trackBoardScore,
             trackStats: anyPlayerStatFlags(flags),
+            showClose: controls.showClose,
+            showScore: controls.showScore,
+            showWin: controls.showWin,
             winner: 0,
             homePlayerIds: [],
             awayPlayerIds: [],
@@ -296,6 +311,7 @@ export default function ScoreSheet({
               noPlayers: frame.noPlayers ?? template?.noPlayers,
               minPlayers: frame.minPlayers ?? template?.minPlayers,
               maxPlayers: frame.maxPlayers ?? template?.maxPlayers,
+              valuePerLeg: frame.valuePerLeg ?? template?.valuePerLeg,
               // Format template is source of truth for series length/mode.
               // Live redis often defaults games=1 on first player assign.
               games: template?.games ?? frame.games,
@@ -306,6 +322,10 @@ export default function ScoreSheet({
               trackBoardScore:
                 frame.trackBoardScore ?? template?.trackBoardScore,
               trackStats: frame.trackStats ?? template?.trackStats,
+              // Template (from game type / format) is source of truth for UI controls.
+              showClose: template?.showClose ?? frame.showClose,
+              showScore: template?.showScore ?? frame.showScore,
+              showWin: template?.showWin ?? frame.showWin,
               firstDart: Number(frame.firstDart ?? template?.firstDart ?? 0),
             })
           }

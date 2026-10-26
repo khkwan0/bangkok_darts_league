@@ -1,5 +1,5 @@
 import {useMatchContext} from '@/context/MatchContext'
-import {parseMatchFormat, resolveValuePerLeg} from '@/lib/matchFormat'
+import {resolveValuePerLeg} from '@/lib/matchFormat'
 import {Text, View} from 'react-native'
 import {useScoresheetTheme} from './scoresheetTheme'
 
@@ -7,25 +7,31 @@ export default function Score() {
   const {state}: any = useMatchContext()
   const theme = useScoresheetTheme()
 
-  const valuePerLeg = resolveValuePerLeg(
-    parseMatchFormat(state.matchInfo?.format),
-  )
-
   let homeScore = 0
   let awayScore = 0
   const homeTeamId = state.matchInfo?.home_team_id
   const awayTeamId = state.matchInfo?.away_team_id
 
   ;(state.frameData ?? []).forEach(
-    (frame: {
-      frameNumber?: number
-      homeScore?: number
-      awayScore?: number
-      winner?: number
-      games?: number
-    }) => {
+    (
+      frame: {
+        frameNumber?: number
+        homeScore?: number
+        awayScore?: number
+        winner?: number
+        games?: number
+        valuePerLeg?: number
+      },
+      index: number,
+    ) => {
       // Section dividers
       if (frame?.frameNumber === -1) return
+
+      const valuePerLeg = resolveValuePerLeg(
+        frame.valuePerLeg != null
+          ? frame
+          : state.matchInfo?.initialFrames?.[index],
+      )
 
       const homeLegs = Number(frame.homeScore ?? 0)
       const awayLegs = Number(frame.awayScore ?? 0)

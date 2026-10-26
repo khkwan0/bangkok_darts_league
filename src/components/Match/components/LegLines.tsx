@@ -207,11 +207,14 @@ export default function LegLines({
     homeCloses: live?.homeCloses,
     awayCloses: live?.awayCloses,
   }
-  const legs: LegRow[] = hydrateFrameLegs(merged).legs ?? []
+  // Series hydrates N rows; single-game Close still needs one open tallies row.
+  const legs: LegRow[] = (() => {
+    const hydrated = hydrateFrameLegs(merged).legs ?? []
+    if (hydrated.length > 0) return hydrated
+    return [{winner: null, homePlayerStats: [], awayPlayerStats: []}]
+  })()
   const playerIds =
     side === 'home' ? (merged.homePlayerIds ?? []) : (merged.awayPlayerIds ?? [])
-
-  if (legs.length === 0) return null
 
   return (
     <View style={{gap: 8, width: '100%', marginTop: 4}}>
