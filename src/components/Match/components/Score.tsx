@@ -1,10 +1,15 @@
 import {useMatchContext} from '@/context/MatchContext'
+import {parseMatchFormat, resolveValuePerLeg} from '@/lib/matchFormat'
 import {Text, View} from 'react-native'
 import {useScoresheetTheme} from './scoresheetTheme'
 
 export default function Score() {
   const {state}: any = useMatchContext()
   const theme = useScoresheetTheme()
+
+  const valuePerLeg = resolveValuePerLeg(
+    parseMatchFormat(state.matchInfo?.format),
+  )
 
   let homeScore = 0
   let awayScore = 0
@@ -25,14 +30,14 @@ export default function Score() {
       const homeLegs = Number(frame.homeScore ?? 0)
       const awayLegs = Number(frame.awayScore ?? 0)
       if (homeLegs > 0 || awayLegs > 0) {
-        homeScore += Math.max(0, homeLegs)
-        awayScore += Math.max(0, awayLegs)
+        homeScore += Math.max(0, homeLegs) * valuePerLeg
+        awayScore += Math.max(0, awayLegs) * valuePerLeg
         return
       }
 
       // Single-game rows may only have winner set (no series leg counters yet).
-      if (frame.winner === homeTeamId) homeScore++
-      else if (frame.winner === awayTeamId) awayScore++
+      if (frame.winner === homeTeamId) homeScore += valuePerLeg
+      else if (frame.winner === awayTeamId) awayScore += valuePerLeg
     },
   )
 

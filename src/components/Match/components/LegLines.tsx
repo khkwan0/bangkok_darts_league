@@ -69,13 +69,13 @@ function SideLegStats({
   }
 
   return (
-    <View style={{gap: 6, width: '100%'}}>
+    <View style={{gap: 8, width: '100%'}}>
       {slots.map((playerId, slot) => {
         const nickname =
           state?.teams?.[teamId]?.[playerId]?.nickname ?? t('player')
         const slotStat = stats[slot] ?? emptyStat()
         return (
-          <View key={`${side}-${slot}`} style={{gap: 2}}>
+          <View key={`${side}-${slot}`} style={{gap: 4, width: '100%'}}>
             {slots.length > 1 ? (
               <Text
                 numberOfLines={1}
@@ -83,22 +83,17 @@ function SideLegStats({
                   color: palette.ink,
                   fontSize: 11,
                   fontWeight: '700',
-                  textAlign: 'center',
+                  textAlign: 'left',
+                  opacity: 0.85,
                 }}>
                 {nickname}
               </Text>
             ) : null}
-            <View
-              style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-              }}>
+            {/* Full-width stacked rows — cramped 3-across wraps were hard to tap */}
+            <View style={{gap: 6, width: '100%'}}>
               {showTons ? (
                 <StatStepper
-                  size="compact"
+                  layout="inline"
                   label={t('stat_abbr_tons')}
                   value={Number(slotStat.tons ?? 0)}
                   ink={palette.ink}
@@ -118,7 +113,7 @@ function SideLegStats({
               ) : null}
               {showHeavyTons ? (
                 <StatStepper
-                  size="compact"
+                  layout="inline"
                   label={t('stat_abbr_heavy')}
                   value={Number(slotStat.heavyTons ?? 0)}
                   ink={palette.ink}
@@ -138,7 +133,7 @@ function SideLegStats({
               ) : null}
               {showCloses ? (
                 <StatValueInput
-                  size="compact"
+                  layout="inline"
                   label={t('stat_abbr_closes')}
                   value={Number(slotStat.closes ?? 0)}
                   ink={palette.ink}
@@ -219,7 +214,7 @@ export default function LegLines({
   if (legs.length === 0) return null
 
   return (
-    <View style={{gap: 6, width: '100%', marginTop: 4}}>
+    <View style={{gap: 8, width: '100%', marginTop: 4}}>
       {legs.map((leg, legIndex) => {
         const won = leg.winner === side
         const lost = leg.winner != null && leg.winner !== side
@@ -232,8 +227,8 @@ export default function LegLines({
             key={`leg-${side}-${legIndex}`}
             style={{
               borderRadius: 10,
-              paddingVertical: 8,
-              paddingHorizontal: 8,
+              paddingVertical: 10,
+              paddingHorizontal: 10,
               backgroundColor: won
                 ? palette.panelWinner
                 : lost
@@ -242,8 +237,9 @@ export default function LegLines({
               borderWidth: won ? 1.5 : 1,
               borderColor: won ? palette.accent : theme.cardBorder,
               opacity: lost ? 0.7 : 1,
-              gap: 4,
-              alignItems: 'center',
+              gap: 8,
+              alignItems: 'stretch',
+              width: '100%',
             }}>
             <Text
               style={{

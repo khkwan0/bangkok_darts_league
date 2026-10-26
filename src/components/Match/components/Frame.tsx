@@ -2,7 +2,9 @@ import {useMatchContext} from '@/context/MatchContext'
 import type {ScoresheetStatsView} from '@/lib/scoresheetStatsView'
 import {
   anyPlayerStatFlags,
+  parseMatchFormat,
   resolveScoreSheetStatFlags,
+  resolveValuePerLeg,
   seriesWinsNeeded,
 } from '@/lib/matchFormat'
 import React from 'react'
@@ -85,6 +87,9 @@ export default function Frame({
   }
 
   if (item.frameNumber === -1) {
+    const valuePerLeg = resolveValuePerLeg(
+      parseMatchFormat(state.matchInfo?.format),
+    )
     let homeWins = 0
     let awayWins = 0
     let homeTons = 0
@@ -103,16 +108,16 @@ export default function Frame({
     while (i >= 0 && state.frameData[i]?.frameNumber !== -1) {
       const f = state.frameData[i]
       const init = state.matchInfo.initialFrames?.[i]
-      if (f.winner === homeTeamId) homeWins++
-      if (f.winner === awayTeamId) awayWins++
+      if (f.winner === homeTeamId) homeWins += valuePerLeg
+      if (f.winner === awayTeamId) awayWins += valuePerLeg
       homeTons += Number(f.homeTons ?? 0)
       awayTons += Number(f.awayTons ?? 0)
       homeHeavy += Number(f.homeHeavyTons ?? 0)
       awayHeavy += Number(f.awayHeavyTons ?? 0)
       homeCloses += Number(f.homeCloses ?? 0)
       awayCloses += Number(f.awayCloses ?? 0)
-      homeLegs += Number(f.homeScore ?? 0)
-      awayLegs += Number(f.awayScore ?? 0)
+      homeLegs += Number(f.homeScore ?? 0) * valuePerLeg
+      awayLegs += Number(f.awayScore ?? 0) * valuePerLeg
       const fFlags = resolveScoreSheetStatFlags({
         trackTons: f.trackTons ?? init?.trackTons,
         trackHeavyTons: f.trackHeavyTons ?? init?.trackHeavyTons,

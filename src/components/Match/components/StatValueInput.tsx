@@ -11,6 +11,8 @@ type StatValueInputProps = {
   accent: string
   disabled?: boolean
   size?: 'default' | 'compact'
+  /** `inline` matches StatStepper full-width rows in Race-to-N leg tallies. */
+  layout?: 'stack' | 'inline'
   max?: number
   /** Return false to reject (after optional warning). */
   isValid?: (value: number) => boolean
@@ -27,6 +29,7 @@ export default function StatValueInput({
   accent,
   disabled = false,
   size = 'default',
+  layout = 'stack',
   max = 999,
   isValid,
   invalidTitle,
@@ -36,8 +39,11 @@ export default function StatValueInput({
   const {t} = useTranslation()
   const [open, setOpen] = useState(false)
   const compact = size === 'compact'
-  const font = compact ? 13 : 16
-  const labelSize = compact ? 9 : 10
+  const inline = layout === 'inline'
+  const font = inline ? 16 : compact ? 13 : 16
+  const labelSize = inline ? 11 : compact ? 9 : 10
+  const boxMinW = inline ? 56 : compact ? 40 : 48
+  const boxMinH = inline ? 32 : compact ? 28 : 32
 
   function applyValue(next: number) {
     if (isValid && !isValid(next)) {
@@ -66,49 +72,76 @@ export default function StatValueInput({
     if (next !== value) onChange(next)
   }
 
+  const labelEl = (
+    <Text
+      style={{
+        color: ink,
+        opacity: 0.7,
+        fontSize: labelSize,
+        fontWeight: '700',
+        letterSpacing: 0.4,
+        textTransform: 'uppercase',
+        marginBottom: inline ? 0 : 2,
+        flexShrink: 1,
+      }}>
+      {label}
+    </Text>
+  )
+
+  const valueBox = (
+    <View
+      style={{
+        minWidth: boxMinW,
+        minHeight: boxMinH,
+        paddingHorizontal: inline ? 10 : compact ? 6 : 8,
+        borderRadius: inline ? 8 : compact ? 6 : 8,
+        borderWidth: 1.5,
+        borderColor: accent,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+      <Text
+        style={{
+          color: ink,
+          fontSize: font,
+          fontWeight: '800',
+          fontVariant: ['tabular-nums'],
+        }}>
+        {value}
+      </Text>
+    </View>
+  )
+
   return (
     <>
       <Pressable
         disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={`Edit ${label}`}
         onPress={() => {
           if (disabled) return
           Haptics.selectionAsync()
           setOpen(true)
         }}
-        style={{alignItems: 'center', minWidth: compact ? 40 : 52, opacity: disabled ? 0.35 : 1}}>
-        <Text
-          style={{
-            color: ink,
-            opacity: 0.7,
-            fontSize: labelSize,
-            fontWeight: '700',
-            letterSpacing: 0.4,
-            textTransform: 'uppercase',
-            marginBottom: 2,
-          }}>
-          {label}
-        </Text>
-        <View
-          style={{
-            minWidth: compact ? 36 : 48,
-            minHeight: compact ? 28 : 32,
-            paddingHorizontal: compact ? 6 : 8,
-            borderRadius: compact ? 6 : 8,
-            borderWidth: 1.5,
-            borderColor: accent,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-          <Text
-            style={{
-              color: ink,
-              fontSize: font,
-              fontWeight: '800',
-              fontVariant: ['tabular-nums'],
-            }}>
-            {value}
-          </Text>
-        </View>
+        style={
+          inline
+            ? {
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                minHeight: boxMinH,
+                gap: 8,
+                opacity: disabled ? 0.35 : 1,
+              }
+            : {
+                alignItems: 'center',
+                minWidth: compact ? 48 : 56,
+                opacity: disabled ? 0.35 : 1,
+              }
+        }>
+        {labelEl}
+        {valueBox}
       </Pressable>
       <StatNumberPad
         visible={open}

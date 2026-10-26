@@ -9,6 +9,24 @@ export type DivisionFormatLite = {
   mode?: MatchPlayMode
   target?: number
   frames?: number
+  /** Match-score weight per completed leg. Default 1. */
+  valuePerLeg?: number
+}
+
+/** Points awarded per completed leg. Always ≥ 1. */
+export function resolveValuePerLeg(
+  format:
+    | DivisionFormatLite
+    | {valuePerLeg?: unknown; value_per_leg?: unknown}
+    | null
+    | undefined,
+): number {
+  if (!format || typeof format !== 'object') return 1
+  const raw =
+    (format as {valuePerLeg?: unknown}).valuePerLeg ??
+    (format as {value_per_leg?: unknown}).value_per_leg
+  const n = Math.trunc(Number(raw))
+  return Number.isFinite(n) && n >= 1 ? n : 1
 }
 
 export function parseMatchFormat(raw: unknown): DivisionFormatLite | null {
@@ -35,6 +53,7 @@ export function parseMatchFormat(raw: unknown): DivisionFormatLite | null {
       mode,
       target: Number.isFinite(target) && (target as number) > 0 ? target : undefined,
       frames: Number.isFinite(frames) ? frames : undefined,
+      valuePerLeg: resolveValuePerLeg(record),
     }
   } catch {
     return null

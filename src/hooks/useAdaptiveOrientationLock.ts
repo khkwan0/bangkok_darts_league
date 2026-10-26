@@ -6,19 +6,31 @@ import {
 } from 'expo-hinge'
 import * as ScreenOrientation from 'expo-screen-orientation'
 import {useEffect} from 'react'
-import {Platform} from 'react-native'
+import {Dimensions, Platform} from 'react-native'
+
+/** Android's common tablet bucket (sw600dp); orientation-independent. */
+const ANDROID_TABLET_SMALLEST_WIDTH_DP = 600
 
 /**
- * Portrait on bar phones; unlock rotation on iPad and on foldables
- * (iPhone Duo / Android) when the hinge is open / spanning the fold.
+ * Portrait on bar phones; unlock rotation on tablets (iPad / Android) and on
+ * foldables (iPhone Duo / Android) when the hinge is open / spanning the fold.
  *
  * Requires app.json `orientation: "default"` so Info.plist allows landscape.
  * Needs a native rebuild (expo-hinge + expo-screen-orientation).
  */
+function isTabletFormFactor(): boolean {
+  if (Platform.OS === 'ios') return Platform.isPad
+  if (Platform.OS === 'android') {
+    const {width, height} = Dimensions.get('screen')
+    return Math.min(width, height) >= ANDROID_TABLET_SMALLEST_WIDTH_DP
+  }
+  return false
+}
+
 function shouldAllowRotation(hinge: Hinge | null): boolean {
   if (Platform.OS === 'web') return true
-  // iPad already has a landscape-friendly form factor.
-  if (Platform.OS === 'ios' && Platform.isPad) return true
+  // Tablets already have a landscape-friendly form factor.
+  if (isTabletFormFactor()) return true
 
   // Foldable with a live hinge: allow when not closed / cover-only.
   if (hinge != null) {
