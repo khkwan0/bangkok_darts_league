@@ -189,7 +189,7 @@ export default function MatchPredictionsScreen() {
         {matchup.home && matchup.away ? (
           <View style={{marginTop: 16}}>
             <StatRow
-              label={t('betting_stat_record')}
+              label={t('matchup_stat_record')}
               homeVal={`${matchup.home.wins}-${matchup.home.losses}-${matchup.home.ties}`}
               awayVal={`${matchup.away.wins}-${matchup.away.losses}-${matchup.away.ties}`}
               colors={colors}
@@ -197,7 +197,7 @@ export default function MatchPredictionsScreen() {
               border={border}
             />
             <StatRow
-              label={t('betting_stat_for')}
+              label={t('matchup_stat_for')}
               homeVal={String(matchup.home.frames_for)}
               awayVal={String(matchup.away.frames_for)}
               colors={colors}
@@ -205,7 +205,7 @@ export default function MatchPredictionsScreen() {
               border={border}
             />
             <StatRow
-              label={t('betting_stat_against')}
+              label={t('matchup_stat_against')}
               homeVal={String(matchup.home.frames_against)}
               awayVal={String(matchup.away.frames_against)}
               colors={colors}

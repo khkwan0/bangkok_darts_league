@@ -39,14 +39,6 @@ export default function MatchLayout() {
         }}
       />
       <Stack.Screen
-        name="Betting/[matchId]"
-        options={{
-          title: 'Betting',
-          headerRight: () => <SettingsButton />,
-          headerBackTitle: t('back'),
-        }}
-      />
-      <Stack.Screen
         name="Predictions/[matchId]"
         options={{
           title: t('predictions_title'),

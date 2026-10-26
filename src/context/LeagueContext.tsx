@@ -65,18 +65,6 @@ interface LeagueState {
   showPredictionsOnMatchCards: boolean
   /** Local preference: Player of the Week card on home. */
   showPlayerOfTheWeek: boolean
-  /** Server opt-in for virtual betting. */
-  bettingOptedIn: boolean
-  /** Local-only hide for betting UI (does not clear server opt-in). */
-  hideBettingUi: boolean
-  /**
-   * League-level switch from /branding. When false, hide odds/wagering UI.
-   * Defaults false until branding explicitly enables it.
-   */
-  bettingEnabled: boolean
-  bettingBalance: number
-  /** Display style for posted decimal odds. */
-  bettingOddsFormat: 'european' | 'american'
   /** League-level switch from /branding for match predictions. */
   predictionsEnabled: boolean
   refreshUpcoming: boolean
@@ -121,11 +109,6 @@ const initialState: LeagueState = {
   showForumFabBadge: true,
   showPredictionsOnMatchCards: true,
   showPlayerOfTheWeek: true,
-  bettingOptedIn: false,
-  hideBettingUi: false,
-  bettingEnabled: false,
-  bettingBalance: 0,
-  bettingOddsFormat: 'european',
   predictionsEnabled: false,
   refreshUpcoming: false,
   competition: CANONICAL_COMPETITION,
@@ -148,8 +131,6 @@ const LeagueReducer = (state: any, action: any) => {
       return {
         ...state,
         user: {},
-        bettingOptedIn: false,
-        bettingBalance: 0,
       }
     }
     case 'SET_SEASON': {
@@ -308,37 +289,6 @@ const LeagueReducer = (state: any, action: any) => {
         showPlayerOfTheWeek: action.payload,
       }
     }
-    case 'SET_BETTING_OPTED_IN': {
-      return {
-        ...state,
-        bettingOptedIn: Boolean(action.payload),
-      }
-    }
-    case 'SET_HIDE_BETTING_UI': {
-      return {
-        ...state,
-        hideBettingUi: Boolean(action.payload),
-      }
-    }
-    case 'SET_BETTING_ENABLED': {
-      return {
-        ...state,
-        bettingEnabled: Boolean(action.payload),
-      }
-    }
-    case 'SET_BETTING_BALANCE': {
-      return {
-        ...state,
-        bettingBalance: Number(action.payload) || 0,
-      }
-    }
-    case 'SET_BETTING_ODDS_FORMAT': {
-      return {
-        ...state,
-        bettingOddsFormat:
-          action.payload === 'american' ? 'american' : 'european',
-      }
-    }
     case 'SET_PREDICTIONS_ENABLED': {
       return {
         ...state,
@@ -486,19 +436,6 @@ export const LeagueProvider = ({children}: any) => {
         console.error(e)
       }
     }
-    const getHideBettingUi = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('hide_betting_ui')
-        if (stored) {
-          const parsed = JSON.parse(stored)
-          if (typeof parsed?.hide === 'boolean') {
-            dispatch({type: 'SET_HIDE_BETTING_UI', payload: parsed.hide})
-          }
-        }
-      } catch (e) {
-        console.error(e)
-      }
-    }
     const getShowPredictionsOnMatchCards = async () => {
       try {
         const stored = await AsyncStorage.getItem(
@@ -533,28 +470,10 @@ export const LeagueProvider = ({children}: any) => {
         console.error(e)
       }
     }
-    const getBettingOddsFormat = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('betting_odds_format')
-        if (stored) {
-          const parsed = JSON.parse(stored)
-          if (parsed?.format === 'american' || parsed?.format === 'european') {
-            dispatch({
-              type: 'SET_BETTING_ODDS_FORMAT',
-              payload: parsed.format,
-            })
-          }
-        }
-      } catch (e) {
-        console.error(e)
-      }
-    }
     getShowLiveScores()
     getShowForumFabBadge()
-    getHideBettingUi()
     getShowPredictionsOnMatchCards()
     getShowPlayerOfTheWeek()
-    getBettingOddsFormat()
   }, [])
 
   useEffect(() => {
@@ -612,10 +531,6 @@ export const LeagueProvider = ({children}: any) => {
                 ? null
                 : null,
           },
-        })
-        dispatch({
-          type: 'SET_BETTING_ENABLED',
-          payload: json?.data?.betting_enabled === true,
         })
         dispatch({
           type: 'SET_PREDICTIONS_ENABLED',

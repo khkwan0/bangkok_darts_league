@@ -18,7 +18,6 @@ import {
 } from '@/types/competition'
 import {useAccount} from '@/hooks/useAccount'
 import {useAnnouncements} from '@/hooks/useAnnouncements'
-import {useBetting} from '@/hooks/useBetting'
 import i18n from '@/i18n'
 import {
   setHasUnreadAnnouncements,
@@ -63,7 +62,6 @@ export default function TabLayout() {
   const colorScheme = useColorScheme() ?? 'light'
   const {state, dispatch} = useLeagueContext()
   const account = useAccount()
-  const {refreshAccount} = useBetting()
   const {
     markRead,
     syncReads,
@@ -145,12 +143,6 @@ export default function TabLayout() {
       hasUnread,
     }
   })
-
-  // Restore betting opt-in / balance from DB after login or reinstall.
-  React.useEffect(() => {
-    if (!state.user?.id) return
-    void refreshAccount()
-  }, [state.user?.id, refreshAccount])
 
   React.useEffect(() => {
     visibleAnnouncementIdRef.current = showAnnouncementDialog

@@ -22,7 +22,6 @@ export type QuickActionId =
   | 'statistics'
   | 'venues'
   | 'players'
-  | 'betting'
   | 'predictions'
   | 'preferences'
   | 'login'
@@ -69,7 +68,6 @@ export const ALL_QUICK_ACTIONS: QuickActionId[] = [
   'venues',
   'players',
   'coin_flip',
-  'betting',
   'predictions',
   'preferences',
   'login',
@@ -184,13 +182,6 @@ export const QUICK_ACTION_DEFS: Record<QuickActionId, QuickActionDef> = {
     iconColor: '#3B82F6',
     iconBackground: 'rgba(59, 130, 246, 0.15)',
   },
-  betting: {
-    id: 'betting',
-    labelKey: 'betting_settings',
-    icon: 'chart-line',
-    iconColor: '#10B981',
-    iconBackground: 'rgba(16, 185, 129, 0.15)',
-  },
   predictions: {
     id: 'predictions',
     labelKey: 'predictions_settings',
@@ -249,11 +240,10 @@ export function resolveFabQuickActions(
 
 /**
  * Actions offered in Settings → Preferences → Quick actions.
- * Betting is hidden from the catalog; Admin only for league admins.
+ * Admin only for league admins.
  */
 export function getPreferenceQuickActionIds(isAdmin: boolean): QuickActionId[] {
   return ALL_QUICK_ACTIONS.filter(id => {
-    if (id === 'betting') return false
     if (id === 'admin') return isAdmin
     return true
   })

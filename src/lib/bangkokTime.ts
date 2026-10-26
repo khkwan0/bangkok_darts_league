@@ -269,7 +269,7 @@ export function formatMessageCardTime(
   return formatInTimeZone(iso, timeZone, 'h:mm a')
 }
 
-/** Locale-friendly medium datetime in preferred zone (support, betting history, etc.). */
+/** Locale-friendly medium datetime in preferred zone (support history, etc.). */
 export function formatPreferredDateTime(
   iso: string,
   timeZone: string = DEFAULT_TIMEZONE,

@@ -128,22 +128,12 @@ export function QuickActionsContent({
   const visibleIds = React.useMemo(() => {
     return actionIds.filter(id => {
       if (id === 'admin') return isLeagueAdmin(user)
-      if (id === 'betting') {
-        return state.bettingEnabled && state.bettingOptedIn
-      }
       if (id === 'predictions') return state.predictionsEnabled
       if (id === 'login') return !loggedIn
       if (id === 'logout') return loggedIn
       return true
     })
-  }, [
-    actionIds,
-    user,
-    state.bettingEnabled,
-    state.bettingOptedIn,
-    state.predictionsEnabled,
-    loggedIn,
-  ])
+  }, [actionIds, user, state.predictionsEnabled, loggedIn])
 
   const go = (url: string) => {
     router.push(url as any)
@@ -199,9 +189,6 @@ export function QuickActionsContent({
         break
       case 'players':
         go('/Settings/Players')
-        break
-      case 'betting':
-        go('/Settings/Betting')
         break
       case 'predictions':
         go('/Settings/Predictions')

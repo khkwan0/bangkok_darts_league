@@ -4,7 +4,6 @@ import {ThemedText as Text} from '@/components/ThemedText'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useAccount} from '@/hooks/useAccount'
 import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
-import {useBetting} from '@/hooks/useBetting'
 import {useSettingsSplitLayout} from '@/hooks/useSettingsSplitLayout'
 import {useSupportTickets} from '@/hooks/useSupportTickets'
 import {
@@ -25,7 +24,6 @@ import {useTheme} from 'expo-router/react-navigation'
 import React, {useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {
-  Alert,
   Appearance,
   Image,
   Platform,
@@ -75,15 +73,10 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
   const isSplit = useSettingsSplitLayout()
   const {t} = useTranslation()
   const account = useAccount()
-  const {refreshAccount, optIn} = useBetting()
   const {getUnreadCount: getAdminSupportUnread} = useAdminSupportTickets()
   const adminSupportUnread = useAdminSupportUnreadCount()
   const {getUnreadCount: getSupportUnread} = useSupportTickets()
   const supportUnread = useSupportUnreadCount()
-  const buildTapRef = React.useRef({
-    count: 0,
-    timer: null as ReturnType<typeof setTimeout> | null,
-  })
   const [logoutPressed, setLogoutPressed] = useState(false)
 
   const user = state.user
@@ -108,13 +101,12 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
   const refreshSidebarBadges = React.useCallback(() => {
     if (user?.id) {
       void refreshSupportUnread(getSupportUnread)
-      void refreshAccount()
     }
     if (!isLeagueAdmin(user)) {
       return
     }
     void refreshAdminSupportUnread(getAdminSupportUnread)
-  }, [refreshAccount, getAdminSupportUnread, getSupportUnread, user])
+  }, [getAdminSupportUnread, getSupportUnread, user])
 
   // Compact: index screen focus. Split: list lives outside the stack, so also refresh on mount.
   useFocusEffect(
@@ -126,35 +118,6 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
     if (!isSplit) return
     refreshSidebarBadges()
   }, [isSplit, refreshSidebarBadges])
-
-  function HandleBuildTap() {
-    if (!user?.id || state.bettingOptedIn || !state.bettingEnabled) return
-    const ref = buildTapRef.current
-    if (ref.timer) clearTimeout(ref.timer)
-    ref.count += 1
-    ref.timer = setTimeout(() => {
-      ref.count = 0
-      ref.timer = null
-    }, 2000)
-    if (ref.count < 8) return
-    ref.count = 0
-    if (ref.timer) {
-      clearTimeout(ref.timer)
-      ref.timer = null
-    }
-    Alert.alert(t('betting_opt_in_title'), t('betting_opt_in_body'), [
-      {text: t('betting_opt_in_cancel'), style: 'cancel'},
-      {
-        text: t('betting_opt_in_confirm'),
-        onPress: async () => {
-          const res = await optIn()
-          if (res && 'error' in res) {
-            Alert.alert(t('betting_opt_in_failed'))
-          }
-        },
-      },
-    ])
-  }
 
   async function ToggleTheme(value: boolean) {
     try {
@@ -209,11 +172,9 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
 
         <View className="bg-gray-800/20 dark:bg-gray-200/20 rounded-xl p-4 mb-4">
           <View className="flex-row items-center justify-between mb-2">
-            <Pressable onPress={HandleBuildTap} hitSlop={8}>
-              <Text className="text-sm opacity-75">
-                {t('build')} {config.build}
-              </Text>
-            </Pressable>
+            <Text className="text-sm opacity-75">
+              {t('build')} {config.build}
+            </Text>
             <View className="flex-row items-center space-x-4 gap-x-2 bg-gray-800/30 rounded-lg p-2">
               <Feather name="sun" color={colors.text} size={18} />
               <AppSwitch value={isDark} onValueChange={ToggleTheme} />
@@ -402,17 +363,6 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
           selected={hrefIsSelected(pathname, '/Settings/CoinFlip')}
           onPress={() => openHref('/Settings/CoinFlip')}
         />
-        {state.bettingEnabled && state.bettingOptedIn ? (
-          <NavDest
-            icon="chart-line"
-            text={t('betting_settings')}
-            url="/Settings/Betting"
-            iconColor="#10B981"
-            iconBackground="rgba(16, 185, 129, 0.15)"
-            selected={hrefIsSelected(pathname, '/Settings/Betting')}
-            onPress={() => openHref('/Settings/Betting')}
-          />
-        ) : null}
         {state.predictionsEnabled ? (
           <NavDest
             icon="crystal-ball"

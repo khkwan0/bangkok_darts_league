@@ -39,11 +39,6 @@ export default function Admin() {
         messageCount={unreadCount}
       />
       <NavDest
-        icon="cash-multiple"
-        text={t('admin_betting')}
-        url="/Settings/Admin/Betting"
-      />
-      <NavDest
         icon="bullhorn-outline"
         text={t('announcements')}
         url="/Settings/Admin/Announcements"
