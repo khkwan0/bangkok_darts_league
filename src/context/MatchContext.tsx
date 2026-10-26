@@ -363,14 +363,32 @@ export const MatchProvider = (props: any) => {
     const handleFrameUpdate = (data: any) => {
       if (typeof data.type !== 'undefined') {
         if (data.type === 'win') {
-          dispatch({
-            type: 'SET_WINNER',
-            payload: {
-              frameIndex: data.frameIdx,
-              winnerTeamId: data.winnerTeamId,
-              goldenBreak: data?.goldenBreak ?? false,
-            },
-          })
+          if (
+            data.legs != null ||
+            data.homeScore != null ||
+            data.awayScore != null
+          ) {
+            dispatch({
+              type: 'SET_FRAME_STATS',
+              payload: {
+                frameIndex: data.frameIdx,
+                winner: Number(data.winnerTeamId ?? 0),
+                goldenBreak: data?.goldenBreak ?? false,
+                homeScore: data.homeScore,
+                awayScore: data.awayScore,
+                legs: data.legs,
+              },
+            })
+          } else {
+            dispatch({
+              type: 'SET_WINNER',
+              payload: {
+                frameIndex: data.frameIdx,
+                winnerTeamId: data.winnerTeamId,
+                goldenBreak: data?.goldenBreak ?? false,
+              },
+            })
+          }
         } else if (data.type === 'win_rejected') {
           const reason = String(data.reason ?? 'unknown')
           const messageKey =

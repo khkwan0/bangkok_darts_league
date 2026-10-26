@@ -1,4 +1,5 @@
 import type {FrameType, LegRow, PlayerLegStat} from '@/components/Match/types'
+import {seriesWinsNeeded} from '@/lib/matchFormat'
 
 function emptyLeg(winner: 'home' | 'away' | null = null): LegRow {
   return {winner, homePlayerStats: [], awayPlayerStats: []}
@@ -11,6 +12,10 @@ function cloneStats(stats: PlayerLegStat[] | undefined): PlayerLegStat[] {
     heavyTons: Number(s?.heavyTons ?? 0),
     closes: Number(s?.closes ?? 0),
   }))
+}
+
+function sumCloses(stats: PlayerLegStat[] | undefined): number {
+  return (stats ?? []).reduce((n, s) => n + Number(s?.closes ?? 0), 0)
 }
 
 function normalizeLeg(leg: LegRow | undefined | null): LegRow | null {
@@ -40,6 +45,10 @@ function legHasStats(leg: LegRow): boolean {
 /**
  * Series games (Race to N / BoN) always keep at least N open leg rows so tons /
  * 180s / closes can be tallied before any leg is won.
+ *
+ * Leg winners come from closes (>0) or Win — not from inventing winners off
+ * homeScore/awayScore. Close > 0 on one side marks that side; both 0 leaves
+ * any Win-assigned winner intact (server clears on close edits).
  */
 export function hydrateFrameLegs(frame: FrameType): FrameType {
   const games = Math.max(1, Math.trunc(Number(frame.games ?? 1)))
@@ -51,58 +60,42 @@ export function hydrateFrameLegs(frame: FrameType): FrameType {
     return {...frame, legs: Array.isArray(frame.legs) ? frame.legs : []}
   }
 
-  // Race to N and BoN both use N as the series parameter — always show N lines.
   const seriesLength = Math.max(games, 1)
-  const homeScore = Math.max(0, Math.trunc(Number(frame.homeScore ?? 0)))
-  const awayScore = Math.max(0, Math.trunc(Number(frame.awayScore ?? 0)))
-  const played = homeScore + awayScore
   const existing = (Array.isArray(frame.legs) ? frame.legs : [])
     .map(normalizeLeg)
     .filter((l): l is LegRow => l != null)
 
-  const next = existing.map(leg => ({
-    winner: leg.winner,
-    homePlayerStats: cloneStats(leg.homePlayerStats),
-    awayPlayerStats: cloneStats(leg.awayPlayerStats),
-  }))
+  const next = existing.map(leg => {
+    const homeCloses = sumCloses(leg.homePlayerStats)
+    const awayCloses = sumCloses(leg.awayPlayerStats)
+    let winner = leg.winner
+    if (homeCloses > 0 && awayCloses <= 0) winner = 'home'
+    else if (awayCloses > 0 && homeCloses <= 0) winner = 'away'
+    // both 0: keep Win-assigned winner (or null) from server
+    return {
+      winner,
+      homePlayerStats: cloneStats(leg.homePlayerStats),
+      awayPlayerStats: cloneStats(leg.awayPlayerStats),
+    }
+  })
 
-  // Always at least N rows; grow if more legs have been played (e.g. 2–1 in race to 2).
-  const target = Math.max(seriesLength, played, next.length)
+  const decided = next.filter(l => l.winner != null).length
+  const target = Math.max(seriesLength, decided, next.length)
   while (next.length < target) next.push(emptyLeg(null))
 
-  let homeHave = next.filter(l => l.winner === 'home').length
-  let awayHave = next.filter(l => l.winner === 'away').length
-  while (homeHave < homeScore) {
-    const open = next.findIndex(l => l.winner == null)
-    if (open >= 0) next[open] = {...next[open], winner: 'home'}
-    else next.push(emptyLeg('home'))
-    homeHave++
+  const need = seriesWinsNeeded(
+    isRaceTo ? 'race_to' : isBestOf ? 'best_of' : 'best_of',
+    seriesLength,
+  )
+  const homeHave = next.filter(l => l.winner === 'home').length
+  const awayHave = next.filter(l => l.winner === 'away').length
+  if (
+    homeHave < need &&
+    awayHave < need &&
+    !next.some(l => l.winner == null)
+  ) {
+    next.push(emptyLeg(null))
   }
-  while (awayHave < awayScore) {
-    const open = next.findIndex(l => l.winner == null)
-    if (open >= 0) next[open] = {...next[open], winner: 'away'}
-    else next.push(emptyLeg('away'))
-    awayHave++
-  }
-  while (homeHave > homeScore) {
-    for (let i = next.length - 1; i >= 0; i--) {
-      if (next[i].winner === 'home') {
-        next[i] = {...next[i], winner: null}
-        homeHave--
-        break
-      }
-    }
-  }
-  while (awayHave > awayScore) {
-    for (let i = next.length - 1; i >= 0; i--) {
-      if (next[i].winner === 'away') {
-        next[i] = {...next[i], winner: null}
-        awayHave--
-        break
-      }
-    }
-  }
-  while (next.length < seriesLength) next.push(emptyLeg(null))
 
   if (
     !next.some(legHasStats) &&

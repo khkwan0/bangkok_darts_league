@@ -14,7 +14,6 @@ import FirstDart from './FirstDart'
 import LegLines from './LegLines'
 import Player from './Player'
 import {useScoresheetTheme} from './scoresheetTheme'
-import StatStepper from './StatStepper'
 import StatValueInput from './StatValueInput'
 import WinButton from './WinButton'
 
@@ -231,6 +230,7 @@ export default function Frame({
     const palette = side === 'home' ? theme.home : theme.away
     const legs = side === 'home' ? live.homeScore : live.awayScore
     const board = side === 'home' ? live.homeBoardScore : live.awayBoardScore
+    // Legs are derived from closes / Win — no manual +/- counter.
     if (!showScore && !showSeries && !showLegTallies) return null
     const tallyTons = trackStats ? statFlags.trackTons : true
     const tallyHeavy = trackStats ? statFlags.trackHeavyTons : true
@@ -260,6 +260,7 @@ export default function Frame({
             flexDirection: 'row',
             flexWrap: 'wrap',
             justifyContent: 'center',
+            alignItems: 'center',
             gap: 8,
           }}>
           {showScore ? (
@@ -280,14 +281,16 @@ export default function Frame({
             />
           ) : null}
           {showSeries ? (
-            <StatStepper
-              label={t('legs')}
-              value={Number(legs ?? 0)}
-              ink={palette.ink}
-              accent={palette.button}
-              disabled={locked}
-              onDelta={d => UpdateFrameStats(index, side, 'games', d)}
-            />
+            <Text
+              style={{
+                color: palette.ink,
+                fontSize: 13,
+                fontWeight: '800',
+                fontVariant: ['tabular-nums'],
+                opacity: 0.85,
+              }}>
+              {t('legs')} {Number(legs ?? 0)}
+            </Text>
           ) : null}
         </View>
       </View>

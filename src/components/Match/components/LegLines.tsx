@@ -13,7 +13,7 @@ import StatValueInput from './StatValueInput'
 
 type Props = {
   frameIndex: number
-  /** Only this side’s tallies (lives next to that side’s Legs stepper). */
+  /** Only this side’s per-leg tallies (closes decide the leg winner). */
   side: 'home' | 'away'
   /** From format template — live redis frames often omit these. */
   games?: number
@@ -28,6 +28,10 @@ function emptyStat(): PlayerLegStat {
   return {tons: 0, heavyTons: 0, closes: 0}
 }
 
+function sumCloses(stats: PlayerLegStat[] | undefined): number {
+  return (stats ?? []).reduce((n, s) => n + Number(s?.closes ?? 0), 0)
+}
+
 function SideLegStats({
   frameIndex,
   legIndex,
@@ -38,6 +42,7 @@ function SideLegStats({
   showHeavyTons,
   showCloses,
   locked,
+  closeDisabled,
 }: {
   frameIndex: number
   legIndex: number
@@ -48,6 +53,8 @@ function SideLegStats({
   showHeavyTons: boolean
   showCloses: boolean
   locked: boolean
+  /** Other side closed this leg (or won via Win) — close input is read-only. */
+  closeDisabled: boolean
 }) {
   const {state, UpdateFrameStats}: any = useMatchContext()
   const {t} = useTranslation()
@@ -138,7 +145,7 @@ function SideLegStats({
                   value={Number(slotStat.closes ?? 0)}
                   ink={palette.ink}
                   accent={palette.button}
-                  disabled={locked}
+                  disabled={locked || closeDisabled}
                   max={MAX_DART_CHECKOUT}
                   isValid={isValidDartCheckout}
                   invalidTitle={t('invalid_checkout_title')}
@@ -225,6 +232,12 @@ export default function LegLines({
           side === 'home'
             ? (leg.homePlayerStats ?? [])
             : (leg.awayPlayerStats ?? [])
+        const oppCloses =
+          side === 'home'
+            ? sumCloses(leg.awayPlayerStats)
+            : sumCloses(leg.homePlayerStats)
+        // Losing side cannot enter a close; clear the winning close to re-open.
+        const closeDisabled = lost || oppCloses > 0
         return (
           <View
             key={`leg-${side}-${legIndex}`}
@@ -265,6 +278,7 @@ export default function LegLines({
               showHeavyTons={trackHeavyTons}
               showCloses={trackCloses}
               locked={locked}
+              closeDisabled={closeDisabled}
             />
           </View>
         )
