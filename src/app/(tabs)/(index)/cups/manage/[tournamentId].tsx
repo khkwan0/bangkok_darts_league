@@ -647,10 +647,13 @@ export default function CupsManageDetailScreen() {
         {!isDraft ? (
           <Pressable
             onPress={() =>
-              router.push({
-                pathname: '/(tabs)/(index)/cups/[id]',
-                params: {id: String(tournamentId)},
-              })
+              router.push(
+                {
+                  pathname: '../[id]',
+                  params: {id: String(tournamentId)},
+                },
+                {relativeToDirectory: true},
+              )
             }
             style={{
               paddingHorizontal: 12,

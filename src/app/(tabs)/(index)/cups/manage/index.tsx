@@ -132,12 +132,15 @@ export default function CupsManageScreen() {
       <View style={{paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4}}>
         <Pressable
           onPress={() =>
-            router.push({
-              pathname: '/(tabs)/(index)/cups/manage/create',
-              params: miniLeagueId
-                ? {mini_league_id: String(miniLeagueId)}
-                : {},
-            })
+            router.push(
+              {
+                pathname: './create',
+                params: miniLeagueId
+                  ? {mini_league_id: String(miniLeagueId)}
+                  : {},
+              },
+              {relativeToDirectory: true},
+            )
           }
           style={({pressed}) => ({opacity: pressed ? 0.9 : 1})}>
           <LinearGradient
@@ -207,15 +210,18 @@ export default function CupsManageScreen() {
           <TournamentListCard
             item={item}
             onPress={() =>
-              router.push({
-                pathname: '/(tabs)/(index)/cups/manage/[tournamentId]',
-                params: {
-                  tournamentId: String(item.id),
-                  ...(miniLeagueId
-                    ? {mini_league_id: String(miniLeagueId)}
-                    : {}),
+              router.push(
+                {
+                  pathname: './[tournamentId]',
+                  params: {
+                    tournamentId: String(item.id),
+                    ...(miniLeagueId
+                      ? {mini_league_id: String(miniLeagueId)}
+                      : {}),
+                  },
                 },
-              })
+                {relativeToDirectory: true},
+              )
             }
           />
         )}

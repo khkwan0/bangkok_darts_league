@@ -411,15 +411,18 @@ export default function CupsCreateScreen() {
       }
       const res = await api.adminCreate(scope, payload)
       if (res?.status === 'ok' && res.id) {
-        router.replace({
-          pathname: '/(tabs)/(index)/cups/manage/[tournamentId]',
-          params: {
-            tournamentId: String(res.id),
-            ...(effectiveMiniId
-              ? {mini_league_id: String(effectiveMiniId)}
-              : {}),
+        router.replace(
+          {
+            pathname: './[tournamentId]',
+            params: {
+              tournamentId: String(res.id),
+              ...(effectiveMiniId
+                ? {mini_league_id: String(effectiveMiniId)}
+                : {}),
+            },
           },
-        })
+          {relativeToDirectory: true},
+        )
       } else {
         Alert.alert('Error', res?.error || 'Could not create tournament')
       }

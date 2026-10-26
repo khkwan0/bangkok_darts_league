@@ -169,7 +169,28 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
       }}>
       <View className="flex-1">
         {showPaneTitle ? (
-          <Text className="mb-3 text-2xl font-bold">{t('settings')}</Text>
+          <View className="mb-3 flex-row items-center justify-between gap-3">
+            <Text className="flex-1 text-2xl font-bold">{t('settings')}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('close')}
+              hitSlop={8}
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back()
+                } else {
+                  router.replace('/(tabs)' as any)
+                }
+              }}
+              className="rounded-full p-2"
+              style={{
+                backgroundColor: isDark
+                  ? 'rgba(255, 255, 255, 0.12)'
+                  : 'rgba(0, 0, 0, 0.06)',
+              }}>
+              <MCI name="close" size={22} color={colors.text} />
+            </Pressable>
+          </View>
         ) : null}
 
         <View className="bg-gray-800/20 dark:bg-gray-200/20 rounded-xl p-4 mb-4">
@@ -287,10 +308,11 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
         <NavDest
           icon="trophy"
           text={t('tournaments')}
-          url="/(tabs)/(index)/cups"
+          url="/Settings/Tournaments"
           iconColor="#B45309"
           iconBackground="rgba(180, 83, 9, 0.15)"
-          onPress={() => openHref('/(tabs)/(index)/cups')}
+          selected={hrefIsSelected(pathname, '/Settings/Tournaments')}
+          onPress={() => openHref('/Settings/Tournaments')}
         />
         <NavDest
           icon="bullhorn-outline"
