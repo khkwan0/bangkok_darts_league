@@ -594,7 +594,6 @@ function TabsWithLiveScoresAccessory({
   showCompetitionAccessory: boolean
 }) {
   const showLiveAccessory = useShowLiveScoresAccessory()
-  // Bar phones: center FAB-style quick actions. Regular (Duo/iPad): system More look.
   // Trigger order stays static — reordering NativeTabs children remounts/crashes the host.
   const isRegular = useIsRegularLayout()
 
@@ -624,45 +623,30 @@ function TabsWithLiveScoresAccessory({
         />
         <NativeTabs.Trigger.Label>{t('statistics')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
-      {/* Center slot: quick actions (compact icon) / More (regular). */}
+      {/* Center slot: branded quick-actions image (portrait + landscape). */}
       <NativeTabs.Trigger
         name="more"
-        role={isRegular ? 'more' : undefined}
         accessibilityLabel={t('quick_actions')}
         // expo-router does not map renderingMode → Android tinting; Material then
         // SRC_IN-tints src icons and the multicolor asset disappears into the bar.
-        unstable_nativeProps={
-          !isRegular
-            ? {
-                android: {
-                  icon: {
-                    type: 'imageSource',
-                    imageSource: QUICK_ACTIONS_TAB_ICON,
-                    tinting: 'original',
-                  },
-                  selectedIcon: {
-                    type: 'imageSource',
-                    imageSource: QUICK_ACTIONS_TAB_ICON,
-                    tinting: 'original',
-                  },
-                },
-              }
-            : undefined
-        }>
-        {isRegular ? (
-          <NativeTabs.Trigger.Icon
-            sf={{
-              default: 'ellipsis.circle',
-              selected: 'ellipsis.circle.fill',
-            }}
-            md={{default: 'more_horiz', selected: 'more_horiz'}}
-          />
-        ) : (
-          <NativeTabs.Trigger.Icon
-            src={QUICK_ACTIONS_TAB_ICON}
-            renderingMode="original"
-          />
-        )}
+        unstable_nativeProps={{
+          android: {
+            icon: {
+              type: 'imageSource',
+              imageSource: QUICK_ACTIONS_TAB_ICON,
+              tinting: 'original',
+            },
+            selectedIcon: {
+              type: 'imageSource',
+              imageSource: QUICK_ACTIONS_TAB_ICON,
+              tinting: 'original',
+            },
+          },
+        }}>
+        <NativeTabs.Trigger.Icon
+          src={QUICK_ACTIONS_TAB_ICON}
+          renderingMode="original"
+        />
         {isRegular ? (
           <NativeTabs.Trigger.Label>{t('quick_actions')}</NativeTabs.Trigger.Label>
         ) : (
