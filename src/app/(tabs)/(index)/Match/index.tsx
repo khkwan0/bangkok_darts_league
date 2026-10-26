@@ -123,6 +123,20 @@ export default function ScoreSheet({
     }
   }, [resolvedMatchId, embedded, navigation, state?.matchInfo?.match_id])
 
+  // Keep the scoresheet template ref aligned with live firstDart (and other
+  // frame fields) so AppState → GetFrames merges don't wipe optimistic UI.
+  React.useEffect(() => {
+    if (!Array.isArray(state.frameData) || state.frameData.length === 0) return
+    state.frameData.forEach((f: FrameType, i: number) => {
+      if (!frames.current[i]) return
+      const liveDart = Number(f.firstDart ?? 0)
+      const refDart = Number(frames.current[i].firstDart ?? 0)
+      if (liveDart !== refDart) {
+        frames.current[i] = {...frames.current[i], firstDart: liveDart}
+      }
+    })
+  }, [state.frameData])
+
   React.useEffect(() => {
     // Listen for app state changes (background to foreground)
     const subscription = AppState.addEventListener('change', nextAppState => {
@@ -326,11 +340,18 @@ export default function ScoreSheet({
               showClose: template?.showClose ?? frame.showClose,
               showScore: template?.showScore ?? frame.showScore,
               showWin: template?.showWin ?? frame.showWin,
-              firstDart: Number(frame.firstDart ?? template?.firstDart ?? 0),
+              // Keep a locally set first dart if Redis omitted/zeroed it.
+              firstDart: (() => {
+                const fromServer = Number(frame.firstDart ?? 0)
+                if (fromServer > 0) return fromServer
+                const fromTemplate = Number(template?.firstDart ?? 0)
+                return fromTemplate > 0 ? fromTemplate : 0
+              })(),
             })
           }
         })
       }
+      frames.current = __frames
       dispatch({
         type: 'SET_FRAMES',
         payload: __frames,

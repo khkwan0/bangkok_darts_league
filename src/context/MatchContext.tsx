@@ -593,6 +593,7 @@ export const MatchProvider = (props: any) => {
       payload: {frameIndex: frameIdx, firstDart: normalized},
     })
     SocketSend('firstdart', {
+      matchId: state.matchInfo.match_id,
       frameIdx,
       frameNumber: frame?.frameNumber ?? initial?.frameNumber ?? 0,
       firstDart: normalized,
