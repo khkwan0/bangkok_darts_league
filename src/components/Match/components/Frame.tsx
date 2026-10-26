@@ -6,11 +6,18 @@ import {
   resolveValuePerLeg,
   seriesWinsNeeded,
 } from '@/lib/matchFormat'
+import MCI from '@expo/vector-icons/MaterialCommunityIcons'
+import * as Haptics from 'expo-haptics'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
-import {Text, View} from 'react-native'
+import {Pressable, Text, View} from 'react-native'
 import {FrameProps} from '../types'
 import FirstDart from './FirstDart'
+import {
+  closeValuesForSide,
+  playerNicknames,
+  resolveFrameGate,
+} from './frameCollapse'
 import LegLines from './LegLines'
 import Player from './Player'
 import {useScoresheetTheme} from './scoresheetTheme'
@@ -42,6 +49,18 @@ export default function Frame({
   const theme = useScoresheetTheme()
   const [focusHome, setFocusHome] = React.useState<number | null>(null)
   const [focusAway, setFocusAway] = React.useState<number | null>(null)
+  /** Manual expand for completed games (auto-collapses when a winner is set). */
+  const [userExpanded, setUserExpanded] = React.useState(false)
+  const livePreview = state.frameData?.[index] ?? item
+  const winnerPreview = Number(livePreview?.winner ?? 0)
+  const prevWinnerRef = React.useRef(winnerPreview)
+  React.useEffect(() => {
+    if (prevWinnerRef.current <= 0 && winnerPreview > 0) {
+      setUserExpanded(false)
+    }
+    if (winnerPreview <= 0) setUserExpanded(false)
+    prevWinnerRef.current = winnerPreview
+  }, [winnerPreview])
   const initial = state.matchInfo.initialFrames[index]
   const frameType = initial?.type
   const frameLabel = item.label || initial?.label || frameType
@@ -226,6 +245,14 @@ export default function Frame({
       configuredFlags.trackStats !== false)
   const hidePlayerStats = showLegTallies
 
+  const gate = resolveFrameGate(state.frameData, index)
+  const showFullBody = gate === 'active' || (gate === 'complete' && userExpanded)
+
+  function toggleExpanded() {
+    Haptics.selectionAsync()
+    setUserExpanded(v => !v)
+  }
+
   function sideMetaExtras(side: 'home' | 'away') {
     const palette = side === 'home' ? theme.home : theme.away
     const legs = side === 'home' ? live.homeScore : live.awayScore
@@ -316,8 +343,57 @@ export default function Frame({
     )
   }
 
-  function titleBar() {
-    return (
+  function titleBar(opts?: {collapsed?: boolean; locked?: boolean}) {
+    const canToggle = gate === 'complete'
+    const title = (
+      <Text
+        style={{
+          color: theme.muted,
+          fontSize: 12,
+          fontWeight: '800',
+          letterSpacing: 0.8,
+          textTransform: 'uppercase',
+          flex: 1,
+          paddingRight: 8,
+        }}>
+        {t('frame')} {item.frameNumber}
+        {showSeries ? ` · ${seriesLabel} (first to ${need})` : ''}
+        {frameLabel ? ` · ${frameLabel}` : ''}
+      </Text>
+    )
+    const trailing = opts?.locked ? (
+      <MCI name="lock-outline" size={18} color={theme.muted} />
+    ) : canToggle ? (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={opts?.collapsed ? t('expand') : t('collapse')}
+        hitSlop={8}
+        onPress={toggleExpanded}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingVertical: 2,
+          paddingHorizontal: 4,
+        }}>
+        {kind ? (
+          <Text style={{color: theme.muted, fontSize: 12, fontWeight: '600'}}>
+            {kind}
+          </Text>
+        ) : null}
+        <MCI
+          name={opts?.collapsed ? 'chevron-down' : 'chevron-up'}
+          size={22}
+          color={theme.muted}
+        />
+      </Pressable>
+    ) : kind ? (
+      <Text style={{color: theme.muted, fontSize: 12, fontWeight: '600'}}>
+        {kind}
+      </Text>
+    ) : null
+
+    const row = (
       <View
         style={{
           flexDirection: 'row',
@@ -325,34 +401,29 @@ export default function Frame({
           justifyContent: 'space-between',
           paddingHorizontal: 14,
           paddingTop: 12,
-          paddingBottom: 8,
+          paddingBottom: opts?.collapsed || opts?.locked ? 12 : 8,
         }}>
-        <Text
-          style={{
-            color: theme.muted,
-            fontSize: 12,
-            fontWeight: '800',
-            letterSpacing: 0.8,
-            textTransform: 'uppercase',
-            flex: 1,
-            paddingRight: 8,
-          }}>
-          {t('frame')} {item.frameNumber}
-          {showSeries ? ` · ${seriesLabel} (first to ${need})` : ''}
-          {frameLabel ? ` · ${frameLabel}` : ''}
-        </Text>
-        {kind ? (
-          <Text style={{color: theme.muted, fontSize: 12, fontWeight: '600'}}>
-            {kind}
-          </Text>
-        ) : null}
+        {title}
+        {trailing}
       </View>
     )
+
+    if (canToggle && opts?.collapsed) {
+      return (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('expand')}
+          onPress={toggleExpanded}>
+          {row}
+        </Pressable>
+      )
+    }
+    return row
   }
 
   const cardShell = (
     children: React.ReactNode,
-    opts?: {showSharedFirstDart?: boolean},
+    opts?: {showSharedFirstDart?: boolean; collapsed?: boolean; locked?: boolean},
   ) => (
     <View
       style={[
@@ -362,17 +433,160 @@ export default function Frame({
           borderRadius: 18,
           backgroundColor: theme.card,
           borderWidth: 1,
-          borderColor: theme.cardBorder,
+          borderColor: homeWon
+            ? theme.home.accent
+            : awayWon
+              ? theme.away.accent
+              : theme.cardBorder,
+          opacity: opts?.locked ? 0.72 : 1,
         },
         theme.shadow,
       ]}>
-      {titleBar()}
-      {opts?.showSharedFirstDart !== false ? (
+      {titleBar({collapsed: opts?.collapsed, locked: opts?.locked})}
+      {!opts?.collapsed &&
+      !opts?.locked &&
+      opts?.showSharedFirstDart !== false ? (
         <FirstDart frameIndex={index} />
       ) : null}
       {children}
     </View>
   )
+
+  function coloredStatPair(
+    label: string,
+    homeVal: string | number,
+    awayVal: string | number,
+  ) {
+    return (
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          flexWrap: 'wrap',
+        }}>
+        <Text
+          style={{
+            color: theme.muted,
+            fontSize: 11,
+            fontWeight: '700',
+            textTransform: 'uppercase',
+          }}>
+          {label}
+        </Text>
+        <Text
+          style={{
+            color: theme.home.accent,
+            fontSize: 13,
+            fontWeight: '800',
+            fontVariant: ['tabular-nums'],
+          }}>
+          {homeVal}
+        </Text>
+        <Text style={{color: theme.muted, fontSize: 12}}>/</Text>
+        <Text
+          style={{
+            color: theme.away.accent,
+            fontSize: 13,
+            fontWeight: '800',
+            fontVariant: ['tabular-nums'],
+          }}>
+          {awayVal}
+        </Text>
+      </View>
+    )
+  }
+
+  if (gate === 'locked') {
+    return cardShell(
+      <View style={{paddingHorizontal: 14, paddingBottom: 12}}>
+        <Text style={{color: theme.muted, fontSize: 12, fontWeight: '600'}}>
+          {t('frame_locked_until_previous')}
+        </Text>
+      </View>,
+      {locked: true, showSharedFirstDart: false},
+    )
+  }
+
+  if (gate === 'complete' && !showFullBody) {
+    const homeTons = Number(live.homeTons ?? 0)
+    const awayTons = Number(live.awayTons ?? 0)
+    const homeHeavy = Number(live.homeHeavyTons ?? 0)
+    const awayHeavy = Number(live.awayHeavyTons ?? 0)
+    const homeCloses = closeValuesForSide(live, 'home')
+    const awayCloses = closeValuesForSide(live, 'away')
+    const homeNames = playerNicknames(
+      state.teams,
+      homeTeamId,
+      live.homePlayerIds,
+    )
+    const awayNames = playerNicknames(
+      state.teams,
+      awayTeamId,
+      live.awayPlayerIds,
+    )
+    const winnerLabel = homeWon
+      ? t('frame_winner_home')
+      : awayWon
+        ? t('frame_winner_away')
+        : ''
+    const winnerNames = homeWon ? homeNames : awayWon ? awayNames : []
+    const showTons = statFlags.trackTons || homeTons + awayTons > 0
+    const showHeavy = statFlags.trackHeavyTons || homeHeavy + awayHeavy > 0
+    const showClosesSummary =
+      statFlags.trackCloses || homeCloses.length + awayCloses.length > 0
+
+    return cardShell(
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('expand')}
+        onPress={toggleExpanded}
+        style={{paddingHorizontal: 14, paddingBottom: 12, gap: 8}}>
+        <Text
+          style={{
+            color: homeWon
+              ? theme.home.accent
+              : awayWon
+                ? theme.away.accent
+                : theme.muted,
+            fontSize: 13,
+            fontWeight: '800',
+          }}>
+          {winnerLabel}
+          {winnerNames.length > 0 ? ` · ${winnerNames.join(' / ')}` : ''}
+        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 12,
+            alignItems: 'center',
+          }}>
+          {showTons
+            ? coloredStatPair(t('stat_abbr_tons'), homeTons, awayTons)
+            : null}
+          {showHeavy
+            ? coloredStatPair(t('stat_abbr_heavy'), homeHeavy, awayHeavy)
+            : null}
+          {showClosesSummary
+            ? coloredStatPair(
+                t('stat_abbr_closes'),
+                homeCloses.length > 0 ? homeCloses.join(', ') : '—',
+                awayCloses.length > 0 ? awayCloses.join(', ') : '—',
+              )
+            : null}
+          {showSeries
+            ? coloredStatPair(
+                t('legs'),
+                Number(live.homeScore ?? 0),
+                Number(live.awayScore ?? 0),
+              )
+            : null}
+        </View>
+      </Pressable>,
+      {collapsed: true, showSharedFirstDart: false},
+    )
+  }
 
   // —— Compact: stacked ledger (not 2-column) ——
   if (view === 'compact') {
