@@ -587,7 +587,7 @@ export function getFinalizeBlockReason(
   if (missingFirstDart.length > 0) {
     return {
       key: 'finalize_missing_first_dart',
-      params: {games: missingFirstDart[0], games: missingFirstDart.join(', ')},
+      params: {games: missingFirstDart.join(', ')},
     }
   }
 

@@ -756,7 +756,7 @@
   "finalize_no_frames": "ไม่พบเฟรมบนใบคะแนนนี้",
   "finalize_no_frames_decided": "ยังไม่มีเฟรมที่มีผู้ชนะ",
   "finalize_missing_first_break": "ต้องเลือกทีมที่โยนลูกแรกก่อนสรุปผล",
-  "finalize_missing_first_dart": "ต้องเลือกทีมที่โยนลูกแรกในเกม {{game}} ก่อนสรุปผล",
+  "finalize_missing_first_dart": "ต้องเลือกทีมที่โยนลูกแรกในเกม {games} ก่อนสรุปผล",
   "finalize_missing_winner": "เฟรม {frames} ยังต้องมีผู้ชนะ",
   "finalize_missing_players": "เฟรม {frames} ต้องมีผู้เล่นด้านละ {count} คน",
   "finalize_score_tied": "คะแนนเสมอกัน {home}–{away} ฝ่ายหนึ่งต้องชนะก่อนสรุปผล",

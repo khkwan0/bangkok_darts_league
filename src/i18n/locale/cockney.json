@@ -731,7 +731,7 @@
   "finalize_no_frames": "No frames found on this scoresheet.",
   "finalize_no_frames_decided": "No frames have a winner yet.",
   "finalize_missing_first_break": "Set which team throws first dart before finalizing.",
-  "finalize_missing_first_dart": "Set first dart for game {{game}} before finalizing.",
+  "finalize_missing_first_dart": "Set first dart for game(s) {games} before finalizing.",
   "finalize_missing_winner": "Frame(s) {frames} still need a winner.",
   "finalize_missing_players": "Frame(s) {frames} need {count} player(s) on each side.",
   "finalize_score_tied": "Score is tied {home}–{away}. One side must win before finalizing.",
