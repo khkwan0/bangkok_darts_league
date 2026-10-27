@@ -331,16 +331,19 @@ export default function QuickActionsPreference() {
   const {state} = useLeagueContext()
   const account = useAccount()
   const isAdmin = isLeagueAdmin(state.user)
+  const forumsEnabled = state.forumsEnabled !== false
+  const preferenceOptions = {forumsEnabled}
   const catalogIds = useMemo(
-    () => getPreferenceQuickActionIds(isAdmin),
-    [isAdmin],
+    () => getPreferenceQuickActionIds(isAdmin, preferenceOptions),
+    [isAdmin, forumsEnabled],
   )
 
   const storedFab = state.user?.preferences?.fab_quick_actions
-  const storedKey = `${JSON.stringify(storedFab ?? null)}:${isAdmin ? 1 : 0}`
+  const storedKey = `${JSON.stringify(storedFab ?? null)}:${isAdmin ? 1 : 0}:${forumsEnabled ? 1 : 0}`
   const resolved = filterPreferenceQuickActions(
     resolveFabQuickActions(storedFab),
     isAdmin,
+    preferenceOptions,
   )
   const [actions, setActions] = useState<QuickActionId[]>(resolved)
   const [syncedKey, setSyncedKey] = useState(storedKey)
@@ -413,7 +416,7 @@ export default function QuickActionsPreference() {
   const persist = useCallback(
     async (next: QuickActionId[] | null) => {
       if (next != null) {
-        next = filterPreferenceQuickActions(next, isAdmin)
+        next = filterPreferenceQuickActions(next, isAdmin, preferenceOptions)
         if (next.length === 0) next = null
       }
       if (next == null) {
@@ -421,6 +424,7 @@ export default function QuickActionsPreference() {
           filterPreferenceQuickActions(
             [...DEFAULT_FAB_QUICK_ACTIONS],
             isAdmin,
+            preferenceOptions,
           ),
         )
       } else {
@@ -428,7 +432,7 @@ export default function QuickActionsPreference() {
       }
       await account.SetFabQuickActions(next)
     },
-    [account, isAdmin],
+    [account, isAdmin, forumsEnabled],
   )
 
   function toggle(id: QuickActionId) {

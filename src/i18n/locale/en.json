@@ -217,6 +217,7 @@
   "first_name_placeholder": "Enter your first name",
   "forgot_password": "Forgot password",
   "forums": "Forums",
+  "forums_unavailable": "Forums are not available in the app right now.",
   "forums_anonymous": "Anonymous",
   "forums_edited": "Edited",
   "forums_empty": "No forums available yet.",

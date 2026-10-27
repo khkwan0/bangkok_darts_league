@@ -8,6 +8,7 @@ import {
 } from '@/components/Forums/ForumUiParts'
 import {FORUM_STAT_COLORS, forumListCardStyle, getForumAccent} from '@/components/Forums/forumUi'
 import {ThemedText as Text} from '@/components/ThemedText'
+import {useLeagueContext} from '@/context/LeagueContext'
 import {useForums} from '@/hooks/useForums'
 import {
   ensureForumUnreadBaseline,
@@ -127,6 +128,8 @@ export default function Forums() {
   const {colors} = useTheme()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
+  const {state} = useLeagueContext()
+  const forumsEnabled = state.forumsEnabled !== false
   const {getCategories, getRegistrationStatus, joinForums} = useForums()
 
   const [categories, setCategories] = React.useState<ForumCategoryWithForums[]>(
@@ -175,8 +178,9 @@ export default function Forums() {
   }, [getCategories, getRegistrationStatus, t])
 
   React.useEffect(() => {
+    if (!forumsEnabled) return
     loadForums()
-  }, [loadForums])
+  }, [loadForums, forumsEnabled])
 
   useFocusEffect(
     React.useCallback(() => {
@@ -234,6 +238,30 @@ export default function Forums() {
       pathname: '/Settings/Forums/board',
       params: {categorySlug, forumSlug: forum.slug, forumName: forum.name},
     })
+  }
+
+  if (!forumsEnabled) {
+    return (
+      <RNView
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.background,
+          paddingHorizontal: 24,
+        }}>
+        <Text
+          style={{
+            textAlign: 'center',
+            color: colors.text,
+            opacity: 0.7,
+            fontSize: 15,
+            lineHeight: 22,
+          }}>
+          {t('forums_unavailable')}
+        </Text>
+      </RNView>
+    )
   }
 
   if (loading) {

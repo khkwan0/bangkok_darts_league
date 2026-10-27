@@ -323,15 +323,17 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
           selected={hrefIsSelected(pathname, '/Settings/Announcements')}
           onPress={() => openHref('/Settings/Announcements')}
         />
-        <NavDest
-          icon="forum-outline"
-          text={t('forums')}
-          url="/Settings/Forums"
-          iconColor="#2196F3"
-          iconBackground="rgba(33, 150, 243, 0.15)"
-          selected={hrefIsSelected(pathname, '/Settings/Forums')}
-          onPress={() => openHref('/Settings/Forums')}
-        />
+        {state.forumsEnabled !== false ? (
+          <NavDest
+            icon="forum-outline"
+            text={t('forums')}
+            url="/Settings/Forums"
+            iconColor="#2196F3"
+            iconBackground="rgba(33, 150, 243, 0.15)"
+            selected={hrefIsSelected(pathname, '/Settings/Forums')}
+            onPress={() => openHref('/Settings/Forums')}
+          />
+        ) : null}
         <NavDest
           icon="trophy-outline"
           text={t('change_league')}

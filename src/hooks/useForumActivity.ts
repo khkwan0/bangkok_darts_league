@@ -6,6 +6,7 @@ import {
   latestForumPostAt,
   parseForumReadState,
   refreshForumActivity,
+  setHasNewForumPosts,
   syncGlobalForumBadge,
   type ForumReadPush,
 } from '@/lib/forumActivity'
@@ -82,7 +83,13 @@ export function useForumActivitySync() {
     })
   }, [])
 
+  const forumsEnabled = state.forumsEnabled !== false
+
   React.useEffect(() => {
+    if (!forumsEnabled) {
+      setHasNewForumPosts(false)
+      return
+    }
     refresh()
     const subscription = AppState.addEventListener('change', nextState => {
       if (nextState === 'active') {
@@ -90,7 +97,7 @@ export function useForumActivitySync() {
       }
     })
     return () => subscription.remove()
-  }, [refresh, playerId])
+  }, [refresh, playerId, forumsEnabled])
 
   return {refreshForumActivity: refresh}
 }

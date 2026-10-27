@@ -112,7 +112,9 @@ export function CustomTabBar({
   const hasNewForumPosts = useHasNewForumPosts()
   const hasSupportActivity = useHasSupportActivity()
   const showForumFabBadge =
-    (leagueState.showForumFabBadge ?? true) && hasNewForumPosts
+    leagueState.forumsEnabled !== false &&
+    (leagueState.showForumFabBadge ?? true) &&
+    hasNewForumPosts
   const showFabBadge = showForumFabBadge || hasSupportActivity
   const messageBadge =
     leagueState.messageCount > 0 ? String(leagueState.messageCount) : undefined

@@ -145,6 +145,7 @@ const Interface = () => {
       </View>
 
       {/* Forum FAB badge Section */}
+      {state.forumsEnabled !== false ? (
       <View
         style={{
           flexDirection: 'row',
@@ -171,6 +172,7 @@ const Interface = () => {
           onValueChange={handleForumFabBadgeToggle}
         />
       </View>
+      ) : null}
 
       {/* Predictions on match cards */}
       <View

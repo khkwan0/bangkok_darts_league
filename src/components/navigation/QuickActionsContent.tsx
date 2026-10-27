@@ -129,11 +129,12 @@ export function QuickActionsContent({
     return actionIds.filter(id => {
       if (id === 'admin') return isLeagueAdmin(user)
       if (id === 'predictions') return state.predictionsEnabled
+      if (id === 'forums') return state.forumsEnabled !== false
       if (id === 'login') return !loggedIn
       if (id === 'logout') return loggedIn
       return true
     })
-  }, [actionIds, user, state.predictionsEnabled, loggedIn])
+  }, [actionIds, user, state.predictionsEnabled, state.forumsEnabled, loggedIn])
 
   const go = (url: string) => {
     router.push(url as any)

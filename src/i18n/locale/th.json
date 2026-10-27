@@ -219,6 +219,7 @@
   "first_name_placeholder": "กรอกชื่อจริงของคุณ",
   "forgot_password": "ลืมรหัสผ่าน",
   "forums": "ฟอรัม",
+  "forums_unavailable": "ขณะนี้ยังไม่เปิดฟอรัมในแอป",
   "forums_anonymous": "ไม่ระบุชื่อ",
   "forums_edited": "แก้ไขแล้ว",
   "forums_empty": "ยังไม่มีฟอรัม",

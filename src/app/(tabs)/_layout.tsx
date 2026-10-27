@@ -76,7 +76,10 @@ export default function TabLayout() {
   const hasNewForumPosts = useHasNewForumPosts()
   const hasSupportActivity = useHasSupportActivity()
   const showMoreBadge =
-    ((state.showForumFabBadge ?? true) && hasNewForumPosts) || hasSupportActivity
+    (state.forumsEnabled !== false &&
+      (state.showForumFabBadge ?? true) &&
+      hasNewForumPosts) ||
+    hasSupportActivity
   const messageBadge =
     state.messageCount > 0
       ? state.messageCount > 99
