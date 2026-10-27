@@ -135,11 +135,19 @@ export default function Preferences() {
               iconBackground="rgba(59, 130, 246, 0.15)"
             />
             <PreferenceRow
+              icon="qrcode"
+              label={t('my_qr_code')}
+              route="/Settings/Preferences/ProfileQr"
+              iconColor="#7C3AED"
+              iconBackground="rgba(124, 58, 237, 0.15)"
+            />
+            <PreferenceRow
               icon="delete-outline"
               label={t('delete_account')}
               route="/Settings/Preferences/DeleteAccount"
               iconColor="#ef4444"
               iconBackground="rgba(239, 68, 68, 0.15)"
+              showDivider={false}
             />
           </View>
         </View>

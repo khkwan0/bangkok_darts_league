@@ -534,7 +534,7 @@ export function CompetitionPickerModal() {
               selected={isCanonical}
               onPress={() => select(CANONICAL_COMPETITION)}
               radioColor={isCanonical ? '#FFD54F' : MAIN}
-              title={state.leagueName ?? ''}
+              title={state.leagueName}
               subtitle={t('official_season_table')}
               titleColor={isCanonical ? '#fff' : textColor}
               subtitleColor={

@@ -195,11 +195,9 @@ export default function AuthHome() {
             className="w-32 h-32 mb-8"
             resizeMode="contain"
           />
-          {leagueState.leagueName ? (
-            <Text type="title" className="text-center text-2xl mb-2">
-              {leagueState.leagueName}
-            </Text>
-          ) : null}
+          <Text type="title" className="text-center text-2xl mb-2">
+            {leagueState.leagueName}
+          </Text>
           <Text className="text-center text-gray-600 dark:text-gray-400 mb-12">
             Sign in to access your account
           </Text>

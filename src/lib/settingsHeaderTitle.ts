@@ -18,6 +18,7 @@ export function settingsHeaderTitleKey(pathname: string): string {
     ['/Settings/Venues', 'venues'],
     ['/Settings/Players', 'players'],
     ['/Settings/Predictions', 'predictions_settings'],
+    ['/Settings/Preferences/ProfileQr', 'my_qr_code'],
     ['/Settings/Preferences', 'preferences'],
     ['/Settings/Teams', 'teams'],
     ['/Settings/Tournaments', 'tournaments'],

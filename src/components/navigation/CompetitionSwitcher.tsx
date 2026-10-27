@@ -36,10 +36,8 @@ export function CompetitionSwitcher({title, compact = true}: Props) {
   const competition = state.competition
   const canonical = isCanonicalCompetition(competition)
   const modeLabel = competitionModeLabel(competition)
-  // Hide title until branding resolves (or timeout → hardcoded fallback).
   const label =
-    title ||
-    competitionDisplayName(competition, state.leagueName ?? '')
+    title || competitionDisplayName(competition, state.leagueName)
 
   const palette = getCompetitionPalette(competition, isDark)
   const accent = palette.accent
@@ -69,9 +67,6 @@ export function CompetitionSwitcher({title, compact = true}: Props) {
   }, [navigation, softHeader, labelOnSoft, titleMaxWidth])
 
   if (canonical) {
-    if (!label) {
-      return <View style={{maxWidth: titleMaxWidth, minHeight: 22}} />
-    }
     return (
       <Pressable
         onPress={openCompetitionPicker}

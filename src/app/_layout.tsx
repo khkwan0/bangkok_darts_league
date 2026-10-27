@@ -372,6 +372,13 @@ function RootLayout() {
                       name="history"
                       options={{title: t('history')}}
                     />
+                    <Stack.Screen
+                      name="player/[id]"
+                      options={{
+                        title: t('player_profile'),
+                        headerBackTitle: t('back'),
+                      }}
+                    />
                   </Stack>
                 </MatchProvider>
               </LayoutModeProvider>
