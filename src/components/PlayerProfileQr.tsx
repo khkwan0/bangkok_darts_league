@@ -2,16 +2,70 @@ import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView} from '@/components/ThemedView'
 import {playerProfileUniversalUrl} from '@/lib/playerDeepLink'
 import {useTheme} from 'expo-router/react-navigation'
+import QRCode from 'qrcode'
 import React, {useMemo} from 'react'
 import {useTranslation} from 'react-i18next'
-import {Pressable, Share, View, useColorScheme} from 'react-native'
-import QRCode from 'react-native-qrcode-svg'
+import {Pressable, Share, View} from 'react-native'
 
 type Props = {
   playerId: number
   /** Optional display name shown under the QR. */
   playerName?: string | null
   size?: number
+}
+
+/** Pure-JS QR (no react-native-svg) so it works over OTA without a native rebuild. */
+function QrMatrix({
+  value,
+  size,
+  color = '#111111',
+  backgroundColor = '#ffffff',
+}: {
+  value: string
+  size: number
+  color?: string
+  backgroundColor?: string
+}) {
+  const cells = useMemo(() => {
+    const qr = QRCode.create(value, {errorCorrectionLevel: 'M'})
+    const n = qr.modules.size
+    const rows: boolean[][] = []
+    for (let y = 0; y < n; y++) {
+      const row: boolean[] = []
+      for (let x = 0; x < n; x++) {
+        row.push(Boolean(qr.modules.get(y, x)))
+      }
+      rows.push(row)
+    }
+    return rows
+  }, [value])
+
+  const n = cells.length || 1
+  const cell = size / n
+
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        backgroundColor,
+      }}>
+      {cells.map((row, y) => (
+        <View key={y} style={{flexDirection: 'row', height: cell}}>
+          {row.map((dark, x) => (
+            <View
+              key={x}
+              style={{
+                width: cell,
+                height: cell,
+                backgroundColor: dark ? color : backgroundColor,
+              }}
+            />
+          ))}
+        </View>
+      ))}
+    </View>
+  )
 }
 
 export default function PlayerProfileQr({
@@ -21,17 +75,12 @@ export default function PlayerProfileQr({
 }: Props) {
   const {t} = useTranslation()
   const {colors} = useTheme()
-  const scheme = useColorScheme()
   const url = useMemo(() => playerProfileUniversalUrl(playerId), [playerId])
-  const qrBg = scheme === 'dark' ? '#ffffff' : '#ffffff'
-  const qrFg = '#111111'
 
   async function handleShare() {
     try {
       await Share.share({
-        message: playerName
-          ? `${playerName}\n${url}`
-          : url,
+        message: playerName ? `${playerName}\n${url}` : url,
         url,
       })
     } catch (e) {
@@ -49,14 +98,8 @@ export default function PlayerProfileQr({
       </Text>
       <View
         className="p-4 rounded-2xl mb-4"
-        style={{backgroundColor: qrBg}}>
-        <QRCode
-          value={url}
-          size={size}
-          color={qrFg}
-          backgroundColor={qrBg}
-          ecl="M"
-        />
+        style={{backgroundColor: '#ffffff'}}>
+        <QrMatrix value={url} size={size} />
       </View>
       {playerName ? (
         <Text className="text-base font-semibold mb-1">{playerName}</Text>
