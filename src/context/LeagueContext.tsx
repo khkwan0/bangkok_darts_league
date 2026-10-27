@@ -6,6 +6,7 @@ import {
   parseStoredCompetition,
   type Competition,
 } from '@/types/competition'
+import i18n from '@/i18n'
 import {configuredLeagueId, leagueRequestHeaders} from '@/lib/leagueRequest'
 import {applyScoreUnitToI18n} from '@/lib/matchUnitI18n'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -17,6 +18,13 @@ import {
   useReducer,
   useState,
 } from 'react'
+
+/** Max wait for /branding before showing the hardcoded league title. */
+const BRANDING_NAME_TIMEOUT_MS = 3000
+
+function fallbackLeagueName() {
+  return i18n.t('bangkok_darts_league')
+}
 
 interface User {
   id?: number
@@ -76,6 +84,11 @@ interface LeagueState {
   scoreUnit: 'frame' | 'leg'
   /** Resolved white-label league id from /branding (when known). */
   leagueId?: number | null
+  /**
+   * Display name from /branding. null until resolved (success, error, or
+   * timeout) — UI should show nothing until then.
+   */
+  leagueName: string | null
   /** League default home panels from branding (null = sport default). */
   homePanelsStored?: string[] | null
   /** Effective league panels (resolved). */
@@ -119,6 +132,7 @@ const initialState: LeagueState = {
   sport: 'darts',
   scoreUnit: 'leg',
   leagueId: configuredLeagueId(),
+  leagueName: null,
   homePanelsStored: null,
   homePanels: null,
 }
@@ -348,6 +362,20 @@ const LeagueReducer = (state: any, action: any) => {
         leagueId: action.payload ?? null,
       }
     }
+    case 'CLEAR_LEAGUE_NAME': {
+      return {
+        ...state,
+        leagueName: null,
+      }
+    }
+    case 'SET_LEAGUE_NAME': {
+      const name =
+        typeof action.payload === 'string' ? action.payload.trim() : ''
+      return {
+        ...state,
+        leagueName: name || fallbackLeagueName(),
+      }
+    }
     case 'SET_HOME_PANELS': {
       return {
         ...state,
@@ -502,24 +530,38 @@ export const LeagueProvider = ({children}: any) => {
 
   useEffect(() => {
     let cancelled = false
+    let nameResolved = false
+    dispatch({type: 'CLEAR_LEAGUE_NAME'})
+
+    const setLeagueName = (name: string) => {
+      if (cancelled) return
+      nameResolved = true
+      dispatch({type: 'SET_LEAGUE_NAME', payload: name})
+    }
+
+    const timeoutId = setTimeout(() => {
+      if (!cancelled && !nameResolved) {
+        setLeagueName(fallbackLeagueName())
+      }
+    }, BRANDING_NAME_TIMEOUT_MS)
+
     async function loadBranding() {
       try {
         const base = apiUrl.replace(/\/$/, '')
         const res = await fetch(`${base}/branding`, {
           headers: leagueRequestHeaders(),
         })
-        if (!res.ok) return
+        if (!res.ok) {
+          setLeagueName(fallbackLeagueName())
+          return
+        }
         const json = await res.json()
         const sportRaw = json?.data?.sport
         const unitRaw = json?.data?.score_unit
-        const configuredId = configuredLeagueId()
-        const leagueIdRaw = Number(json?.data?.id)
+        const brandingName = String(json?.data?.name || '').trim()
         if (cancelled) return
-        if (configuredId != null) {
-          dispatch({type: 'SET_LEAGUE_ID', payload: configuredId})
-        } else if (Number.isFinite(leagueIdRaw) && leagueIdRaw > 0) {
-          dispatch({type: 'SET_LEAGUE_ID', payload: leagueIdRaw})
-        }
+        // Always prefer the league baked into this build (darts = 3).
+        dispatch({type: 'SET_LEAGUE_ID', payload: configuredLeagueId()})
         const sport =
           sportRaw === 'darts' || sportRaw === 'dart'
             ? 'darts'
@@ -549,14 +591,17 @@ export const LeagueProvider = ({children}: any) => {
           type: 'SET_FORUMS_ENABLED',
           payload: json?.data?.forums_enabled !== false,
         })
+        setLeagueName(brandingName || fallbackLeagueName())
         applyScoreUnitToI18n(normalized)
       } catch (e) {
         console.error('Failed to load league branding:', e)
+        setLeagueName(fallbackLeagueName())
       }
     }
     void loadBranding()
     return () => {
       cancelled = true
+      clearTimeout(timeoutId)
     }
   }, [apiUrl])
 

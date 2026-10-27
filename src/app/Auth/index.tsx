@@ -22,6 +22,7 @@ import {
 // import {AccessToken, LoginManager} from 'react-native-fbsdk-next'
 
 import config from '@/config'
+import {useLeagueContext} from '@/context/LeagueContext'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import {Platform, useColorScheme} from 'react-native'
 interface StatusType {
@@ -34,6 +35,7 @@ export default function AuthHome() {
   /** True while finishing SocialLogin with the backend after OAuth returns. */
   const [completingLogin, setCompletingLogin] = React.useState(false)
   const {SocialLogin} = useAccount()
+  const {state: leagueState} = useLeagueContext()
   const [disabledLoginButton, setDisabledLoginButton] = React.useState(false)
   const colorScheme = useColorScheme()
   const width = Dimensions.get('window').width
@@ -193,9 +195,11 @@ export default function AuthHome() {
             className="w-32 h-32 mb-8"
             resizeMode="contain"
           />
-          <Text type="title" className="text-center text-2xl mb-2">
-            Bangkok Darts League
-          </Text>
+          {leagueState.leagueName ? (
+            <Text type="title" className="text-center text-2xl mb-2">
+              {leagueState.leagueName}
+            </Text>
+          ) : null}
           <Text className="text-center text-gray-600 dark:text-gray-400 mb-12">
             Sign in to access your account
           </Text>

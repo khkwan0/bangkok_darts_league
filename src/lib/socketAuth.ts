@@ -34,21 +34,18 @@ export type SocketAuthOptions = {
 export async function loadSocketAuth(options: SocketAuthOptions = {}) {
   const token = await AsyncStorage.getItem('jwt')
   const leagueHost = leagueHostFromApiUrl(options.apiUrl)
-  const optionLeagueId =
-    options.leagueId != null &&
-    Number.isFinite(Number(options.leagueId)) &&
-    Number(options.leagueId) > 0
-      ? Number(options.leagueId)
-      : null
-  const leagueId = configuredLeagueId() ?? optionLeagueId
+  // Build league id wins; optional override only when config is absent (legacy).
+  const leagueId = configuredLeagueId()
 
-  const leagueAuth: Record<string, string | number> = {}
+  const leagueAuth: Record<string, string | number> = {
+    leagueId,
+  }
   if (leagueHost) leagueAuth.leagueHost = leagueHost
-  if (leagueId != null) leagueAuth.leagueId = leagueId
 
-  const leagueHeaders: Record<string, string> = {}
+  const leagueHeaders: Record<string, string> = {
+    'X-League-Id': String(leagueId),
+  }
   if (leagueHost) leagueHeaders['X-League-Host'] = leagueHost
-  if (leagueId != null) leagueHeaders['X-League-Id'] = String(leagueId)
 
   if (!token) {
     return {

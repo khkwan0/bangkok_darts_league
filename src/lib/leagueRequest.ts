@@ -2,11 +2,14 @@ import config from '@/config'
 import Constants from 'expo-constants'
 import {Platform} from 'react-native'
 
-/** League id compiled into this build. Darts is 3. */
-export function configuredLeagueId(): number | null {
+/** Older darts builds without leagueId stay on league 3. */
+const LEGACY_DARTS_LEAGUE_ID = 3
+
+/** League id compiled into this build. Missing values stay on league 3. */
+export function configuredLeagueId(): number {
   const id = Number(config.leagueId)
   if (Number.isFinite(id) && id > 0) return id
-  return null
+  return LEGACY_DARTS_LEAGUE_ID
 }
 
 /** Marketing version + native build for announcement audience targeting. */
@@ -28,9 +31,8 @@ function appClientHeaders(): Record<string, string> {
 
 /** Sent on API calls so the backend does not infer the league from the host. */
 export function leagueRequestHeaders(): Record<string, string> {
-  const id = configuredLeagueId()
   return {
-    ...(id != null ? {'X-League-Id': String(id)} : {}),
+    'X-League-Id': String(configuredLeagueId()),
     ...appClientHeaders(),
   }
 }
