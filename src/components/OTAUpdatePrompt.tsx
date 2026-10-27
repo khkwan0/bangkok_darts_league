@@ -42,8 +42,10 @@ function manifestId(manifest: unknown): string {
  *
  * Requires updates.checkAutomatically: 'NEVER' so native ON_LOAD does not
  * race these JS API calls (known iOS hang on fresh install).
+ *
+ * Cold-start check waits until `enabled` (after welcome gate / skip).
  */
-export default function OTAUpdatePrompt() {
+export default function OTAUpdatePrompt({enabled = true}: {enabled?: boolean}) {
   const {t} = useTranslation()
   const {state} = useLeagueContext()
   const pathname = usePathname()
@@ -95,6 +97,7 @@ export default function OTAUpdatePrompt() {
   }, [navigationState?.key])
 
   useEffect(() => {
+    if (!enabled) return
     if (Platform.OS === 'web' || __DEV__ || !Updates.isEnabled) {
       return
     }
@@ -203,7 +206,7 @@ export default function OTAUpdatePrompt() {
     })
 
     return () => sub.remove()
-  }, [t])
+  }, [t, enabled])
 
   if (!downloading) return null
 

@@ -2,6 +2,7 @@ import {LeagueProvider} from '@/context/LeagueContext'
 import {LayoutModeProvider} from '@/context/LayoutModeContext'
 import {MatchProvider} from '@/context/MatchContext'
 import OTAUpdatePrompt from '@/components/OTAUpdatePrompt'
+import WelcomeGate from '@/components/WelcomeGate'
 import {SystemNavigationBar} from '@/components/SystemNavigationBar'
 import {useAdaptiveOrientationLock} from '@/hooks/useAdaptiveOrientationLock'
 import '@/i18n'
@@ -26,7 +27,7 @@ import * as Sentry from '@sentry/react-native'
 import {useFonts} from 'expo-font'
 import * as Notifications from 'expo-notifications'
 import {enableLegacyHeaderAppearance, router, Stack} from 'expo-router'
-import {useEffect} from 'react'
+import {useEffect, useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {
   Appearance,
@@ -63,6 +64,16 @@ if (sentryDsn) {
     replaysOnErrorSampleRate: 0,
     integrations: sentryIntegrations,
   })
+}
+
+function StartupGates() {
+  const [otaAllowed, setOtaAllowed] = useState(false)
+  return (
+    <>
+      <WelcomeGate onReady={() => setOtaAllowed(true)} />
+      <OTAUpdatePrompt enabled={otaAllowed} />
+    </>
+  )
 }
 
 function RootLayout() {
@@ -338,7 +349,7 @@ function RootLayout() {
             <LeagueProvider>
               <LayoutModeProvider>
                 <MatchProvider>
-                  <OTAUpdatePrompt />
+                  <StartupGates />
                   <Stack>
                     <Stack.Screen
                       name="(tabs)"

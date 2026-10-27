@@ -229,7 +229,15 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
                   {t('press_image_to_update')}
                 </Text>
               </Pressable>
-              <View className="flex-1 ml-4">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('my_qr_code')}
+                onPress={() => openHref('/Settings/Preferences/ProfileQr')}
+                className="mx-3 h-12 w-12 items-center justify-center rounded-full bg-gray-800/30 dark:bg-gray-200/20"
+                hitSlop={8}>
+                <MCI name="qrcode" size={26} color={colors.text} />
+              </Pressable>
+              <View className="flex-1">
                 <Text className="text-lg font-semibold text-right">
                   {user.nickname}
                 </Text>

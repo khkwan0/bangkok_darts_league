@@ -90,6 +90,17 @@ interface LeagueState {
   homePanelsStored?: string[] | null
   /** Effective league panels (resolved). */
   homePanels?: string[] | null
+  /** True after /branding settles (success or failure). */
+  brandingLoaded: boolean
+  /** Mobile welcome screen config from /branding (null until loaded). */
+  welcome: {
+    enabled: boolean
+    blurb: string | null
+    imageUrl: string | null
+    backgroundColor: string
+    textColor: string
+    revision: number
+  } | null
 }
 
 export interface LeagueContextType {
@@ -132,6 +143,8 @@ const initialState: LeagueState = {
   leagueName: hardcodedLeagueName(),
   homePanelsStored: null,
   homePanels: null,
+  brandingLoaded: false,
+  welcome: null,
 }
 
 const LeagueReducer = (state: any, action: any) => {
@@ -374,6 +387,19 @@ const LeagueReducer = (state: any, action: any) => {
         homePanelsStored: action.payload?.homePanelsStored ?? null,
       }
     }
+    case 'SET_WELCOME': {
+      return {
+        ...state,
+        welcome: action.payload ?? null,
+        brandingLoaded: true,
+      }
+    }
+    case 'SET_BRANDING_LOADED': {
+      return {
+        ...state,
+        brandingLoaded: Boolean(action.payload),
+      }
+    }
     default:
       return state
   }
@@ -540,7 +566,12 @@ export const LeagueProvider = ({children}: any) => {
         const res = await fetch(`${base}/branding`, {
           headers: leagueRequestHeaders(),
         })
-        if (!res.ok) return
+        if (!res.ok) {
+          if (!cancelled) {
+            dispatch({type: 'SET_WELCOME', payload: null})
+          }
+          return
+        }
         const json = await res.json()
         const sportRaw = json?.data?.sport
         const unitRaw = json?.data?.score_unit
@@ -577,6 +608,29 @@ export const LeagueProvider = ({children}: any) => {
           type: 'SET_FORUMS_ENABLED',
           payload: json?.data?.forums_enabled !== false,
         })
+        dispatch({
+          type: 'SET_WELCOME',
+          payload: {
+            enabled: json?.data?.welcome_enabled === true,
+            blurb:
+              typeof json?.data?.welcome_blurb === 'string'
+                ? json.data.welcome_blurb
+                : null,
+            imageUrl:
+              typeof json?.data?.welcome_image_url === 'string'
+                ? json.data.welcome_image_url.trim() || null
+                : null,
+            backgroundColor:
+              String(json?.data?.welcome_background_color || '#FFFFFF').trim() ||
+              '#FFFFFF',
+            textColor:
+              String(json?.data?.welcome_text_color || '#111111').trim() ||
+              '#111111',
+            revision: Number.isFinite(Number(json?.data?.welcome_revision))
+              ? Number(json.data.welcome_revision)
+              : 0,
+          },
+        })
         // Backend is source of truth; update UI + cache only when it differs.
         if (brandingName && brandingName !== displayed) {
           dispatch({type: 'SET_LEAGUE_NAME', payload: brandingName})
@@ -585,6 +639,9 @@ export const LeagueProvider = ({children}: any) => {
         applyScoreUnitToI18n(normalized)
       } catch (e) {
         console.error('Failed to load league branding:', e)
+        if (!cancelled) {
+          dispatch({type: 'SET_WELCOME', payload: null})
+        }
       }
     }
     void loadBranding()
