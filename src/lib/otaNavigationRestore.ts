@@ -2,6 +2,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const STORAGE_KEY = 'ota_restore_location_v1'
 
+/**
+ * Root Stack screens that sit beside `(tabs)`, not inside NativeTabs.
+ * Restoring these with `router.replace` swaps out `(tabs)` and leaves the
+ * user with no tab bar and no back target after an OTA reload.
+ */
+const ROOT_STACK_OVERLAY_PREFIXES = [
+  '/Settings',
+  '/teams',
+  '/history',
+  '/player',
+] as const
+
 export type OtaRestoreLocation = {
   pathname: string
   params?: Record<string, string>
@@ -28,6 +40,14 @@ function serializeParams(
     }
   }
   return out
+}
+
+/** True when pathname is a root Stack sibling of `(tabs)` (e.g. Settings). */
+export function isRootStackOverlayPath(pathname: string): boolean {
+  const path = pathname.startsWith('/') ? pathname : `/${pathname}`
+  return ROOT_STACK_OVERLAY_PREFIXES.some(
+    prefix => path === prefix || path.startsWith(`${prefix}/`),
+  )
 }
 
 export async function saveOtaRestoreLocation(

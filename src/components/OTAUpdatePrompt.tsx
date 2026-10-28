@@ -4,6 +4,7 @@ import {ThemedView as View} from '@/components/ThemedView'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {
   consumeOtaRestoreLocation,
+  isRootStackOverlayPath,
   saveOtaRestoreLocation,
 } from '@/lib/otaNavigationRestore'
 import * as Updates from 'expo-updates'
@@ -80,13 +81,18 @@ export default function OTAUpdatePrompt({enabled = true}: {enabled?: boolean}) {
       const saved = await consumeOtaRestoreLocation()
       if (cancelled || !saved) return
       try {
-        router.replace(
-          {
-            pathname: saved.pathname as any,
-            params: saved.params,
-          },
-          {withAnchor: true},
-        )
+        const href = {
+          pathname: saved.pathname as any,
+          params: saved.params,
+        }
+        // Settings/teams/etc. are root Stack siblings of (tabs). replace()
+        // would swap tabs out and leave no back target / tab bar. push()
+        // keeps (tabs) underneath, matching normal navigation into Settings.
+        if (isRootStackOverlayPath(saved.pathname)) {
+          router.push(href)
+        } else {
+          router.replace(href, {withAnchor: true})
+        }
       } catch {
         // Route may no longer exist after the update; stay on default home.
       }

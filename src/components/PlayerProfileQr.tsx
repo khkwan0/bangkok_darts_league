@@ -5,7 +5,7 @@ import {useTheme} from 'expo-router/react-navigation'
 import QRCode from 'qrcode'
 import React, {useMemo} from 'react'
 import {useTranslation} from 'react-i18next'
-import {Pressable, Share, View} from 'react-native'
+import {Pressable, Share, Text as RNText, View} from 'react-native'
 
 type Props = {
   playerId: number
@@ -102,14 +102,19 @@ export default function PlayerProfileQr({
         <QrMatrix value={url} size={size} />
       </View>
       {playerName ? (
-        <Text className="text-base font-semibold mb-1">{playerName}</Text>
+        <RNText
+          className="text-base font-semibold mb-1"
+          style={{color: colors.text}}>
+          {playerName}
+        </RNText>
       ) : null}
-      <Text
+      {/* Use RN Text — ThemedText runs t(), and i18next strips "https:" as a namespace. */}
+      <RNText
         className="text-xs text-center mb-4 opacity-60"
         selectable
         style={{color: colors.text}}>
         {url}
-      </Text>
+      </RNText>
       <Pressable
         className="bg-primary px-6 py-3 rounded-full"
         onPress={() => void handleShare()}
