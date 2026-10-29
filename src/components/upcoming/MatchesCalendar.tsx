@@ -61,6 +61,8 @@ type Props = {
   onRefresh: () => void
   onScrollBeginDrag?: () => void
   contentContainerStyle?: StyleProp<ViewStyle>
+  /** Scrolls away with calendar content when the home header is unpinned. */
+  listHeader?: React.ReactNode
   /** Route for match card scoresheet Links (Settings stack needs its own path). */
   scoresheetPathname?: string
 }
@@ -153,6 +155,7 @@ export default function MatchesCalendar({
   onRefresh,
   onScrollBeginDrag,
   contentContainerStyle,
+  listHeader = null,
   scoresheetPathname = '/Match',
 }: Props) {
   const {t, i18n} = useTranslation()
@@ -537,6 +540,7 @@ export default function MatchesCalendar({
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }>
+            {listHeader}
             {monthHeader}
             {monthGridView}
           </ScrollView>
@@ -571,6 +575,7 @@ export default function MatchesCalendar({
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }>
+      {listHeader}
       <View style={{paddingHorizontal: 16}}>
         {monthHeader}
         {monthGridView}

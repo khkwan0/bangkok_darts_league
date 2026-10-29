@@ -394,7 +394,7 @@ export default function LeagueStandings({
       renderItem={({item}) => <DivisionStandings data={item} />}
       ListHeaderComponent={
         <View style={{paddingHorizontal: 16, paddingTop: 4}}>
-          <StatsScopeChips />
+          <StatsScopeChips hideBoth />
           <MiniSeasonChips
             seasons={seasons}
             seasonId={seasonId}
@@ -403,25 +403,12 @@ export default function LeagueStandings({
           {isLoading ? (
             <ActivityIndicator style={{marginBottom: 12}} color="#0a7ea4" />
           ) : null}
-          {scope === 'cup' ? (
-            <Text
-              style={{
-                marginBottom: 12,
-                opacity: 0.7,
-                fontSize: 14,
-                textAlign: 'center',
-              }}>
-              {t('stats_standings_cup_empty')}
-            </Text>
-          ) : null}
         </View>
       }
       ListEmptyComponent={
-        scope === 'cup' ? undefined : (
-          <Text style={{textAlign: 'center', opacity: 0.6, marginTop: 24}}>
-            {t('no_data_available')}
-          </Text>
-        )
+        <Text style={{textAlign: 'center', opacity: 0.6, marginTop: 24}}>
+          {t('no_data_available')}
+        </Text>
       }
     />
   )

@@ -2,6 +2,7 @@ import {LeagueProvider} from '@/context/LeagueContext'
 import {LayoutModeProvider} from '@/context/LayoutModeContext'
 import {MatchProvider} from '@/context/MatchContext'
 import OTAUpdatePrompt from '@/components/OTAUpdatePrompt'
+import StoreUpdatePrompt from '@/components/StoreUpdatePrompt'
 import WelcomeGate from '@/components/WelcomeGate'
 import {SystemNavigationBar} from '@/components/SystemNavigationBar'
 import {useAdaptiveOrientationLock} from '@/hooks/useAdaptiveOrientationLock'
@@ -67,11 +68,12 @@ if (sentryDsn) {
 }
 
 function StartupGates() {
-  const [otaAllowed, setOtaAllowed] = useState(false)
+  const [updateChecksAllowed, setUpdateChecksAllowed] = useState(false)
   return (
     <>
-      <WelcomeGate onReady={() => setOtaAllowed(true)} />
-      <OTAUpdatePrompt enabled={otaAllowed} />
+      <WelcomeGate onReady={() => setUpdateChecksAllowed(true)} />
+      <OTAUpdatePrompt enabled={updateChecksAllowed} />
+      <StoreUpdatePrompt enabled={updateChecksAllowed} />
     </>
   )
 }

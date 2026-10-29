@@ -11,15 +11,28 @@ const OPTIONS: {id: StatsScope; labelKey: string}[] = [
   {id: 'both', labelKey: 'stats_scope_both'},
 ]
 
-export default function StatsScopeChips() {
+export default function StatsScopeChips({
+  hideBoth = false,
+}: {
+  hideBoth?: boolean
+} = {}) {
   const {scope, setScope} = useStatsScope()
   const {colors} = useTheme()
   const {t} = useTranslation()
+  const options = hideBoth
+    ? OPTIONS.filter(opt => opt.id !== 'both')
+    : OPTIONS
+
+  React.useEffect(() => {
+    if (hideBoth && scope === 'both') {
+      setScope('league')
+    }
+  }, [hideBoth, scope, setScope])
 
   return (
     <View className="mb-3">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {OPTIONS.map(opt => {
+        {options.map(opt => {
           const active = scope === opt.id
           return (
             <Pressable

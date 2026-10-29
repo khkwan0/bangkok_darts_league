@@ -8,6 +8,10 @@ import MatchCard from '@/components/upcoming/MatchCard'
 import MatchCardOld from '@/components/upcoming/MatchCardOld'
 import MatchesCalendar from '@/components/upcoming/MatchesCalendar'
 import {
+  loadHomeHeaderSticky,
+  saveHomeHeaderSticky,
+} from '@/lib/homeHeaderSticky'
+import {
   loadHomeMatchesView,
   saveHomeMatchesView,
   type HomeMatchesView,
@@ -18,8 +22,9 @@ import {isMiniCompetition} from '@/types/competition'
 import {useAccount, useAd, useLeague, useSeason} from '@/hooks'
 import {useIsRegularLayout} from '@/hooks/useLayoutMode'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
-import {MaterialIcons} from '@expo/vector-icons'
+import {MaterialCommunityIcons, MaterialIcons} from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as Haptics from 'expo-haptics'
 import {useTheme} from "expo-router/react-navigation"
 import {usePathname, useRouter} from 'expo-router'
 import React from 'react'
@@ -28,10 +33,9 @@ import {
   ActivityIndicator,
   Animated,
   FlatList,
-  Linking,
-  Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   useColorScheme,
   useWindowDimensions,
 } from 'react-native'
@@ -61,6 +65,7 @@ export default function UpcomingMatches(props: any) {
   const [showPostponed, setShowPostponed] = React.useState(false)
   const [seasonNumber, setSeasonNumber] = React.useState('')
   const [showFilters, setShowFilters] = React.useState(false)
+  const [headerSticky, setHeaderSticky] = React.useState(false)
   const [matchesView, setMatchesView] = React.useState<HomeMatchesView | null>(
     null,
   )
@@ -72,7 +77,6 @@ export default function UpcomingMatches(props: any) {
   const account = useAccount()
   const adHook = useAd()
   const {t} = useTranslation()
-  const [needsUpdate, setNeedsUpdate] = React.useState(false)
   const router = useRouter()
   const isRegular = useIsRegularLayout()
   const {width, height} = useWindowDimensions()
@@ -111,10 +115,6 @@ export default function UpcomingMatches(props: any) {
     } finally {
       setIsMounted(true)
     }
-  }
-
-  async function CheckVersion() {
-    setNeedsUpdate(await account.CheckVersion())
   }
 
   function HandlePress(idx: number) {
@@ -220,13 +220,6 @@ export default function UpcomingMatches(props: any) {
     FetchUser()
   }, [])
 
-  React.useEffect(() => {
-    if (DEBUG_MINIMAL_MATCHES_SCREEN) {
-      return
-    }
-    CheckVersion()
-  }, [])
-
   function RefreshMatches(mode: 'initial' | 'pull' | 'silent' = 'silent') {
     if (typeof user?.teams !== 'undefined' && user.teams.length > 0) {
       if (showMineOnly) {
@@ -302,21 +295,6 @@ export default function UpcomingMatches(props: any) {
       console.log(e)
     }
   }
-  async function HandleUpdate() {
-    try {
-      const url =
-        Platform.OS === 'ios'
-          ? 'https://apps.apple.com/app/bangkok-darts-league'
-          : 'https://play.google.com/store/apps/details?id=com.bangkok_darts_league'
-      const supported = await Linking.canOpenURL(url)
-      if (supported) {
-        await Linking.openURL(url)
-      }
-    } catch (e) {
-      console.log(e)
-    }
-  }
-
   React.useEffect(() => {
     if (DEBUG_MINIMAL_MATCHES_SCREEN) {
       return
@@ -414,6 +392,25 @@ export default function UpcomingMatches(props: any) {
     }
   }
 
+  React.useEffect(() => {
+    let cancelled = false
+    loadHomeHeaderSticky().then(sticky => {
+      if (!cancelled) setHeaderSticky(sticky)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const toggleHeaderSticky = React.useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setHeaderSticky(value => {
+      const next = !value
+      void saveHomeHeaderSticky(next).catch(() => {})
+      return next
+    })
+  }, [])
+
   if (isMounted && isMiniCompetition(state.competition)) {
     return <MiniLeagueHome miniLeagueId={state.competition.id} />
   }
@@ -446,9 +443,13 @@ export default function UpcomingMatches(props: any) {
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         )}
-        {!initialLoading && matchesView != null && (
-          <View className="flex-1">
-            <View style={{flexShrink: 0}}>
+        {!initialLoading && matchesView != null && (() => {
+          const matchesHeader = (
+            <View
+              style={[
+                {flexShrink: 0},
+                headerSticky ? {backgroundColor: screenBg} : null,
+              ]}>
               {!user.id && (
                 <View className="my-4 mx-6">
                   <Button
@@ -529,7 +530,7 @@ export default function UpcomingMatches(props: any) {
                     showFilters ? t('hide_filters') : t('show_filters')
                   }
                   onPress={toggleFilters}
-                  className="flex-row items-center justify-center rounded-lg px-3"
+                  className="mr-2 flex-row items-center justify-center rounded-lg px-3"
                   style={({pressed}) => {
                     const isDark = colorScheme === 'dark'
                     const active = showFilters
@@ -567,6 +568,48 @@ export default function UpcomingMatches(props: any) {
                         : '#37003C'
                     }
                   />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{selected: headerSticky}}
+                  accessibilityLabel={
+                    headerSticky
+                      ? 'Unpin matches header'
+                      : 'Pin matches header'
+                  }
+                  onPress={toggleHeaderSticky}
+                  className="flex-row items-center justify-center rounded-lg px-3"
+                  style={({pressed}) => {
+                    const isDark = colorScheme === 'dark'
+                    const active = headerSticky
+                    return {
+                      backgroundColor: active
+                        ? '#37003C'
+                        : isDark
+                          ? pressed
+                            ? '#2A2A2A'
+                            : '#1E1E1E'
+                          : pressed
+                            ? '#F0F0F0'
+                            : '#FFFFFF',
+                      borderWidth: isDark ? 0 : 1,
+                      borderColor: active ? '#37003C' : '#E0E0E0',
+                      minWidth: 48,
+                    }
+                  }}>
+                  {({pressed}) => (
+                    <MaterialCommunityIcons
+                      name={headerSticky ? 'pin' : 'pin-off'}
+                      size={20}
+                      color={
+                        pressed && !headerSticky
+                          ? '#22c55e'
+                          : headerSticky || colorScheme === 'dark'
+                            ? '#FFFFFF'
+                            : '#37003C'
+                      }
+                    />
+                  )}
                 </Pressable>
               </View>
               <Animated.View
@@ -627,7 +670,37 @@ export default function UpcomingMatches(props: any) {
                 </View>
               </Animated.View>
             </View>
-            {matchesView === 'calendar' ? (
+          )
+
+          const isHorizontalPager =
+            !useMatchGrid &&
+            listFixtures.length > 0 &&
+            state.isNewMatchCard
+          // Horizontal pager needs a fixed height when the header scrolls in a
+          // parent ScrollView (ListHeaderComponent is horizontal-only).
+          const unpinnedPagerHeight = Math.max(420, height - 160)
+
+          const matchKeyExtractor = (item: ItemType, index: number) => {
+            if (typeof item.ad_spot !== 'undefined' && item.ad_spot) {
+              return String(item.key ?? `ad_${index}`)
+            }
+            const matchId = (item as any).match_id
+            return `${matchId ?? ''}_${item.home_team_id}_${item.away_team_id}_${item.date}_${index}`
+          }
+
+          const matchListEmpty = (
+            <View className="items-center px-6 py-10">
+              <Text
+                className="text-center text-base opacity-70"
+                style={{maxWidth: 280}}>
+                {t('no_matches_pass_filter')}
+              </Text>
+            </View>
+          )
+
+          let matchesBody: React.ReactNode
+          if (matchesView === 'calendar') {
+            matchesBody = (
               <MatchesCalendar
                 fixtures={fixtures}
                 onOpenMatch={HandlePress}
@@ -635,122 +708,122 @@ export default function UpcomingMatches(props: any) {
                 onRefresh={() => RefreshMatches('pull')}
                 onScrollBeginDrag={closeFilters}
                 contentContainerStyle={listContentStyle}
+                listHeader={headerSticky ? null : matchesHeader}
               />
-            ) : (
-            <View
-              style={{flex: 1, overflow: 'hidden', marginHorizontal: 0}}>
-              {DEBUG_HIDE_MATCH_FLATLIST ? (
-                <View className="flex-1 items-center justify-center px-4">
-                  <Text style={{textAlign: 'center', opacity: 0.6}}>
-                    Match list hidden (DEBUG_HIDE_MATCH_FLATLIST) — testing live
-                    scores scroll
-                  </Text>
+            )
+          } else if (DEBUG_HIDE_MATCH_FLATLIST) {
+            matchesBody = (
+              <View className="flex-1 items-center justify-center px-4">
+                <Text style={{textAlign: 'center', opacity: 0.6}}>
+                  Match list hidden (DEBUG_HIDE_MATCH_FLATLIST) — testing live
+                  scores scroll
+                </Text>
+              </View>
+            )
+          } else if (!headerSticky && isHorizontalPager) {
+            matchesBody = (
+              <ScrollView
+                style={{flex: 1, backgroundColor: screenBg}}
+                contentContainerStyle={{flexGrow: 1}}
+                showsVerticalScrollIndicator={false}
+                onScrollBeginDrag={closeFilters}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={() => RefreshMatches('pull')}
+                  />
+                }>
+                {matchesHeader}
+                <View style={{height: unpinnedPagerHeight}}>
+                  <FlatList
+                    key={`matches-pager-unpinned-${state.isNewMatchCard ? 'new' : 'old'}`}
+                    data={listFixtures}
+                    renderItem={renderItem}
+                    keyExtractor={matchKeyExtractor}
+                    horizontal
+                    pagingEnabled
+                    snapToInterval={width}
+                    decelerationRate="fast"
+                    snapToAlignment="center"
+                    showsHorizontalScrollIndicator={false}
+                    showsVerticalScrollIndicator={false}
+                    directionalLockEnabled
+                    removeClippedSubviews={false}
+                    windowSize={11}
+                    maxToRenderPerBatch={8}
+                    initialNumToRender={6}
+                    style={{flex: 1, backgroundColor: screenBg}}
+                    ListEmptyComponent={matchListEmpty}
+                  />
                 </View>
-              ) : (
-                <FlatList
-                  key={`matches-cols-${matchGridColumns}-${state.isNewMatchCard ? 'new' : 'old'}`}
-                  contentContainerStyle={[
-                    listContentStyle,
-                    useMatchGrid ? {paddingHorizontal: 10, paddingTop: 8} : null,
-                    listFixtures.length === 0
-                      ? {
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          paddingHorizontal: 24,
-                        }
-                      : null,
-                  ]}
-                  style={{flex: 1, backgroundColor: screenBg}}
-                  numColumns={matchGridColumns}
-                  columnWrapperStyle={
-                    useMatchGrid
-                      ? {alignItems: 'stretch'}
-                      : undefined
-                  }
-                  horizontal={
-                    !useMatchGrid &&
-                    listFixtures.length > 0 &&
-                    state.isNewMatchCard
-                  }
-                  showsVerticalScrollIndicator={false}
-                  showsHorizontalScrollIndicator={false}
-                  // Paging/snap only for the horizontal new-card pager.
-                  // On the vertical list these fight variable card heights and
-                  // cause jump/readjust when scrolling up.
-                  pagingEnabled={
-                    !useMatchGrid &&
-                    listFixtures.length > 0 &&
-                    state.isNewMatchCard
-                  }
-                  snapToInterval={
-                    !useMatchGrid &&
-                    listFixtures.length > 0 &&
-                    state.isNewMatchCard
-                      ? width
-                      : undefined
-                  }
-                  decelerationRate={
-                    !useMatchGrid &&
-                    listFixtures.length > 0 &&
-                    state.isNewMatchCard
-                      ? 'fast'
-                      : 'normal'
-                  }
-                  snapToAlignment={
-                    !useMatchGrid &&
-                    listFixtures.length > 0 &&
-                    state.isNewMatchCard
-                      ? 'center'
-                      : undefined
-                  }
-                  scrollEnabled={true}
-                  directionalLockEnabled={true}
-                  alwaysBounceVertical={false}
-                  removeClippedSubviews={false}
-                  windowSize={11}
-                  maxToRenderPerBatch={useMatchGrid ? 12 : 8}
-                  initialNumToRender={useMatchGrid ? 8 : 6}
-                  onScrollBeginDrag={closeFilters}
-                  refreshControl={
-                    <RefreshControl
-                      refreshing={refreshing}
-                      onRefresh={() => RefreshMatches('pull')}
-                    />
-                  }
-                  bounces={true}
-                  keyExtractor={(item: ItemType, index) => {
-                    if (typeof item.ad_spot !== 'undefined' && item.ad_spot) {
-                      return String(item.key ?? `ad_${index}`)
-                    }
-                    const matchId = (item as any).match_id
-                    return `${matchId ?? ''}_${item.home_team_id}_${item.away_team_id}_${item.date}_${index}`
-                  }}
-                  data={listFixtures}
-                  renderItem={renderItem}
-                  ListEmptyComponent={
-                    <View className="items-center px-6 py-10">
-                      <Text
-                        className="text-center text-base opacity-70"
-                        style={{maxWidth: 280}}>
-                        {t('no_matches_pass_filter')}
-                      </Text>
-                    </View>
-                  }
-                />
-              )}
+              </ScrollView>
+            )
+          } else {
+            matchesBody = (
+              <FlatList
+                key={`matches-cols-${matchGridColumns}-${state.isNewMatchCard ? 'new' : 'old'}-${headerSticky ? 'pin' : 'scroll'}`}
+                ListHeaderComponent={
+                  headerSticky ? undefined : matchesHeader
+                }
+                contentContainerStyle={[
+                  listContentStyle,
+                  useMatchGrid ? {paddingHorizontal: 10, paddingTop: 8} : null,
+                  listFixtures.length === 0
+                    ? {
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingHorizontal: 24,
+                      }
+                    : null,
+                ]}
+                style={{flex: 1, backgroundColor: screenBg}}
+                numColumns={matchGridColumns}
+                columnWrapperStyle={
+                  useMatchGrid ? {alignItems: 'stretch'} : undefined
+                }
+                horizontal={isHorizontalPager}
+                showsVerticalScrollIndicator={false}
+                showsHorizontalScrollIndicator={false}
+                // Paging/snap only for the horizontal new-card pager.
+                // On the vertical list these fight variable card heights and
+                // cause jump/readjust when scrolling up.
+                pagingEnabled={isHorizontalPager}
+                snapToInterval={isHorizontalPager ? width : undefined}
+                decelerationRate={isHorizontalPager ? 'fast' : 'normal'}
+                snapToAlignment={isHorizontalPager ? 'center' : undefined}
+                scrollEnabled={true}
+                directionalLockEnabled={true}
+                alwaysBounceVertical={false}
+                removeClippedSubviews={false}
+                windowSize={11}
+                maxToRenderPerBatch={useMatchGrid ? 12 : 8}
+                initialNumToRender={useMatchGrid ? 8 : 6}
+                onScrollBeginDrag={closeFilters}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={() => RefreshMatches('pull')}
+                  />
+                }
+                bounces={true}
+                keyExtractor={matchKeyExtractor}
+                data={listFixtures}
+                renderItem={renderItem}
+                ListEmptyComponent={matchListEmpty}
+              />
+            )
+          }
+
+          return (
+            <View className="flex-1">
+              {headerSticky ? matchesHeader : null}
+              <View
+                style={{flex: 1, overflow: 'hidden', marginHorizontal: 0}}>
+                {matchesBody}
+              </View>
             </View>
-            )}
-          </View>
-        )}
-        {needsUpdate && (
-          <View className="px-2">
-            <Button
-              style={{backgroundColor: 'red'}}
-              onPress={() => HandleUpdate()}>
-              <Text className="text-center">{t('update_available')}</Text>
-            </Button>
-          </View>
-        )}
+          )
+        })()}
       </View>
     )
 
