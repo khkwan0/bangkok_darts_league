@@ -1,5 +1,6 @@
 /**
- * Members-home / statistics panel catalog (mirrors web home-panels.ts).
+ * Members-home stats panel catalog and resolution.
+ * Panel ids are stable; labels come from i18n.
  */
 
 export type HomePanelId =
@@ -17,6 +18,7 @@ export type HomePanelId =
 
 export type HomePanelSport = 'pool' | 'darts'
 
+/** Maps panel id → GetPlayerStats summary key. */
 export const PANEL_STATS_KEY: Record<HomePanelId, string> = {
   singles: 'Singles',
   doubles: 'Doubles',
@@ -31,9 +33,10 @@ export const PANEL_STATS_KEY: Record<HomePanelId, string> = {
   '507_doubles': '507 Doubles',
 }
 
+/** i18n key under root (mobile). */
 export const PANEL_I18N_KEY: Record<HomePanelId, string> = {
-  singles: 'singles_frames',
-  doubles: 'doubles_frames',
+  singles: 'singles_games',
+  doubles: 'doubles_games',
   '8_singles': 'eight_ball_singles_frames',
   '8_doubles': 'eight_ball_doubles_frames',
   '9_singles': 'nine_ball_singles_frames',
@@ -43,6 +46,21 @@ export const PANEL_I18N_KEY: Record<HomePanelId, string> = {
   '307_doubles': 'three_oh_seven_doubles_legs',
   '507_singles': 'five_oh_seven_singles_legs',
   '507_doubles': 'five_oh_seven_doubles_legs',
+}
+
+/** Admin-facing English labels when translations are unavailable. */
+export const PANEL_ADMIN_LABEL: Record<HomePanelId, string> = {
+  singles: 'Singles',
+  doubles: 'Doubles',
+  '8_singles': '8 Ball Singles',
+  '8_doubles': '8 Ball Doubles',
+  '9_singles': '9 Ball Singles',
+  '9_doubles': '9 Ball Doubles',
+  cricket: 'Cricket',
+  '307_singles': '307 Singles',
+  '307_doubles': '307 Doubles',
+  '507_singles': '507 Singles',
+  '507_doubles': '507 Doubles',
 }
 
 const POOL_PANELS: HomePanelId[] = [
@@ -96,6 +114,10 @@ export function sportDefaultPanels(sport: HomePanelSport): HomePanelId[] {
   return sport === 'darts' ? [...DARTS_DEFAULT] : [...POOL_DEFAULT]
 }
 
+/**
+ * Sanitize an ordered list: known ids only, unique, scoped to sport catalog.
+ * Returns null if input is null/undefined/empty after filter (caller may fall back).
+ */
 export function sanitizeHomePanels(
   panels: unknown,
   sport: HomePanelSport,
@@ -113,6 +135,9 @@ export function sanitizeHomePanels(
   return out.length > 0 ? out : null
 }
 
+/**
+ * Member override wins when present; else league; else sport default.
+ */
 export function resolveHomePanels(
   leaguePanels: unknown,
   memberPanels: unknown,
@@ -123,4 +148,14 @@ export function resolveHomePanels(
   const fromLeague = sanitizeHomePanels(leaguePanels, sport)
   if (fromLeague) return fromLeague
   return sportDefaultPanels(sport)
+}
+
+/** Effective panels for branding payload (league or sport default). */
+export function effectiveLeagueHomePanels(
+  leaguePanels: unknown,
+  sport: HomePanelSport,
+): HomePanelId[] {
+  return (
+    sanitizeHomePanels(leaguePanels, sport) ?? sportDefaultPanels(sport)
+  )
 }

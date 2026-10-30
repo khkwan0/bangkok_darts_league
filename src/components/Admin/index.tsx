@@ -39,6 +39,21 @@ export default function Admin() {
         messageCount={unreadCount}
       />
       <NavDest
+        icon="account-switch-outline"
+        text={t('admin_player_merges')}
+        url="/Settings/Admin/PlayerMerges"
+      />
+      <NavDest
+        icon="palette"
+        text={t('admin_branding')}
+        url="/Settings/Admin/Branding"
+      />
+      <NavDest
+        icon="trophy-outline"
+        text={t('admin_league')}
+        url="/Settings/Admin/League"
+      />
+      <NavDest
         icon="bullhorn-outline"
         text={t('announcements')}
         url="/Settings/Admin/Announcements"

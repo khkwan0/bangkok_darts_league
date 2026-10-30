@@ -2,7 +2,7 @@ import AppSwitch from '@/components/AppSwitch'
 import Button from '@/components/Button'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
-import AdSpot from '@/components/upcoming/AdSpot'
+import AdSpot, {clearAdSpotCache} from '@/components/upcoming/AdSpot'
 import WeeklyHighlightsCard from '@/components/upcoming/WeeklyHighlightsCard'
 import MatchCard from '@/components/upcoming/MatchCard'
 import MatchCardOld from '@/components/upcoming/MatchCardOld'
@@ -71,6 +71,7 @@ export default function UpcomingMatches(props: any) {
   )
   const filterHeight = React.useRef(new Animated.Value(0)).current
   const fetchIdRef = React.useRef(0)
+  const adRefreshGenRef = React.useRef(0)
   const hasLoadedOnce = React.useRef(false)
   const season = useSeason()
   const league = useLeague()
@@ -181,13 +182,18 @@ export default function UpcomingMatches(props: any) {
       if (frequency <= 0) {
         return _fixtures
       }
+      // New generation so FlatList remounts AdSpots and they refetch creatives.
+      adRefreshGenRef.current += 1
+      const refreshGen = adRefreshGenRef.current
+      clearAdSpotCache()
       // Build a new list — never splice while iterating (frequency=1 infinite-looped).
       const withAds: any[] = []
       for (let i = 0; i < _fixtures.length; i++) {
         if ((i !== 0 && i % frequency === 0) || i === 1) {
           withAds.push({
             index: withAds.length,
-            key: 'ad_spot_' + withAds.length,
+            key: `ad_spot_${withAds.length}_g${refreshGen}`,
+            refresh_gen: refreshGen,
             ad_spot: true,
           })
         }
@@ -195,7 +201,8 @@ export default function UpcomingMatches(props: any) {
       }
       withAds.push({
         index: withAds.length,
-        key: 'ad_spot_' + withAds.length,
+        key: `ad_spot_${withAds.length}_g${refreshGen}`,
+        refresh_gen: refreshGen,
         ad_spot: true,
       })
       return withAds

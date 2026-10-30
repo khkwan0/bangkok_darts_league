@@ -1,16 +1,14 @@
 import React from 'react'
-import {TeamStats, useLeague} from '@/hooks'
+import {useLeague} from '@/hooks'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
 import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import {useStatsScope} from '@/context/StatsScopeContext'
-import Button from '@/components/Button'
 import {ActivityIndicator, Pressable, ScrollView, View} from 'react-native'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as Card} from '@/components/ThemedView'
 import {useTranslation} from 'react-i18next'
 import Row from '@/components/Row'
-import {t} from 'i18next'
 import {useRouter, useNavigation, usePathname} from 'expo-router'
 
 const TeamStanding = ({data, idx}) => {
@@ -129,11 +127,22 @@ const TeamStatisticsHeader = () => {
         <Text className="text-center font-medium">W/L</Text>
       </View>
       <View style={{flex: 1}}>
-        <Text className="text-center font-medium">{t('frame')}</Text>
+        <Text className="text-center font-medium">{t('frames')}</Text>
       </View>
     </View>
   )
 }
+
+function teamRowsFromStats(stats: any): any[] {
+  if (!stats || typeof stats !== 'object') return []
+  if (Array.isArray(stats.teams)) return stats.teams
+  if (Array.isArray(stats.eightBall) || Array.isArray(stats.nineBall)) {
+    return [...(stats.eightBall || []), ...(stats.nineBall || [])]
+  }
+  if (Array.isArray(stats)) return stats
+  return []
+}
+
 const TeamStatistics = ({
   embedded = false,
 }: {
@@ -141,7 +150,7 @@ const TeamStatistics = ({
 } = {}) => {
   const league = useLeague()
   const {scope} = useStatsScope()
-  const [stats, setStats] = React.useState<TeamStats>({})
+  const [stats, setStats] = React.useState<any>({})
   const [isLoading, setIsLoading] = React.useState(false)
   const navigation = useNavigation()
   const {t} = useTranslation()
@@ -176,7 +185,7 @@ const TeamStatistics = ({
       return res
     } catch (e) {
       console.log(e)
-      return []
+      return {}
     }
   }
 
@@ -190,6 +199,10 @@ const TeamStatistics = ({
       />
     </>
   )
+
+  const teams = teamRowsFromStats(stats)
+  const sectionTitle =
+    scope === 'cup' ? t('stats_scope_cup') : t('stats_scope_league')
 
   if (isLoading) {
     return (
@@ -211,32 +224,19 @@ const TeamStatistics = ({
         {seasonChips}
         <View className="my-4">
           <Text type="subtitle" className="text-xl font-bold">
-            {scope === 'cup' ? t('stats_scope_cup') : t('eight_ball')}
+            {sectionTitle}
           </Text>
         </View>
         <Card className="mb-6 rounded-lg overflow-hidden">
           <TeamStatisticsHeader />
-          {typeof stats.eightBall !== 'undefined' &&
-            stats.eightBall.map((item, index) => (
-              <TeamStanding key={'8b' + index} data={item} idx={index} />
-            ))}
+          {teams.map((item, index) => (
+            <TeamStanding
+              key={String(item.teamId ?? item.name ?? index)}
+              data={item}
+              idx={index}
+            />
+          ))}
         </Card>
-        {scope !== 'cup' ? (
-          <>
-            <View className="my-4">
-              <Text type="subtitle" className="text-xl font-bold">
-                {t('nine_ball')}
-              </Text>
-            </View>
-            <Card className="mb-6 rounded-lg overflow-hidden">
-              <TeamStatisticsHeader />
-              {typeof stats.nineBall !== 'undefined' &&
-                stats.nineBall.map((item, index) => (
-                  <TeamStanding key={'9b' + index} data={item} idx={index} />
-                ))}
-            </Card>
-          </>
-        ) : null}
       </ScrollView>
     )
   }

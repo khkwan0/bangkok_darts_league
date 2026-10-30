@@ -134,7 +134,8 @@ function MyStatsPane({
 }) {
   const statColors = useStatColors()
 
-  if (isLoading || (!playerInfo && !error)) {
+  // Keep prior player header/avatar while scope refetch is in flight.
+  if ((isLoading && !playerInfo) || (!playerInfo && !error)) {
     return (
       <View className="flex-1 justify-center items-center">
         <ActivityIndicator size="large" color={statColors.accent} />

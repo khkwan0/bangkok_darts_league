@@ -57,6 +57,29 @@ type StatBucket = {
   played: number
   won: number
   winp: number | string
+  tons?: number
+  heavyTons?: number
+  closes?: number
+  legs?: number
+}
+
+function dartsTallyLine(
+  t: (key: string) => string,
+  bucket: StatBucket,
+): string {
+  const parts = [
+    `${t('played')} ${bucket.played}`,
+    `${t('won')} ${bucket.won}`,
+  ]
+  const legs = Number(bucket.legs) || 0
+  const tons = Number(bucket.tons) || 0
+  const heavyTons = Number(bucket.heavyTons) || 0
+  const closes = Number(bucket.closes) || 0
+  if (legs > 0) parts.push(`${t('legs')} ${legs}`)
+  if (tons > 0) parts.push(`${t('tons')} ${tons}`)
+  if (heavyTons > 0) parts.push(`${t('heavy_tons')} ${heavyTons}`)
+  if (closes > 0) parts.push(`${t('closes')} ${closes}`)
+  return parts.join('  ·  ')
 }
 
 export default function PlayerStatistics({
@@ -452,6 +475,15 @@ export default function PlayerStatistics({
           }}>
           {t('statistics_legend_adjusted')}
         </RNText>
+        <RNText
+          style={{
+            color: colors.muted,
+            fontSize: 13,
+            lineHeight: 18,
+            marginTop: 8,
+          }}>
+          {t('statistics_legend_darts')}
+        </RNText>
       </Surface>
     </ScrollView>
   )
@@ -503,7 +535,7 @@ function StatCard({label, bucket}: {label: string; bucket: StatBucket}) {
         </RNText>
       </RNView>
       <RNText style={{color: colors.muted, fontSize: 13, marginBottom: 8}}>
-        {`${t('played')} ${bucket.played}  ·  ${t('won')} ${bucket.won}`}
+        {dartsTallyLine(t, bucket)}
       </RNText>
       <WinRateBar played={bucket.played} won={bucket.won} winp={bucket.winp} />
     </Surface>
@@ -514,6 +546,10 @@ function TotalCard({bucket}: {bucket: StatBucket}) {
   const {t} = useTranslation()
   const colors = useStatColors()
   const percent = winRatePercent(bucket.played, bucket.won, bucket.winp)
+  const legs = Number(bucket.legs) || 0
+  const tons = Number(bucket.tons) || 0
+  const heavyTons = Number(bucket.heavyTons) || 0
+  const closes = Number(bucket.closes) || 0
   return (
     <Surface
       style={{
@@ -540,6 +576,22 @@ function TotalCard({bucket}: {bucket: StatBucket}) {
           valueColor={winRateColor(percent)}
         />
       </RNView>
+      {(legs > 0 || tons > 0 || heavyTons > 0 || closes > 0) && (
+        <RNView style={{flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12}}>
+          {legs > 0 ? (
+            <TotalStat label={t('legs')} value={String(legs)} />
+          ) : null}
+          {tons > 0 ? (
+            <TotalStat label={t('tons')} value={String(tons)} />
+          ) : null}
+          {heavyTons > 0 ? (
+            <TotalStat label={t('heavy_tons')} value={String(heavyTons)} />
+          ) : null}
+          {closes > 0 ? (
+            <TotalStat label={t('closes')} value={String(closes)} />
+          ) : null}
+        </RNView>
+      )}
       <WinRateBar played={bucket.played} won={bucket.won} winp={bucket.winp} />
     </Surface>
   )

@@ -10,11 +10,6 @@ interface PropType {
 
 export default function StatsHeader(props: PropType) {
   const {t} = useTranslation()
-  const header = props.isDoubles
-    ? 'Doubles'
-    : props.isMatchPerformance
-      ? 'Match Performance'
-      : 'Frames'
   return (
     <View className="flex-row">
       {!props.isMatchPerformance && (

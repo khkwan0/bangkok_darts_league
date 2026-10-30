@@ -3,17 +3,19 @@ import {
   View,
   Pressable,
   FlatList,
+  ScrollView,
   useColorScheme,
   ActivityIndicator,
 } from 'react-native'
 import {ThemedText as Text} from '@/components/ThemedText'
 import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import React from 'react'
-import {useNavigation} from "expo-router/react-navigation"
+import {useNavigation} from 'expo-router/react-navigation'
 import {useTranslation} from 'react-i18next'
 import {useLeague} from '@/hooks/useLeague'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useStatsScope} from '@/context/StatsScopeContext'
+import {useNetwork} from '@/hooks/useNetwork'
 import {usePathname, router} from 'expo-router'
 import MaterialIcons from '@expo/vector-icons/MaterialIcons'
 import TextInput from '@/components/TextInput'
@@ -27,8 +29,17 @@ type PlayerStatsType = {
   rank: number
   played: number
   won: number
+  tons?: number
+  heavyTons?: number
+  closes?: number
+  legs?: number
   rawPerfDisp: number
   adjPerfDisp: number
+}
+
+type LeagueGameTypeOption = {
+  code: string
+  label: string
 }
 
 function StatsHeader({
@@ -43,6 +54,7 @@ function StatsHeader({
   setNameFilter,
   nameFilter,
   loading,
+  gameTypeOptions,
 }: {
   setShowFilters: (showFilters: boolean) => void
   showFilters: boolean
@@ -55,6 +67,7 @@ function StatsHeader({
   setNameFilter: (nameFilter: string) => void
   nameFilter: string
   loading: boolean
+  gameTypeOptions: LeagueGameTypeOption[]
 }) {
   const {t} = useTranslation()
 
@@ -84,28 +97,40 @@ function StatsHeader({
           setNameFilter={setNameFilter}
           nameFilter={nameFilter}
           loading={loading}
+          gameTypeOptions={gameTypeOptions}
         />
       )}
-      <View className="flex-row items-center py-3 px-2 bg-gray-100 dark:bg-gray-800 rounded-t-lg mb-2">
-        <View style={{flex: 1}}>
-          <Text className="font-bold">{t('rank')}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View className="flex-row items-center py-3 px-2 bg-gray-100 dark:bg-gray-800 rounded-t-lg mb-2 min-w-full">
+          <View style={{width: 36}}>
+            <Text className="font-bold">{t('rank')}</Text>
+          </View>
+          <View style={{width: 110}}>
+            <Text className="font-bold">{t('name')}</Text>
+          </View>
+          <View style={{width: 44}} className="items-center">
+            <Text className="font-bold text-xs">{t('played')}</Text>
+          </View>
+          <View style={{width: 44}} className="items-center">
+            <Text className="font-bold text-xs">{t('won')}</Text>
+          </View>
+          <View style={{width: 40}} className="items-center">
+            <Text className="font-bold text-xs">{t('legs')}</Text>
+          </View>
+          <View style={{width: 40}} className="items-center">
+            <Text className="font-bold text-xs">{t('stat_abbr_tons')}</Text>
+          </View>
+          <View style={{width: 44}} className="items-center">
+            <Text className="font-bold text-xs">{t('stat_abbr_heavy')}</Text>
+          </View>
+          <View style={{width: 40}} className="items-center">
+            <Text className="font-bold text-xs">{t('stat_abbr_closes')}</Text>
+          </View>
+          <View style={{width: 52}} className="items-center">
+            <Text className="font-bold text-xs">{t('adj_perf')}</Text>
+          </View>
         </View>
-        <View style={{flex: 2}}>
-          <Text className="font-bold">{t('name')}</Text>
-        </View>
-        <View style={{flex: 1}}>
-          <Text className="font-bold">{t('played')}</Text>
-        </View>
-        <View style={{flex: 1}}>
-          <Text className="font-bold">{t('won')}</Text>
-        </View>
-        <View style={{flex: 1}}>
-          <Text className="font-bold">{t('raw_perf')}</Text>
-        </View>
-        <View style={{flex: 1}}>
-          <Text className="font-bold">{t('adj_perf')}</Text>
-        </View>
-      </View>
+      </ScrollView>
     </>
   )
 }
@@ -121,12 +146,12 @@ function PlayerListing({data, idx}: {data: PlayerStatsType; idx: number}) {
     textStyle = `font-bold text-red-500 dark:text-red-500 text-base`
   }
 
-  function handlePress(data: PlayerStatsType) {
+  function handlePress(row: PlayerStatsType) {
     router.push({
       pathname: currentPath + '/Player',
       params: {
         params: JSON.stringify({
-          playerId: data.playerId,
+          playerId: row.playerId,
         }),
       },
     })
@@ -138,37 +163,51 @@ function PlayerListing({data, idx}: {data: PlayerStatsType; idx: number}) {
       : 'flex-row items-center py-3 px-2 bg-white dark:bg-gray-800 rounded-md'
 
   return (
-    <Pressable
-      onPress={() => handlePress(data)}
-      className={rowClass}
-      style={{
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 1},
-        shadowOpacity: 0.1,
-        shadowRadius: 1,
-        elevation: 1,
-      }}>
-      <View style={{flex: 1}}>
-        <Text className={textStyle}>
-          {isCurrentUser ? `🔹 ${data.rank}` : data.rank.toString()}
-        </Text>
-      </View>
-      <View style={{flex: 2}}>
-        <Text className={textStyle}>{data.name}</Text>
-      </View>
-      <View style={{flex: 1}}>
-        <Text className={textStyle}>{data.played.toString()}</Text>
-      </View>
-      <View style={{flex: 1}}>
-        <Text className={textStyle}>{data.won.toString()}</Text>
-      </View>
-      <View style={{flex: 1}}>
-        <Text className={textStyle}>{data.rawPerfDisp.toString()}</Text>
-      </View>
-      <View style={{flex: 1}}>
-        <Text className={textStyle}>{data.adjPerfDisp.toString()}</Text>
-      </View>
-    </Pressable>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <Pressable
+        onPress={() => handlePress(data)}
+        className={rowClass}
+        style={{
+          minWidth: '100%',
+          shadowColor: '#000',
+          shadowOffset: {width: 0, height: 1},
+          shadowOpacity: 0.1,
+          shadowRadius: 1,
+          elevation: 1,
+        }}>
+        <View style={{width: 36}}>
+          <Text className={textStyle}>
+            {isCurrentUser ? `🔹 ${data.rank}` : data.rank.toString()}
+          </Text>
+        </View>
+        <View style={{width: 110}}>
+          <Text className={textStyle} numberOfLines={1}>
+            {data.name}
+          </Text>
+        </View>
+        <View style={{width: 44}} className="items-center">
+          <Text className={textStyle}>{data.played.toString()}</Text>
+        </View>
+        <View style={{width: 44}} className="items-center">
+          <Text className={textStyle}>{data.won.toString()}</Text>
+        </View>
+        <View style={{width: 40}} className="items-center">
+          <Text className={textStyle}>{String(data.legs ?? 0)}</Text>
+        </View>
+        <View style={{width: 40}} className="items-center">
+          <Text className={textStyle}>{String(data.tons ?? 0)}</Text>
+        </View>
+        <View style={{width: 44}} className="items-center">
+          <Text className={textStyle}>{String(data.heavyTons ?? 0)}</Text>
+        </View>
+        <View style={{width: 40}} className="items-center">
+          <Text className={textStyle}>{String(data.closes ?? 0)}</Text>
+        </View>
+        <View style={{width: 52}} className="items-center">
+          <Text className={textStyle}>{data.adjPerfDisp.toString()}</Text>
+        </View>
+      </Pressable>
+    </ScrollView>
   )
 }
 
@@ -182,6 +221,7 @@ function PlayerStatsHeader({
   setNameFilter,
   nameFilter,
   loading,
+  gameTypeOptions,
 }: {
   setGameType: (gameType: string) => void
   gameType: string
@@ -192,12 +232,13 @@ function PlayerStatsHeader({
   setNameFilter: (nameFilter: string) => void
   nameFilter: string
   loading: boolean
+  gameTypeOptions: LeagueGameTypeOption[]
 }) {
   const {t} = useTranslation()
   const colorScheme = useColorScheme()
 
   const tabStyle = (isActive: boolean) =>
-    `flex-1 flex-row justify-center items-center py-3 mx-1 rounded-lg ${
+    `flex-row justify-center items-center py-3 px-3 mx-1 rounded-lg ${
       isActive
         ? colorScheme === 'dark'
           ? 'bg-blue-800'
@@ -216,30 +257,27 @@ function PlayerStatsHeader({
     <View>
       <View className="bg-white dark:bg-gray-900 p-4 rounded-lg mb-4">
         <Text className="text-xl font-bold mb-2">{t('game_type')}</Text>
-        <View className="flex-row justify-between">
-          <Pressable
-            disabled={loading}
-            onPress={() => setGameType('')}
-            className={tabStyle(gameType === '')}>
-            <Text className={textStyle(gameType === '')}>{t('all')}</Text>
-          </Pressable>
-          <Pressable
-            disabled={loading}
-            onPress={() => setGameType('8b')}
-            className={tabStyle(gameType === '8b')}>
-            <Text className={textStyle(gameType === '8b')}>
-              {t('eight_ball')}
-            </Text>
-          </Pressable>
-          <Pressable
-            disabled={loading}
-            onPress={() => setGameType('9b')}
-            className={tabStyle(gameType === '9b')}>
-            <Text className={textStyle(gameType === '9b')}>
-              {t('nine_ball')}
-            </Text>
-          </Pressable>
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View className="flex-row">
+            <Pressable
+              disabled={loading}
+              onPress={() => setGameType('')}
+              className={tabStyle(gameType === '')}>
+              <Text className={textStyle(gameType === '')}>{t('all')}</Text>
+            </Pressable>
+            {gameTypeOptions.map(opt => (
+              <Pressable
+                key={opt.code}
+                disabled={loading}
+                onPress={() => setGameType(opt.code)}
+                className={tabStyle(gameType === opt.code)}>
+                <Text className={textStyle(gameType === opt.code)}>
+                  {opt.label || opt.code}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
       </View>
       <View className="bg-white dark:bg-gray-900 p-4 rounded-lg mb-4">
         <Text className="text-xl font-bold mb-2">{t('game_variety')}</Text>
@@ -247,7 +285,7 @@ function PlayerStatsHeader({
           <Pressable
             disabled={loading}
             onPress={() => setGameVariety('both')}
-            className={tabStyle(gameVariety === 'both')}>
+            className={`flex-1 ${tabStyle(gameVariety === 'both')}`}>
             <Text className={textStyle(gameVariety === 'both')}>
               {t('both')}
             </Text>
@@ -255,7 +293,7 @@ function PlayerStatsHeader({
           <Pressable
             disabled={loading}
             onPress={() => setGameVariety('singles')}
-            className={tabStyle(gameVariety === 'singles')}>
+            className={`flex-1 ${tabStyle(gameVariety === 'singles')}`}>
             <Text className={textStyle(gameVariety === 'singles')}>
               {t('singles')}
             </Text>
@@ -263,7 +301,7 @@ function PlayerStatsHeader({
           <Pressable
             disabled={loading}
             onPress={() => setGameVariety('doubles')}
-            className={tabStyle(gameVariety === 'doubles')}>
+            className={`flex-1 ${tabStyle(gameVariety === 'doubles')}`}>
             <Text className={textStyle(gameVariety === 'doubles')}>
               {t('doubles')}
             </Text>
@@ -319,17 +357,46 @@ export default function PlayerStatistics({
   const navigation = useNavigation()
   const {t} = useTranslation()
   const {scope} = useStatsScope()
+  const {Get} = useNetwork()
   const [minimumGames, setMinimumGames] = React.useState('20')
   const [nameFilter, setNameFilter] = React.useState('')
   const [gameVariety, setGameVariety] = React.useState('both')
   const [playerStats, setPlayerStats] = React.useState<PlayerStatsType[]>([])
   const [gameType, setGameType] = React.useState('')
+  const [gameTypeOptions, setGameTypeOptions] = React.useState<
+    LeagueGameTypeOption[]
+  >([])
   const league = useLeague()
   const [showFilters, setShowFilters] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
 
   const trie = React.useRef(new TrieSearch<any>('name'))
   const originalStats = React.useRef([])
+
+  React.useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await Get('/league-game-types')
+        if (cancelled) return
+        const rows = Array.isArray(res) ? res : []
+        setGameTypeOptions(
+          rows
+            .map((row: any) => ({
+              code: String(row?.code ?? '').trim(),
+              label: String(row?.label ?? row?.code ?? '').trim(),
+            }))
+            .filter((row: LeagueGameTypeOption) => row.code.length > 0),
+        )
+      } catch (e) {
+        console.error(e)
+        if (!cancelled) setGameTypeOptions([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [Get])
 
   async function getPlayerStats() {
     try {
@@ -397,6 +464,7 @@ export default function PlayerStatistics({
                 setNameFilter={setNameFilter}
                 nameFilter={nameFilter}
                 loading={loading}
+                gameTypeOptions={gameTypeOptions}
               />
             }
             contentContainerStyle={{padding: 8}}

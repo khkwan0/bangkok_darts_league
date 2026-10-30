@@ -4,6 +4,7 @@ import {useMiniLeagues} from '@/hooks/useMiniLeagues'
 import {useTheme} from 'expo-router/react-navigation'
 import {router} from 'expo-router'
 import React from 'react'
+import {useTranslation} from 'react-i18next'
 import {ActivityIndicator, Pressable, ScrollView} from 'react-native'
 
 export function MiniLeagueStats({
@@ -15,6 +16,7 @@ export function MiniLeagueStats({
 }) {
   const api = useMiniLeagues()
   const {colors} = useTheme()
+  const {t} = useTranslation()
   const [standings, setStandings] = React.useState<any[]>([])
   const [playerStats, setPlayerStats] = React.useState<any[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -62,10 +64,10 @@ export function MiniLeagueStats({
         standings.map(div => (
           <View key={div.division} className="mb-4">
             <Text className="font-semibold mb-2">{div.division}</Text>
-            {(div.teams || []).map((t: any, idx: number) => (
-              <Text key={t.teamId} className="py-1">
-                {idx + 1}. {t.name} — {t.points} pts, {t.frames} frames (
-                {t.played} played)
+            {(div.teams || []).map((team: any, idx: number) => (
+              <Text key={team.teamId} className="py-1">
+                {idx + 1}. {team.name} — {team.points} pts, {team.frames}{' '}
+                {t('frames')} ({team.played} {t('played')})
               </Text>
             ))}
           </View>

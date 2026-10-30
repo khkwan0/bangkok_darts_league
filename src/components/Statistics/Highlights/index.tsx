@@ -30,6 +30,7 @@ const SPOTLIGHT_I18N: Record<string, string> = {
   iron_man: 'weekly_spotlight_iron_man',
   doubles_star: 'weekly_spotlight_doubles_star',
   ton_machine: 'weekly_spotlight_ton_machine',
+  one_eighties: 'weekly_spotlight_one_eighties',
   closer: 'weekly_spotlight_closer',
   golden_break: 'weekly_spotlight_golden_break',
 }

@@ -2,13 +2,11 @@ import React from 'react'
 import {useLeague} from '@/hooks'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
 import {useNavigation, useRouter} from 'expo-router'
-import Button from '@/components/Button'
 import {ActivityIndicator, Pressable, ScrollView} from 'react-native'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import {useTranslation} from 'react-i18next'
 import Row from '@/components/Row'
-import {t} from 'i18next'
 
 const TeamStanding = ({data, idx}) => {
   const [showMore, setShowMore] = React.useState(false)
@@ -64,71 +62,69 @@ const TeamStanding = ({data, idx}) => {
                     : 'T'
             const vsTeam =
               match.home_team === data.name ? match.away_team : match.home_team
-            const homeAway = match.home_team === data.name ? 'Home' : 'Away'
+            const homeAway =
+              match.home_team === data.name ? t('home') : t('away')
             return (
               <Pressable
                 key={matchIdx}
                 onPress={() => HandleMatchPress(match.match_id)}>
-                <Row className="px-4 py-2">
+                <Row>
                   <View style={{flex: 2}}>
-                    <Text>{`vs ${vsTeam} (${homeAway})`}</Text>
+                    <Text
+                      type="link"
+                      className="text-lg">{`vs ${vsTeam} (${homeAway})`}</Text>
                   </View>
                   <View style={{flex: 1}}>
-                    <Text>{result}</Text>
+                    <Text className="font-bold">{result}</Text>
                   </View>
                 </Row>
               </Pressable>
             )
           })}
-        {showMore && (
-          <Button
-            className="py-2"
-            onPress={() =>
-              router.push({
-                pathname: '/TeamStats',
-                params: {
-                  teamIdParams: JSON.stringify({
-                    teamId: data.teamId,
-                    teamName: data.name,
-                  }),
-                },
-              })
-            }>
-            {t('internal_stats')}
-          </Button>
-        )}
       </View>
     </>
   )
 }
 
 const TeamStatisticsHeader = () => {
+  const {t} = useTranslation()
   return (
     <Row alignItems="center">
       <View style={{flex: 1}}>
-        <Text type="subtitle">Rank</Text>
+        <Text type="subtitle">{t('rank')}</Text>
       </View>
       <View style={{flex: 3}}>
-        <Text type="subtitle">Team</Text>
+        <Text type="subtitle">{t('team')}</Text>
       </View>
       <View style={{flex: 1}}>
-        <Text type="subtitle">Pts</Text>
+        <Text type="subtitle">{t('points')}</Text>
       </View>
       <View style={{flex: 1}}>
         <Text type="subtitle">W/L</Text>
       </View>
       <View style={{flex: 1}}>
-        <Text type="subtitle">Frames</Text>
+        <Text type="subtitle">{t('frames')}</Text>
       </View>
     </Row>
   )
 }
 
+function teamRowsFromStats(stats: any): any[] {
+  if (!stats || typeof stats !== 'object') return []
+  if (Array.isArray(stats.teams)) return stats.teams
+  if (Array.isArray(stats.eightBall) || Array.isArray(stats.nineBall)) {
+    return [...(stats.eightBall || []), ...(stats.nineBall || [])]
+  }
+  if (Array.isArray(stats)) return stats
+  return []
+}
+
 export default function TeamStatistics() {
   const league = useLeague()
-  const [stats, setStats] = React.useState({})
+  const [stats, setStats] = React.useState<any>({})
   const [isLoading, setIsLoading] = React.useState(false)
   const navigation = useNavigation()
+  const {t} = useTranslation()
   const listContentStyle = useTabListContentContainerStyle({
     flexGrow: 1,
     paddingHorizontal: 20,
@@ -136,7 +132,7 @@ export default function TeamStatistics() {
 
   React.useEffect(() => {
     navigation.setOptions({
-      headerTitle: 'Team Statistics',
+      headerTitle: t('team_statistics'),
       headerBackTitle: t('back'),
     })
     ;(async () => {
@@ -158,9 +154,11 @@ export default function TeamStatistics() {
       return res
     } catch (e) {
       console.log(e)
-      return []
+      return {}
     }
   }
+
+  const teams = teamRowsFromStats(stats)
 
   if (isLoading) {
     return (
@@ -168,26 +166,21 @@ export default function TeamStatistics() {
         <ActivityIndicator />
       </View>
     )
-  } else {
-    return (
-      <ScrollView contentContainerStyle={listContentStyle}>
-        <View className="my-4">
-          <Text type="subtitle">8-Ball</Text>
-        </View>
-        <TeamStatisticsHeader />
-        {typeof stats.eightBall !== 'undefined' &&
-          stats.eightBall.map((item, index) => (
-            <TeamStanding key={'8b' + index} data={item} idx={index} />
-          ))}
-        <View className="my-4">
-          <Text type="subtitle">9-Ball</Text>
-        </View>
-        <TeamStatisticsHeader />
-        {typeof stats.nineBall !== 'undefined' &&
-          stats.nineBall.map((item, index) => (
-            <TeamStanding key={'9b' + index} data={item} idx={index} />
-          ))}
-      </ScrollView>
-    )
   }
+
+  return (
+    <ScrollView contentContainerStyle={listContentStyle}>
+      <View className="my-4">
+        <Text type="subtitle">{t('stats_scope_league')}</Text>
+      </View>
+      <TeamStatisticsHeader />
+      {teams.map((item, index) => (
+        <TeamStanding
+          key={String(item.teamId ?? item.name ?? index)}
+          data={item}
+          idx={index}
+        />
+      ))}
+    </ScrollView>
+  )
 }
