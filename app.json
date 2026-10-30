@@ -133,6 +133,15 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to scan player QR codes",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
       "./plugins/withFirebaseAppDelegate",

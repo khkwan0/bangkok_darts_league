@@ -303,6 +303,25 @@ const AddPlayer = props => {
       ListHeaderComponent={
         !showAddNewPlayer ? (
           <>
+            <View className="mx-10 mt-6 mb-2">
+              <Button
+                onPress={() =>
+                  router.push({
+                    pathname: '/Match/ChoosePlayer/AddPlayer/ScanPlayerQr',
+                    params: {
+                      params: JSON.stringify({
+                        frameIndex,
+                        slot,
+                        side,
+                        frameNumber,
+                        frameType,
+                      }),
+                    },
+                  })
+                }>
+                {t('scan_player_qr')}
+              </Button>
+            </View>
             <View className="m-10">
               <Text type="subtitle">add_existing_player</Text>
               <TextInput

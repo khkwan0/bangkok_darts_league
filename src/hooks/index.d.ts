@@ -65,7 +65,20 @@ export interface League {
     email: string,
   ): Promise<{status: string; data?: {playerId: number}; msg?: string}>
   GetUniquePlayers(): Promise<{data: Player[]}>
-  AddPlayerToTeam(playerId: number, teamId: number): Promise<{status: string}>
+  GetPlayerName(playerId: number): Promise<{
+    status?: string
+    data?: {
+      name?: string
+      nickname?: string
+      firstname?: string | null
+      lastname?: string | null
+      profile_picture?: string | null
+    }
+  }>
+  AddPlayerToTeam(
+    playerId: number,
+    teamId: number,
+  ): Promise<{status: string; msg?: string}>
   GetCountries(): Promise<{status: string; data: Country[]}>
   GetTeamStats(seasonId?: number | null): Promise<TeamStats>
   GetVenues(): Promise<Venue[]>

@@ -229,17 +229,40 @@ export function QuickActionsContent({
 
   const body = (
     <>
-      <View className="mb-4">
-        <View className="flex-row items-center justify-between">
+      <View className="mb-4 flex-row items-start justify-between">
+        <View className="flex-1 pr-3">
           <Text type="subtitle">{t('quick_actions_title')}</Text>
+          <Text className="mt-1 text-sm opacity-60">
+            {t('player_id')}:{' '}
+            {typeof user?.id !== 'undefined' && user.id ? String(user.id) : '—'}
+          </Text>
+        </View>
+        <View className="items-end">
           <Text className="text-sm opacity-60">
             {t('build')} {config.build}
           </Text>
+          {loggedIn ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('my_qr_code')}
+              hitSlop={8}
+              onPress={() => go('/Settings/Preferences/ProfileQr')}
+              style={{
+                marginTop: 8,
+                height: 40,
+                width: 40,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 20,
+                backgroundColor:
+                  colorScheme === 'dark'
+                    ? 'rgba(255, 255, 255, 0.12)'
+                    : 'rgba(0, 0, 0, 0.06)',
+              }}>
+              <MCI name="qrcode" size={22} color={colors.text} />
+            </Pressable>
+          ) : null}
         </View>
-        <Text className="mt-1 text-sm opacity-60">
-          {t('player_id')}:{' '}
-          {typeof user?.id !== 'undefined' && user.id ? String(user.id) : '—'}
-        </Text>
       </View>
       {visibleIds.map(id => {
         const def = QUICK_ACTION_DEFS[id]
