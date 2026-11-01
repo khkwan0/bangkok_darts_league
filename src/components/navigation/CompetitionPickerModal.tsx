@@ -10,7 +10,7 @@ import {
   type Competition,
 } from '@/types/competition'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -144,6 +144,7 @@ function OptionRow({
 }
 
 export function CompetitionPickerModal() {
+  const router = useRouter()
   const {t} = useTranslation()
   const {state, setCompetition, closeCompetitionPicker, apiUrl} =
     useLeagueContext()

@@ -10,9 +10,10 @@ import StatsMatchPerformance from '@/components/PlayerStatistics/StatsMatchPerfo
 import config from '@/config'
 import {useSeason, useLeague} from '@/hooks'
 import {useSafeAreaInsets} from 'react-native-safe-area-context'
-import {router, useLocalSearchParams} from 'expo-router'
+import {useLocalSearchParams, useRouter} from 'expo-router'
 
 const PlayerStats = () => {
+  const router = useRouter()
   const season = useSeason()
   const league = useLeague()
   const insets = useSafeAreaInsets()

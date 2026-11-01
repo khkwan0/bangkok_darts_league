@@ -98,8 +98,11 @@ export interface Match {
     matchId: number,
     teamId: number,
   ): Promise<{status: string} | null>
-  ConfirmMatch(matchId: number, teamId: number): Promise<{status: string}>
-  UnconfirmMatch(matchId: number, teamId: number): Promise<{status: string}>
+  ConfirmMatch(
+    matchId: number,
+    teamId: number,
+  ): Promise<{status: string; data?: any} | null>
+  UnconfirmMatch(matchId: number, teamId: number): Promise<any | null>
   GetMatchDetails(matchId: number): Promise<MatchDetails>
 }
 

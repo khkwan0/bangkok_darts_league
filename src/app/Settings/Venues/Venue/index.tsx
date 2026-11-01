@@ -14,7 +14,7 @@ import * as Haptics from 'expo-haptics'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {useAccount, useLeague} from '@/hooks'
 import {useTranslation} from 'react-i18next'
-import {useLocalSearchParams, useNavigation, router} from 'expo-router'
+import {useLocalSearchParams, useNavigation, useRouter} from 'expo-router'
 import {useTheme} from 'expo-router/react-navigation'
 import {useLeagueContext} from '@/context/LeagueContext'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
@@ -271,6 +271,7 @@ function TeamRow({
   team: Team
   showDivider: boolean
 }) {
+  const router = useRouter()
   const {colors} = useTheme()
   const [pressed, setPressed] = React.useState(false)
 
@@ -304,6 +305,7 @@ function TeamRow({
 }
 
 export default function Venue() {
+  const router = useRouter()
   const [venue, setVenue] = useState<Venue | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(false)

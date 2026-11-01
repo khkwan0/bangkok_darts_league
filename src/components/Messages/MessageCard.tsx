@@ -4,7 +4,7 @@ import { useLeagueContext } from '@/context/LeagueContext'
 import { useAccount } from '@/hooks/useAccount'
 import { setAppBadgeCount } from '@/lib/notifications'
 import MaterialIcons from '@expo/vector-icons/MaterialIcons'
-import { router } from 'expo-router'
+import {useRouter} from 'expo-router'
 import {
   bangkokNowIso,
   formatMessageCardDate,
@@ -17,6 +17,7 @@ import { Alert, StyleSheet, TouchableOpacity } from 'react-native'
 import { MessageCardProps } from './types'
 
 export default function MessageCard({message, showAll}: MessageCardProps) {
+  const router = useRouter()
   const timeZone = usePreferredTimeZone()
   const messageDate = message.created_at
   const account = useAccount()

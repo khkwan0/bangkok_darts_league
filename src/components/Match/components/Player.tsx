@@ -5,7 +5,7 @@ import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import type {ScoresheetStatsView} from '@/lib/scoresheetStatsView'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import * as Haptics from 'expo-haptics'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import {useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {Alert, Pressable, Text, View} from 'react-native'
@@ -176,6 +176,7 @@ export default function Player({
   onFocusSlot,
   hideStats = false,
 }: PlayerProps) {
+  const router = useRouter()
   const {state, UpdateFramePlayers, UpdateFrameStats}: any = useMatchContext()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()

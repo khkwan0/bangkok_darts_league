@@ -1,5 +1,5 @@
 import {useMatchContext} from '@/context/MatchContext'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import {Image, Pressable, Text, View} from 'react-native'
 import {useScoresheetTheme} from './scoresheetTheme'
 
@@ -21,6 +21,7 @@ function TeamLogo({uri}: {uri?: string}) {
 }
 
 export default function VSHeader() {
+  const router = useRouter()
   const {state}: any = useMatchContext()
   const theme = useScoresheetTheme()
 

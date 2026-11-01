@@ -4,9 +4,10 @@ import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import {Pressable} from 'react-native'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 
 export default function FrameDetails(props: any) {
+  const router = useRouter()
   const {homePlayers, awayPlayers, home_win: homeWin} = props.item
 
   return (

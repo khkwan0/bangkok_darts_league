@@ -2,11 +2,12 @@ import {Colors} from '@/constants/Colors'
 import {useThemeColor} from '@/hooks/useThemeColor'
 import {useHasSupportActivity} from '@/lib/supportUnread'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import {Pressable, StyleSheet, useColorScheme, View} from 'react-native'
 import {useTranslation} from 'react-i18next'
 
 export const SettingsButton = () => {
+  const router = useRouter()
   const textColor = useThemeColor({}, 'text')
   const isDark = useColorScheme() === 'dark'
   const {t} = useTranslation()

@@ -1,5 +1,5 @@
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import {useTranslation} from 'react-i18next'
 import {Pressable, Text} from 'react-native'
 import {useScoresheetTheme} from './scoresheetTheme'
@@ -11,6 +11,7 @@ export default function More({
   matchId: number
   pathname?: string
 }) {
+  const router = useRouter()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
 

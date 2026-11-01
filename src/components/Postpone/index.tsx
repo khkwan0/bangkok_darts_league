@@ -21,12 +21,13 @@ import {
 import DateTimePicker from '@expo/ui/community/datetime-picker'
 import {Ionicons} from '@expo/vector-icons'
 import {useNavigation} from "expo-router/react-navigation"
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React, {useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {ActivityIndicator} from 'react-native'
 
 export default function Postpone({matchInfo}: {matchInfo: any}) {
+  const router = useRouter()
   const parsedMatchInfo =
     typeof matchInfo === 'string' ? JSON.parse(matchInfo) : matchInfo
   const postponedProposal = parsePostponedProposal(
@@ -116,7 +117,7 @@ export default function Postpone({matchInfo}: {matchInfo: any}) {
         parsedMatchInfo.match_id,
         parsedMatchInfo.player_team_id,
       )
-      if (res.status === 'ok') {
+      if (res?.status === 'ok') {
         RefreshUpcoming()
         exitPostponeScreen()
       } else {

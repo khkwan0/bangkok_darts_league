@@ -72,6 +72,8 @@ interface LeagueState {
   showPlayerOfTheWeek: boolean
   /** League-level switch from /branding for match predictions. */
   predictionsEnabled: boolean
+  /** League-level switch from /branding for Weeklies. Defaults on. */
+  weekliesEnabled: boolean
   /** League-level switch from /branding. When false, hide the Forums link. */
   forumsEnabled: boolean
   refreshUpcoming: boolean
@@ -133,6 +135,7 @@ const initialState: LeagueState = {
   showPredictionsOnMatchCards: true,
   showPlayerOfTheWeek: true,
   predictionsEnabled: false,
+  weekliesEnabled: true,
   forumsEnabled: true,
   refreshUpcoming: false,
   competition: CANONICAL_COMPETITION,
@@ -320,6 +323,12 @@ const LeagueReducer = (state: any, action: any) => {
       return {
         ...state,
         predictionsEnabled: Boolean(action.payload),
+      }
+    }
+    case 'SET_WEEKLIES_ENABLED': {
+      return {
+        ...state,
+        weekliesEnabled: action.payload !== false,
       }
     }
     case 'SET_FORUMS_ENABLED': {
@@ -603,6 +612,10 @@ export const LeagueProvider = ({children}: any) => {
         dispatch({
           type: 'SET_PREDICTIONS_ENABLED',
           payload: json?.data?.predictions_enabled === true,
+        })
+        dispatch({
+          type: 'SET_WEEKLIES_ENABLED',
+          payload: json?.data?.weeklies_enabled !== false,
         })
         dispatch({
           type: 'SET_FORUMS_ENABLED',

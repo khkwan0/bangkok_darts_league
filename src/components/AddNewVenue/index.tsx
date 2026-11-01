@@ -13,11 +13,12 @@ import {
 } from 'react-native'
 import TextInput from '@/components/TextInput'
 import {useTranslation} from 'react-i18next'
-import {router, useNavigation} from 'expo-router'
+import {useNavigation, useRouter} from 'expo-router'
 import {Ionicons} from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 
 export default function AddNewVenue() {
+  const router = useRouter()
   const league = useLeague()
   const [venueName, setVenueName] = useState('')
   const [venueAddress, setVenueAddress] = useState('')

@@ -7,7 +7,7 @@ import PlayerAchievementsCard from '@/components/PlayerAchievementsCard'
 import PlayerAchievementsHero from '@/components/PlayerAchievementsHero'
 import Row from '@/components/Row'
 import config from '@/config'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import Button from '@/components/Button'
 import {useNavigation} from "expo-router/react-navigation"
 import type {PlayerAchievements} from '@/types/achievements'
@@ -17,6 +17,7 @@ interface PlayerDetailsProps {
 }
 
 export default function PlayerDetails({playerId}: PlayerDetailsProps) {
+  const router = useRouter()
   const league = useLeague()
   const {getPlayerAchievements} = useAchievements()
   const [playerInfo, setPlayerInfo] = React.useState<any>(null)

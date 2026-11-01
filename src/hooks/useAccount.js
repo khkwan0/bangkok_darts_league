@@ -564,6 +564,23 @@ export const useAccount = () => {
     }
   }
 
+  async function SetHabitNotifications(enabled) {
+    try {
+      const next = Boolean(enabled)
+      const preferences = {
+        ...(stateRef.current.user?.preferences || {}),
+        enabledHabitNotifications: next,
+      }
+      dispatch({
+        type: 'SET_PREFERENCES',
+        payload: {enabledHabitNotifications: next},
+      })
+      await SavePreferences(preferences)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   async function SetFavoriteVenues(favoriteVenues) {
     try {
       const next = Array.isArray(favoriteVenues)
@@ -762,6 +779,7 @@ export const useAccount = () => {
     SetNationality,
     SetPushNotifications,
     SetSoundNotifications,
+    SetHabitNotifications,
     SetFavoriteVenues,
     SetFabQuickActions,
     SetOtaAutoReload,

@@ -11,7 +11,7 @@ import {useTranslation} from 'react-i18next'
 import {useLeague, useTeams} from '@/hooks'
 import TrieSearch from 'trie-search'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 
 const PlayerCard = props => {
   const {state, dispatch} = useLeagueContext()
@@ -312,6 +312,7 @@ type TeamType = {
 }
 
 const Team = props => {
+  const router = useRouter()
   const [team, setTeam] = React.useState<TeamType>({})
   const {dispatch, state} = useLeagueContext()
   const navigation = useNavigation()

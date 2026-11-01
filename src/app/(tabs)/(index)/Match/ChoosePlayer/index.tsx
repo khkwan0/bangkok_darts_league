@@ -3,13 +3,14 @@ import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import {useMatchContext} from '@/context/MatchContext'
 import {useThemeColor} from '@/hooks/useThemeColor'
-import {router, useLocalSearchParams} from 'expo-router'
+import {useLocalSearchParams, useRouter} from 'expo-router'
 import {useNavigation} from 'expo-router/react-navigation'
 import {t} from 'i18next'
 import React from 'react'
 import {FlatList, Pressable} from 'react-native'
 
 export default function ChoosePlayer(props: any) {
+  const router = useRouter()
   const {params} = useLocalSearchParams()
   const {state}: any = useMatchContext()
   const navigation = useNavigation()

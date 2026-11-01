@@ -16,7 +16,7 @@ import {useLeague} from '@/hooks/useLeague'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useStatsScope} from '@/context/StatsScopeContext'
 import {useNetwork} from '@/hooks/useNetwork'
-import {usePathname, router} from 'expo-router'
+import {usePathname, useRouter} from 'expo-router'
 import MaterialIcons from '@expo/vector-icons/MaterialIcons'
 import TextInput from '@/components/TextInput'
 import TrieSearch from 'trie-search'
@@ -136,6 +136,7 @@ function StatsHeader({
 }
 
 function PlayerListing({data, idx}: {data: PlayerStatsType; idx: number}) {
+  const router = useRouter()
   const {state: user} = useLeagueContext()
   let textStyle = `text-base`
   const isCurrentUser =

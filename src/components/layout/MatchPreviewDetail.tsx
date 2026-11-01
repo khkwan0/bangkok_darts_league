@@ -1,6 +1,6 @@
 import {ThemedText as Text} from '@/components/ThemedText'
 import {Colors} from '@/constants/Colors'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React from 'react'
 import {Pressable, useColorScheme, View} from 'react-native'
 import {useTranslation} from 'react-i18next'
@@ -12,6 +12,7 @@ type Props = {
 
 /** Regular-width home detail: match summary + open live scoresheet. */
 export function MatchPreviewDetail({match, onOpenScoresheet}: Props) {
+  const router = useRouter()
   const {t} = useTranslation()
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]

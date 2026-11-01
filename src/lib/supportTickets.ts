@@ -36,8 +36,8 @@ export function supportStatusLabelKey(status: string): string {
   }
 }
 
-export function messagePreview(message: string, max = 120): string {
-  const trimmed = message.trim().replace(/\s+/g, ' ')
+export function messagePreview(message?: string | null, max = 120): string {
+  const trimmed = (message ?? '').trim().replace(/\s+/g, ' ')
   if (trimmed.length <= max) {
     return trimmed
   }

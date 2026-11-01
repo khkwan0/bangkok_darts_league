@@ -7,9 +7,10 @@ import {MaterialCommunityIcons} from '@expo/vector-icons'
 import {useNavigation} from "expo-router/react-navigation"
 import PlayerCard from './playerCard'
 import {useLeague} from '@/hooks'
-import {router, useLocalSearchParams} from 'expo-router'
+import {useLocalSearchParams, useRouter} from 'expo-router'
 
 export default function AddExistingPlayer() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = React.useState('')
   const [list, setList] = React.useState([])
   const {t} = useTranslation()

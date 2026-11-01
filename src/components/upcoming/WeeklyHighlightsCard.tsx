@@ -6,7 +6,7 @@ import {
 } from '@/lib/homeHighlightsCollapsed'
 import {Ionicons, MaterialCommunityIcons} from '@expo/vector-icons'
 import {LinearGradient} from 'expo-linear-gradient'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -129,7 +129,10 @@ function Avatar({
   )
 }
 
-function openPlayer(playerId: number) {
+function openPlayer(
+  router: ReturnType<typeof useRouter>,
+  playerId: number,
+) {
   // Stay on the Home stack so Back returns to this screen (not Statistics).
   router.push({
     pathname: '/Player' as any,
@@ -146,10 +149,11 @@ function SpotlightRow({
   label: string
   theme: ReturnType<typeof getTheme>
 }) {
+  const router = useRouter()
   const icon = SPOTLIGHT_ICON[spotlight.id] || 'star-four-points'
   return (
     <Pressable
-      onPress={() => openPlayer(spotlight.player.playerId)}
+      onPress={() => openPlayer(router, spotlight.player.playerId)}
       style={[
         styles.spotlight,
         {
@@ -174,6 +178,7 @@ function SpotlightRow({
 }
 
 export default function WeeklyHighlightsCard() {
+  const router = useRouter()
   const {t} = useTranslation()
   const {getWeeklyHighlights} = useWeeklyHighlights()
   const isDark = useColorScheme() === 'dark'
@@ -307,7 +312,7 @@ export default function WeeklyHighlightsCard() {
         </Text>
 
         <Pressable
-          onPress={() => openPlayer(potw.playerId)}
+          onPress={() => openPlayer(router, potw.playerId)}
           style={[styles.hero, {opacity: loading ? 0.75 : 1}]}>
           <View style={styles.heroRow}>
             <Avatar player={potw} size={64} />

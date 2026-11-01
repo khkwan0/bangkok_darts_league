@@ -8,7 +8,7 @@ import {useAccount} from '@/hooks/useAccount'
 import {useIsRegularLayout} from '@/hooks/useLayoutMode'
 import {setAppBadgeCount} from '@/lib/notifications'
 import {useFocusEffect, useNavigation} from "expo-router/react-navigation"
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {Alert} from 'react-native'
@@ -25,6 +25,7 @@ export default function MessagesScreen() {
   )
   const {t} = useTranslation()
   const navigation = useNavigation()
+  const router = useRouter()
   const isRegular = useIsRegularLayout()
   const accountRef = React.useRef(account)
   const dispatchRef = React.useRef(dispatch)

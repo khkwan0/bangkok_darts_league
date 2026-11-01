@@ -5,7 +5,7 @@ import {
   tzMismatchAckKey,
 } from '@/lib/bangkokTime'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {Alert} from 'react-native'
@@ -15,6 +15,7 @@ import {Alert} from 'react-native'
  * Display always uses the preference; dialog does not change it.
  */
 export default function TimezoneMismatchDialog() {
+  const router = useRouter()
   const {t} = useTranslation()
   const {state} = useLeagueContext()
   const userId = state.user?.id

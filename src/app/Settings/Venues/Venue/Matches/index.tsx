@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native'
 import {MaterialIcons} from '@expo/vector-icons'
-import {router, useLocalSearchParams} from 'expo-router'
+import {useLocalSearchParams, useRouter} from 'expo-router'
 import {useNavigation, useTheme} from 'expo-router/react-navigation'
 import {DateTime} from 'luxon'
 import {useTranslation} from 'react-i18next'
@@ -214,6 +214,7 @@ function isUpcomingMatch(row: VenueMatch): boolean {
 }
 
 export default function VenueMatches() {
+  const router = useRouter()
   const params = useLocalSearchParams()
   const parsed = useMemo(() => {
     try {

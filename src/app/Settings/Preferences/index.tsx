@@ -3,7 +3,7 @@ import {ThemedText as Text} from '@/components/ThemedText'
 import {useTranslation} from 'react-i18next'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import {useTheme} from "expo-router/react-navigation"
-import { router, useNavigation } from 'expo-router';
+import {useNavigation, useRouter} from 'expo-router';
 import React from 'react'
 import {useLeagueContext} from '@/context/LeagueContext'
 
@@ -24,6 +24,7 @@ function PreferenceRow({
   iconBackground,
   showDivider = true,
 }: PreferenceRowProps) {
+  const router = useRouter()
   const {colors} = useTheme()
   const [pressed, setPressed] = React.useState(false)
 
@@ -140,6 +141,13 @@ export default function Preferences() {
               route="/Settings/Preferences/ProfileQr"
               iconColor="#7C3AED"
               iconBackground="rgba(124, 58, 237, 0.15)"
+            />
+            <PreferenceRow
+              icon="account-switch-outline"
+              label={t('claim_existing_player')}
+              route="/Settings/Preferences/ClaimProfile"
+              iconColor="#0D9488"
+              iconBackground="rgba(13, 148, 136, 0.15)"
             />
             <PreferenceRow
               icon="delete-outline"

@@ -5,11 +5,12 @@ import {useLeagueContext} from '@/context/LeagueContext'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import {useMiniLeagues} from '@/hooks/useMiniLeagues'
 import {useTheme} from 'expo-router/react-navigation'
-import {router, useFocusEffect, useLocalSearchParams} from 'expo-router'
+import {useFocusEffect, useLocalSearchParams, useRouter} from 'expo-router'
 import React from 'react'
 import {ActivityIndicator, Pressable, ScrollView} from 'react-native'
 
 export default function MiniLeagueOverviewScreen() {
+  const router = useRouter()
   const {id} = useLocalSearchParams<{id: string}>()
   const miniId = Number(id)
   const api = useMiniLeagues()

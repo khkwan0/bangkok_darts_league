@@ -27,7 +27,9 @@ import {
   useColorScheme,
   View as RNView,
 } from 'react-native'
-import {Swipeable} from 'react-native-gesture-handler'
+import Swipeable, {
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable'
 
 type TabKey = 'new' | 'tickets'
 
@@ -51,7 +53,7 @@ function ClosedTicketRow({
   onDelete: () => void
 }) {
   const {t} = useTranslation()
-  const swipeRef = React.useRef<Swipeable>(null)
+  const swipeRef = React.useRef<SwipeableMethods>(null)
   const unread = item.unread_staff_replies > 0
 
   const renderRightActions = () => (

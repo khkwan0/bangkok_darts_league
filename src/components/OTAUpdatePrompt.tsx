@@ -8,7 +8,7 @@ import {
   saveOtaRestoreLocation,
 } from '@/lib/otaNavigationRestore'
 import * as Updates from 'expo-updates'
-import {router, useGlobalSearchParams, usePathname, useRootNavigationState} from 'expo-router'
+import {useGlobalSearchParams, usePathname, useRootNavigationState, useRouter} from 'expo-router'
 import {useEffect, useRef, useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -47,6 +47,7 @@ function manifestId(manifest: unknown): string {
  * Cold-start check waits until `enabled` (after welcome gate / skip).
  */
 export default function OTAUpdatePrompt({enabled = true}: {enabled?: boolean}) {
+  const router = useRouter()
   const {t} = useTranslation()
   const {state} = useLeagueContext()
   const pathname = usePathname()

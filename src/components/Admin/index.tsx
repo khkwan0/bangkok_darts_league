@@ -44,6 +44,11 @@ export default function Admin() {
         url="/Settings/Admin/PlayerMerges"
       />
       <NavDest
+        icon="account-check-outline"
+        text={t('admin_player_claims')}
+        url="/Settings/Admin/PlayerClaims"
+      />
+      <NavDest
         icon="palette"
         text={t('admin_branding')}
         url="/Settings/Admin/Branding"

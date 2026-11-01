@@ -2,7 +2,7 @@ import {ThemedText as Text} from './ThemedText'
 import Row from './Row'
 import {useMatchContext} from '@/context/MatchContext'
 import {useColorScheme, Image, View, Pressable} from 'react-native'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import config from '@/config'
 import {useTeams} from '@/hooks'
 import React from 'react'
@@ -33,6 +33,7 @@ export default function PlayerCard({
   isExisting = false,
   mfpp,
 }: PlayerCardPropsType) {
+  const router = useRouter()
   const {UpdateFramePlayers, UpdateTeams}: any = useMatchContext()
   const [stats, setStats] = React.useState({
     played: 0,

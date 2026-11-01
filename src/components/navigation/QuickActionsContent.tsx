@@ -129,12 +129,20 @@ export function QuickActionsContent({
     return actionIds.filter(id => {
       if (id === 'admin') return isLeagueAdmin(user)
       if (id === 'predictions') return state.predictionsEnabled
+      if (id === 'weeklies') return state.weekliesEnabled !== false
       if (id === 'forums') return state.forumsEnabled !== false
       if (id === 'login') return !loggedIn
       if (id === 'logout') return loggedIn
       return true
     })
-  }, [actionIds, user, state.predictionsEnabled, state.forumsEnabled, loggedIn])
+  }, [
+    actionIds,
+    user,
+    state.predictionsEnabled,
+    state.weekliesEnabled,
+    state.forumsEnabled,
+    loggedIn,
+  ])
 
   const go = (url: string) => {
     router.push(url as any)
@@ -153,6 +161,9 @@ export function QuickActionsContent({
         break
       case 'achievements':
         go('/Settings/Achievements')
+        break
+      case 'weeklies':
+        go('/Settings/Weeklies')
         break
       case 'ai_assistant':
         go('/Settings/CueChat')

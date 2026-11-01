@@ -15,7 +15,7 @@ import {
   useMiniSeasonSelection,
 } from '@/components/mini-leagues/MiniSeasonChips'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -52,6 +52,7 @@ type MiniMatch = {
 }
 
 export function MiniLeagueHome({miniLeagueId}: {miniLeagueId: number}) {
+  const router = useRouter()
   const {t} = useTranslation()
   const api = useMiniLeagues()
   const apiRef = React.useRef(api)

@@ -4,11 +4,12 @@ import {ThemedView} from '@/components/ThemedView'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {useNavigation} from 'expo-router/react-navigation'
 import {useTranslation} from 'react-i18next'
-import {router, useLocalSearchParams, usePathname} from 'expo-router'
+import {useLocalSearchParams, usePathname, useRouter} from 'expo-router'
 
 type AddPlayerChild = 'AddExistingPlayer' | 'AddNewPlayer' | 'ScanPlayerQr'
 
 export default function AddPlayer() {
+  const router = useRouter()
   const navigation = useNavigation()
   const {t} = useTranslation()
   const [yesIsPressed, setYesIsPressed] = React.useState(false)

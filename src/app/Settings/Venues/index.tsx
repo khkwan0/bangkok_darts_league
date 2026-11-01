@@ -12,7 +12,7 @@ import {ThemedText as Text} from '@/components/ThemedText'
 import AppSwitch from '@/components/AppSwitch'
 import {useLeague} from '@/hooks'
 import {useTranslation} from 'react-i18next'
-import {router, useNavigation} from 'expo-router'
+import {useNavigation, useRouter} from 'expo-router'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {LinearGradient} from 'expo-linear-gradient'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
@@ -81,6 +81,7 @@ function VenueRow({
   index: number
   isFavorite: boolean
 }) {
+  const router = useRouter()
   const {t} = useTranslation()
   const accent = ACCENTS[index % ACCENTS.length]
   const teamCount = item.teams.length

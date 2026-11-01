@@ -4,7 +4,7 @@ import {ThemedText as Text} from '@/components/ThemedText'
 import {useAccount} from '@/hooks/useAccount'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import {useNavigation} from "expo-router/react-navigation"
-import {router, useLocalSearchParams} from 'expo-router'
+import {useLocalSearchParams, useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -20,6 +20,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context'
 const AUTH_FORM_MAX_WIDTH = 420
 
 export default function Email() {
+  const router = useRouter()
   const {t} = useTranslation()
   const insets = useSafeAreaInsets()
   const [email, setEmail] = React.useState('')

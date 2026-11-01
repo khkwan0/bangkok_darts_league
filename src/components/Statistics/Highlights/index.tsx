@@ -4,7 +4,7 @@ import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
 import {MaterialIcons} from '@expo/vector-icons'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -63,7 +63,10 @@ function medalFor(index: number): string | null {
   return null
 }
 
-function openPlayer(playerId: number) {
+function openPlayer(
+  router: ReturnType<typeof useRouter>,
+  playerId: number,
+) {
   router.push({
     pathname: '/statistics/PlayerStatistics/Player' as any,
     params: {playerId: String(playerId)},
@@ -169,13 +172,14 @@ function SpotlightCard({
   label: string
   isDark: boolean
 }) {
+  const router = useRouter()
   const chipBg = isDark ? '#2A2A2A' : '#F7F7F7'
   const chipBorder = isDark ? '#4A4A4A' : '#E0E0E0'
   const muted = isDark ? '#B0B0B0' : '#666666'
   const primary = isDark ? '#F5F5F5' : '#1A1A1A'
   return (
     <Pressable
-      onPress={() => openPlayer(spotlight.player.playerId)}
+      onPress={() => openPlayer(router, spotlight.player.playerId)}
       style={{
         width: 156,
         marginRight: 10,
@@ -208,6 +212,7 @@ function SpotlightCard({
 }
 
 export default function HighlightsExplorer() {
+  const router = useRouter()
   const {t} = useTranslation()
   const {getWeeklyHighlights} = useWeeklyHighlights()
   const colorScheme = useColorScheme()
@@ -448,7 +453,7 @@ export default function HighlightsExplorer() {
       ) : (
         <>
           <Pressable
-            onPress={() => openPlayer(potw.playerId)}
+            onPress={() => openPlayer(router, potw.playerId)}
             className="mx-4 mb-3 rounded-2xl p-4"
             style={{
               backgroundColor: isDark ? '#2A102F' : '#F3E8F5',
@@ -537,7 +542,7 @@ export default function HighlightsExplorer() {
                 return (
                   <Pressable
                     key={player.playerId}
-                    onPress={() => openPlayer(player.playerId)}
+                    onPress={() => openPlayer(router, player.playerId)}
                     className="flex-row items-center px-4 py-3"
                     style={{
                       borderTopWidth: 1,

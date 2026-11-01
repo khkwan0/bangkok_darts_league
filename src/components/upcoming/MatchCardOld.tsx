@@ -384,7 +384,7 @@ export default function MatchCardOld({
       matchInfo.match_id,
       matchInfo.player_team_id,
     )
-    if (res.status === 'ok') {
+    if (res?.status === 'ok') {
       const {confirmed, isHome} = res.data
       if (
         typeof confirmed === 'number' &&

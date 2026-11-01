@@ -1,9 +1,10 @@
 import React from 'react'
-import {router, useLocalSearchParams} from 'expo-router'
+import {useLocalSearchParams, useRouter} from 'expo-router'
 import {useLeague} from '@/hooks'
 import ScanPlayerQr, {type ScannedPlayer} from './index'
 
 export default function ScanPlayerQrForTeam() {
+  const router = useRouter()
   const league = useLeague()
   const {teamIdParams, returnPath} = useLocalSearchParams()
   const teamId = JSON.parse(teamIdParams as string).teamId

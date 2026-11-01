@@ -332,14 +332,15 @@ export default function QuickActionsPreference() {
   const account = useAccount()
   const isAdmin = isLeagueAdmin(state.user)
   const forumsEnabled = state.forumsEnabled !== false
-  const preferenceOptions = {forumsEnabled}
+  const weekliesEnabled = state.weekliesEnabled !== false
+  const preferenceOptions = {forumsEnabled, weekliesEnabled}
   const catalogIds = useMemo(
     () => getPreferenceQuickActionIds(isAdmin, preferenceOptions),
-    [isAdmin, forumsEnabled],
+    [isAdmin, forumsEnabled, weekliesEnabled],
   )
 
   const storedFab = state.user?.preferences?.fab_quick_actions
-  const storedKey = `${JSON.stringify(storedFab ?? null)}:${isAdmin ? 1 : 0}:${forumsEnabled ? 1 : 0}`
+  const storedKey = `${JSON.stringify(storedFab ?? null)}:${isAdmin ? 1 : 0}:${forumsEnabled ? 1 : 0}:${weekliesEnabled ? 1 : 0}`
   const resolved = filterPreferenceQuickActions(
     resolveFabQuickActions(storedFab),
     isAdmin,
@@ -432,7 +433,7 @@ export default function QuickActionsPreference() {
       }
       await account.SetFabQuickActions(next)
     },
-    [account, isAdmin, forumsEnabled],
+    [account, isAdmin, forumsEnabled, weekliesEnabled],
   )
 
   function toggle(id: QuickActionId) {

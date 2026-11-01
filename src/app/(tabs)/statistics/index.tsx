@@ -27,7 +27,7 @@ import type {PlayerInfo} from '@/types/player'
 import TeamStatistics from '@/app/(tabs)/statistics/TeamStatistics'
 import {Ionicons} from '@expo/vector-icons'
 import {useTheme} from 'expo-router/react-navigation'
-import {router, type Href} from 'expo-router'
+import {useRouter, type Href} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -56,6 +56,7 @@ function MiniStatsWithSeason({miniLeagueId}: {miniLeagueId: number}) {
 }
 
 function GuestStatisticsHome() {
+  const router = useRouter()
   const listContentStyle = useTabListContentContainerStyle({
     flexGrow: 1,
     paddingHorizontal: 16,
@@ -265,6 +266,7 @@ function MeNavRow({
 }
 
 export default function StatisticsHome() {
+  const router = useRouter()
   const league = useLeague()
   const [playerInfo, setPlayerInfo] = React.useState<PlayerInfo | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)

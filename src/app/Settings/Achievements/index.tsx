@@ -8,7 +8,7 @@ import type {
   RecentAchievementUnlock,
 } from '@/types/achievements'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
-import {Stack, router} from 'expo-router'
+import {Stack, useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -166,6 +166,7 @@ function UnlockRow({
   item: RecentAchievementUnlock
   lang: string
 }) {
+  const router = useRouter()
   const {t} = useTranslation()
   const color = item.tier ? TIER_COLOR[item.tier] ?? TIER_COLOR.bronze : '#94A3B8'
   const name = pickLocalized(item.achievementName, lang)

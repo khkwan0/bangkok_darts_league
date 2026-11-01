@@ -1,7 +1,7 @@
 import {useStatColors} from '@/components/PlayerStatistics/statUi'
 import {formatBangkokDateMed} from '@/lib/bangkokTime'
 import {Ionicons} from '@expo/vector-icons'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {Pressable, Text, View} from 'react-native'
@@ -149,6 +149,7 @@ export default function CompletedMatch({
   index = 0,
   onSelectMatch,
 }: CompletedMatchProps) {
+  const router = useRouter()
   const {t} = useTranslation()
   const colors = useStatColors()
   const accent = cardAccent(index)

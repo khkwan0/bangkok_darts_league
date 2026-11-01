@@ -1,11 +1,12 @@
 import {TouchableOpacity, View} from 'react-native'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {Player} from './types'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import {useColorScheme} from 'nativewind'
 import MaterialIcons from '@expo/vector-icons/MaterialIcons'
 
 export default function PlayerCard({player}: {player: Player}) {
+  const router = useRouter()
   const {colorScheme} = useColorScheme()
   const isDark = colorScheme === 'dark'
 

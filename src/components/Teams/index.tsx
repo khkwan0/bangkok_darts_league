@@ -11,7 +11,7 @@ import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContaine
 import {isMiniCompetition} from '@/types/competition'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {Ionicons} from '@expo/vector-icons'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -80,6 +80,7 @@ function TeamCard({
   selected?: boolean
   onSelectTeam?: (teamId: number, seasonId: number | null) => void
 }) {
+  const router = useRouter()
   const colors = useStatColors()
   const {t} = useTranslation()
   const division = team.division_name || team.division_short_name
@@ -160,6 +161,7 @@ function TeamCard({
 const TeamCardMemo = React.memo(TeamCard)
 
 function TeamsHeader() {
+  const router = useRouter()
   const colors = useStatColors()
   const {t} = useTranslation()
   return (

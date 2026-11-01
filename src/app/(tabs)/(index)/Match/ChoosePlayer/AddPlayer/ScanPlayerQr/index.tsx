@@ -1,5 +1,5 @@
 import React from 'react'
-import {router, useLocalSearchParams} from 'expo-router'
+import {useLocalSearchParams, useRouter} from 'expo-router'
 import ScanPlayerQr, {
   type ScannedPlayer,
 } from '@/components/Teams/ScanPlayerQr'
@@ -7,6 +7,7 @@ import {useTeams} from '@/hooks'
 import {useMatchContext} from '@/context/MatchContext'
 
 export default function MatchScanPlayerQrScreen() {
+  const router = useRouter()
   const teams = useTeams()
   const {state, UpdateFramePlayers}: any = useMatchContext()
   const {params} = useLocalSearchParams()

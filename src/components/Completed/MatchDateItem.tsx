@@ -6,7 +6,7 @@ import {
   toBangkok,
 } from '@/lib/bangkokTime'
 import {Ionicons} from '@expo/vector-icons'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React, {useMemo} from 'react'
 import {useTranslation} from 'react-i18next'
 import {Pressable, Text, View} from 'react-native'
@@ -48,6 +48,7 @@ export default function MatchDateItem({
   onSelectMatch,
   selectedMatchId = null,
 }: MatchDateItemProps) {
+  const router = useRouter()
   const dateLabel = formatBangkokDateMed(date.date)
   const [show, setShow] = React.useState(false)
   const colors = useStatColors()

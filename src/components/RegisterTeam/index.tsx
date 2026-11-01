@@ -10,12 +10,7 @@ import {
 } from 'react-native'
 import TextInput from '@/components/TextInput'
 import {useTranslation} from 'react-i18next'
-import {
-  router,
-  useNavigation,
-  useLocalSearchParams,
-  useFocusEffect,
-} from 'expo-router'
+import {useNavigation, useLocalSearchParams, useFocusEffect, useRouter} from 'expo-router'
 import Ionicons from '@expo/vector-icons/Ionicons'
 
 // Define venue type
@@ -25,6 +20,7 @@ interface Venue {
 }
 
 export default function RegisterTeam() {
+  const router = useRouter()
   const league = useLeague()
   const [venues, setVenues] = useState<Venue[]>([])
   const [newTeamName, setNewTeamName] = useState('')

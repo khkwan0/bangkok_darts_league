@@ -11,6 +11,7 @@ export type QuickActionId =
   | 'announcements'
   | 'forums'
   | 'achievements'
+  | 'weeklies'
   | 'ai_assistant'
   | 'settings'
   | 'teams'
@@ -42,6 +43,7 @@ export const DEFAULT_FAB_QUICK_ACTIONS: QuickActionId[] = [
   'announcements',
   'forums',
   'achievements',
+  'weeklies',
   'ai_assistant',
   'settings',
   'teams',
@@ -57,6 +59,7 @@ export const ALL_QUICK_ACTIONS: QuickActionId[] = [
   'announcements',
   'forums',
   'achievements',
+  'weeklies',
   'ai_assistant',
   'settings',
   'admin',
@@ -104,6 +107,13 @@ export const QUICK_ACTION_DEFS: Record<QuickActionId, QuickActionDef> = {
     icon: 'trophy-variant',
     iconColor: '#EAB308',
     iconBackground: 'rgba(234, 179, 8, 0.15)',
+  },
+  weeklies: {
+    id: 'weeklies',
+    labelKey: 'weeklies',
+    icon: 'fire',
+    iconColor: '#F59E0B',
+    iconBackground: 'rgba(245, 158, 11, 0.15)',
   },
   ai_assistant: {
     id: 'ai_assistant',
@@ -224,9 +234,11 @@ export function sanitizeQuickActions(
   const seen = new Set<string>()
   const out: QuickActionId[] = []
   for (const raw of actions) {
-    if (!isQuickActionId(raw) || seen.has(raw)) continue
-    seen.add(raw)
-    out.push(raw)
+    // Migrate pre-rename id stored in preferences.
+    const id = raw === 'habits' ? 'weeklies' : raw
+    if (!isQuickActionId(id) || seen.has(id)) continue
+    seen.add(id)
+    out.push(id)
   }
   return out.length > 0 ? out : null
 }
@@ -244,12 +256,14 @@ export function resolveFabQuickActions(
  */
 export function getPreferenceQuickActionIds(
   isAdmin: boolean,
-  options?: {forumsEnabled?: boolean},
+  options?: {forumsEnabled?: boolean; weekliesEnabled?: boolean},
 ): QuickActionId[] {
   const forumsEnabled = options?.forumsEnabled !== false
+  const weekliesEnabled = options?.weekliesEnabled !== false
   return ALL_QUICK_ACTIONS.filter(id => {
     if (id === 'admin') return isAdmin
     if (id === 'forums') return forumsEnabled
+    if (id === 'weeklies') return weekliesEnabled
     return true
   })
 }
@@ -258,7 +272,7 @@ export function getPreferenceQuickActionIds(
 export function filterPreferenceQuickActions(
   ids: QuickActionId[],
   isAdmin: boolean,
-  options?: {forumsEnabled?: boolean},
+  options?: {forumsEnabled?: boolean; weekliesEnabled?: boolean},
 ): QuickActionId[] {
   const allowed = new Set(getPreferenceQuickActionIds(isAdmin, options))
   return ids.filter(id => allowed.has(id))

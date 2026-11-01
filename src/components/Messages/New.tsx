@@ -13,7 +13,7 @@ import {useTranslation} from 'react-i18next'
 import TextInput from '@/components/TextInput'
 import Button from '@/components/Button'
 import {useAccount} from '@/hooks/useAccount'
-import {router, useNavigation} from 'expo-router'
+import {useNavigation, useRouter} from 'expo-router'
 import {useLeagueContext} from '@/context/LeagueContext'
 
 export default function NewMessage({
@@ -23,6 +23,7 @@ export default function NewMessage({
   recipientId: number
   nickname: string
 }) {
+  const router = useRouter()
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)

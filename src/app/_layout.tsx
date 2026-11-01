@@ -27,7 +27,7 @@ import {DarkTheme, DefaultTheme, ThemeProvider} from "expo-router/react-navigati
 import * as Sentry from '@sentry/react-native'
 import {useFonts} from 'expo-font'
 import * as Notifications from 'expo-notifications'
-import {enableLegacyHeaderAppearance, router, Stack} from 'expo-router'
+import {enableLegacyHeaderAppearance, Stack, useRouter} from 'expo-router'
 import {useEffect, useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -79,6 +79,7 @@ function StartupGates() {
 }
 
 function RootLayout() {
+  const router = useRouter()
   const {t} = useTranslation()
   const colorScheme = useColorScheme()
   const [loaded] = useFonts({
@@ -300,6 +301,19 @@ function RootLayout() {
               router.push(`/Settings/Support/${supportTicketId}` as any)
               return
             }
+          }
+
+          const claimType = String(remoteMessage?.data?.type || '')
+          if (
+            claimType === 'player_claim' ||
+            claimType === 'player_claim_resolved'
+          ) {
+            router.push(
+              (claimType === 'player_claim'
+                ? '/Settings/Admin/PlayerClaims'
+                : '/Settings/Preferences/ClaimProfile') as any,
+            )
+            return
           }
 
           // Extract sender name from notification

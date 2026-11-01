@@ -85,6 +85,28 @@ export default function NotificationOptions() {
             />
           </View>
         </View>
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
+            <Text>{t('habit_notifications')}</Text>
+            <Text className="text-xs opacity-60 mt-1">
+              {t('habit_notifications_description')}
+            </Text>
+          </View>
+          <AppSwitch
+            value={user?.preferences?.enabledHabitNotifications ?? true}
+            onValueChange={async val => {
+              await account.SetHabitNotifications(val)
+            }}
+            disabled={
+              typeof user?.preferences?.enabledPushNotifications ===
+              'undefined'
+                ? false
+                : user.preferences.enabledPushNotifications
+                  ? false
+                  : true
+            }
+          />
+        </View>
       </View>
     </View>
   )

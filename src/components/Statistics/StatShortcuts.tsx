@@ -1,6 +1,6 @@
 import {useStatColors} from '@/components/PlayerStatistics/statUi'
 import {Ionicons} from '@expo/vector-icons'
-import {router, usePathname, type Href} from 'expo-router'
+import {usePathname, useRouter, type Href} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {Pressable, Text, View} from 'react-native'
@@ -86,6 +86,7 @@ export default function StatShortcuts({
   onSelectShortcut?: (key: StatShortcutKey, href: Href) => void
   selectedKey?: StatShortcutKey | null
 }) {
+  const router = useRouter()
   const {t} = useTranslation()
   const colors = useStatColors()
   const pathname = usePathname()

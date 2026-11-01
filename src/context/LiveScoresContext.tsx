@@ -1,7 +1,7 @@
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useLeague} from '@/hooks'
 import {isMiniCompetition} from '@/types/competition'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import React, {
   createContext,
   useCallback,
@@ -51,6 +51,7 @@ type LiveScoresContextValue = {
 const LiveScoresContext = createContext<LiveScoresContextValue | null>(null)
 
 export function LiveScoresProvider({children}: {children: React.ReactNode}) {
+  const router = useRouter()
   const league = useLeague()
   const {state} = useLeagueContext()
   const competition = state.competition
@@ -167,7 +168,7 @@ export function LiveScoresProvider({children}: {children: React.ReactNode}) {
         setNavigatingMatchId(null)
       }
     },
-    [league],
+    [league, router],
   )
 
   const value = useMemo(

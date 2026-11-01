@@ -11,7 +11,7 @@ import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContaine
 import type {DivisionData, Team} from '@/types'
 import {Ionicons} from '@expo/vector-icons'
 import {LinearGradient} from 'expo-linear-gradient'
-import {router, usePathname} from 'expo-router'
+import {usePathname, useRouter} from 'expo-router'
 import {useNavigation} from 'expo-router/react-navigation'
 import React, {useState} from 'react'
 import {useTranslation} from 'react-i18next'
@@ -144,6 +144,7 @@ function MatchHeader() {
 }
 
 function MatchRow({match}: {match: StandingMatch}) {
+  const router = useRouter()
   const colors = useStatColors()
   const {t} = useTranslation()
   const currentPath = usePathname()

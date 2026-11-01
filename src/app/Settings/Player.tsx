@@ -9,9 +9,10 @@ import {useTranslation} from 'react-i18next'
 import {useLeague} from '@/hooks'
 import { useLeagueContext } from '@/context/LeagueContext'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
-import {router, useLocalSearchParams} from 'expo-router'
+import {useLocalSearchParams, useRouter} from 'expo-router'
 
 export default function Player(props: {playerId?: string | number} = {}) { 
+  const router = useRouter()
   const {state, dispatch} = useLeagueContext()
   const params = useLocalSearchParams<{playerId?: string}>()
   const playerIdParam = props.playerId ?? params.playerId

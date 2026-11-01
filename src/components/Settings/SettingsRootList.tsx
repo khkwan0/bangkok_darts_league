@@ -1,4 +1,5 @@
 import AppSwitch from '@/components/AppSwitch'
+import ClaimProfileNudge from '@/components/ClaimProfile/ClaimProfileNudge'
 import NavDest from '@/components/NavDest'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {useLeagueContext} from '@/context/LeagueContext'
@@ -206,6 +207,8 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
           </View>
         </View>
 
+        {typeof user.id !== 'undefined' && <ClaimProfileNudge />}
+
         {typeof user.id !== 'undefined' && (
           <View className="bg-gray-800/20 dark:bg-gray-200/20 rounded-xl p-4 mb-4">
             <View className="flex-row items-center">
@@ -271,6 +274,17 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
           selected={hrefIsSelected(pathname, '/Settings/Achievements')}
           onPress={() => openHref('/Settings/Achievements')}
         />
+        {state.weekliesEnabled !== false ? (
+          <NavDest
+            icon="fire"
+            text={t('weeklies')}
+            url="/Settings/Weeklies"
+            iconColor="#F59E0B"
+            iconBackground="rgba(245, 158, 11, 0.15)"
+            selected={hrefIsSelected(pathname, '/Settings/Weeklies')}
+            onPress={() => openHref('/Settings/Weeklies')}
+          />
+        ) : null}
         <NavDest
           icon="robot-outline"
           text={t('ai_assistant')}

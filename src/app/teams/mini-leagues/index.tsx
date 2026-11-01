@@ -5,7 +5,7 @@ import {useLeagueContext} from '@/context/LeagueContext'
 import {useMiniLeagues} from '@/hooks/useMiniLeagues'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
 import {useTheme} from 'expo-router/react-navigation'
-import {router, useFocusEffect} from 'expo-router'
+import {useFocusEffect, useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -18,6 +18,7 @@ import {
 } from 'react-native'
 
 export default function MiniLeaguesScreen() {
+  const router = useRouter()
   const {t} = useTranslation()
   const api = useMiniLeagues()
   const {setCompetition} = useLeagueContext()

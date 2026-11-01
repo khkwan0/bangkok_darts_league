@@ -5,7 +5,7 @@ import {useLeagueContext} from '@/context/LeagueContext'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import {useMiniLeagues} from '@/hooks/useMiniLeagues'
 import {useTheme} from 'expo-router/react-navigation'
-import {router, useFocusEffect} from 'expo-router'
+import {useFocusEffect, useRouter} from 'expo-router'
 import React from 'react'
 import {
   ActivityIndicator,
@@ -26,6 +26,7 @@ function canCreateTeam(mini: any, isSiteAdmin = false) {
 
 /** Shared mini-league teams list for Teams tab shell + management screen. */
 export function MiniLeagueTeamsPanel({miniLeagueId}: {miniLeagueId: number}) {
+  const router = useRouter()
   const api = useMiniLeagues()
   const {colors} = useTheme()
   const {state} = useLeagueContext()

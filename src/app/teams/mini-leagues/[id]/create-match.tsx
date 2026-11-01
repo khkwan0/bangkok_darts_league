@@ -6,7 +6,7 @@ import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import {useLeague} from '@/hooks'
 import {useMiniLeagues} from '@/hooks/useMiniLeagues'
 import {useTheme} from 'expo-router/react-navigation'
-import {router, useFocusEffect, useLocalSearchParams} from 'expo-router'
+import {useFocusEffect, useLocalSearchParams, useRouter} from 'expo-router'
 import React from 'react'
 import {
   ActivityIndicator,
@@ -29,6 +29,7 @@ function matchInfoFromResponse(res: unknown): Record<string, unknown> | null {
 }
 
 export default function MiniLeagueCreateMatchScreen() {
+  const router = useRouter()
   const {id} = useLocalSearchParams<{id: string}>()
   const miniId = Number(id)
   const api = useMiniLeagues()

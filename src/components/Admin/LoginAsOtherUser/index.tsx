@@ -12,7 +12,7 @@ import {useNavigation} from 'expo-router'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {useAccount} from '@/hooks/useAccount'
 import {useLeague} from '@/hooks/useLeague'
-import {router} from 'expo-router'
+import {useRouter} from 'expo-router'
 import Button from '@/components/Button'
 import {useTranslation} from 'react-i18next'
 import TrieSearch from 'trie-search'
@@ -27,6 +27,7 @@ type UserType = {
 }
 
 export default function LoginAsOtherUser() {
+  const router = useRouter()
   const navigation = useNavigation()
   const {t} = useTranslation()
   const {AdminLogin} = useAccount()

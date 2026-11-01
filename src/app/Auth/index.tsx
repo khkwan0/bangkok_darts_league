@@ -6,7 +6,7 @@ import {
 } from '@invertase/react-native-apple-authentication'
 import {useNavigation} from 'expo-router/react-navigation'
 import Line from '@xmartlabs/react-native-line'
-import {router, useLocalSearchParams} from 'expo-router'
+import {useLocalSearchParams, useRouter} from 'expo-router'
 import React, {useEffect} from 'react'
 import {useTranslation} from 'react-i18next'
 import {
@@ -31,6 +31,7 @@ interface StatusType {
 }
 
 export default function AuthHome() {
+  const router = useRouter()
   const [err, setErr] = React.useState('')
   /** True while finishing SocialLogin with the backend after OAuth returns. */
   const [completingLogin, setCompletingLogin] = React.useState(false)
