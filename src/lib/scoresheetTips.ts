@@ -59,9 +59,8 @@ export function winPlayersRequiredMessage(args: {
 }
 
 /**
- * Gate explanation dialog. When tips are on, includes "Don't show tips".
- * Win gates skip entirely when tips are off; finalize keeps a plain alert
- * via `keepWhenDisabled`.
+ * Win-gate tip dialog. Skips when tips are off; otherwise includes
+ * "Don't show tips" and points users at Preferences to re-enable.
  */
 export function showScoresheetGateDialog(opts: {
   title: string
@@ -69,23 +68,9 @@ export function showScoresheetGateDialog(opts: {
   tipsEnabled: boolean
   onDisableTips: () => void | Promise<void>
   t: (key: string) => string
-  /** Still show a plain OK alert when tips are disabled (finalize). */
-  keepWhenDisabled?: boolean
 }): void {
-  const {
-    title,
-    message,
-    tipsEnabled,
-    onDisableTips,
-    t,
-    keepWhenDisabled = false,
-  } = opts
-  if (!tipsEnabled) {
-    if (keepWhenDisabled) {
-      Alert.alert(title, message, [{text: t('ok')}])
-    }
-    return
-  }
+  const {title, message, tipsEnabled, onDisableTips, t} = opts
+  if (!tipsEnabled) return
   Alert.alert(title, message, [
     {
       text: t('tip_turn_off'),
