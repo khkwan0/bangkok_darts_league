@@ -1,4 +1,5 @@
 import type {FrameType, PlayerLegStat} from '@/components/Match/types'
+import {frameHasCompleteRosters, seriesWinsNeeded} from '@/lib/matchFormat'
 
 export type FrameGate = 'section' | 'upcoming' | 'active' | 'complete'
 
@@ -6,8 +7,39 @@ function isPlayable(frame: FrameType | undefined | null): boolean {
   return frame != null && Number(frame.frameNumber) !== -1
 }
 
+/** Both sides have a full roster — same helper finalize / tips use. */
+export function isFrameRosterReady(
+  frame: FrameType | undefined | null,
+): boolean {
+  if (frame == null) return false
+  return frameHasCompleteRosters(frame)
+}
+
+/** Race-to / BoN row is decided once either side reaches the wins needed. */
+export function isSeriesScoreDecided(
+  frame: FrameType | undefined | null,
+): boolean {
+  if (frame == null) return false
+  const games = Math.max(1, Math.trunc(Number(frame.games ?? 1)))
+  const seriesModeRaw = String(frame.seriesMode ?? '')
+  const seriesMode =
+    seriesModeRaw === 'race_to' || seriesModeRaw === 'best_of'
+      ? seriesModeRaw
+      : games > 1
+        ? 'best_of'
+        : undefined
+  if (!seriesMode && games <= 1) return false
+  const need = seriesWinsNeeded(seriesMode ?? 'best_of', games)
+  const home = Number(frame.homeScore ?? 0)
+  const away = Number(frame.awayScore ?? 0)
+  return home >= need || away >= need
+}
+
 export function isFrameComplete(frame: FrameType | undefined | null): boolean {
-  return Number(frame?.winner ?? 0) > 0
+  if (Number(frame?.winner ?? 0) > 0) return true
+  // First-to-N via closes: only treat as complete (and auto-collapse) with a
+  // full roster — same gate the server uses before setting winner.
+  return isSeriesScoreDecided(frame) && isFrameRosterReady(frame)
 }
 
 /** First unfinished playable frame — auto-expanded on the scoresheet. */

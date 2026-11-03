@@ -28,7 +28,7 @@ export default function MatchScanPlayerQrScreen() {
       slot,
       player.id,
       player.nickname,
-      false,
+      true,
       frameType,
       frameNumber,
     )

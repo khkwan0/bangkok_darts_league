@@ -15,6 +15,7 @@ import {FrameProps} from '../types'
 import FirstDart from './FirstDart'
 import {
   closeValuesForSide,
+  isFrameComplete,
   playerNicknames,
   resolveFrameGate,
 } from './frameCollapse'
@@ -50,20 +51,22 @@ export default function Frame({
   const theme = useScoresheetTheme()
   const [focusHome, setFocusHome] = React.useState<number | null>(null)
   const [focusAway, setFocusAway] = React.useState<number | null>(null)
-  /** Manual expand for completed / upcoming (auto-collapses when a winner is set). */
+  /** Manual expand for completed / upcoming (auto-collapses when the game is decided). */
   const [userExpanded, setUserExpanded] = React.useState(preferExpanded)
   const livePreview = state.frameData?.[index] ?? item
-  const winnerPreview = Number(livePreview?.winner ?? 0)
-  const prevWinnerRef = React.useRef(winnerPreview)
+  // Series (first-to-N) can be decided by leg closes before winner team id arrives.
+  const frameDecided = isFrameComplete(livePreview)
+  const prevDecidedRef = React.useRef(frameDecided)
   React.useEffect(() => {
-    if (prevWinnerRef.current <= 0 && winnerPreview > 0) {
+    if (!prevDecidedRef.current && frameDecided) {
       setUserExpanded(false)
     }
-    prevWinnerRef.current = winnerPreview
-  }, [winnerPreview])
+    prevDecidedRef.current = frameDecided
+  }, [frameDecided])
   React.useEffect(() => {
-    if (preferExpanded) setUserExpanded(true)
-  }, [preferExpanded])
+    // Open when this row becomes the active game — never re-open a decided one.
+    if (preferExpanded && !frameDecided) setUserExpanded(true)
+  }, [preferExpanded, frameDecided])
   const initial = state.matchInfo.initialFrames[index]
   const frameType = initial?.type
   const frameLabel = item.label || initial?.label || frameType
@@ -226,12 +229,28 @@ export default function Frame({
 
   const live = state.frameData[index] ?? item
   const winner = live.winner
-  const homeWon = winner === homeTeamId
-  const awayWon = winner === awayTeamId
   const kind = frameKindLabel(minPlayers, maxPlayers, t)
   const need = seriesWinsNeeded(seriesMode, games)
   const showSeries =
     games > 1 || seriesMode === 'race_to' || seriesMode === 'best_of'
+  const homeLegs = Number(live.homeScore ?? 0)
+  const awayLegs = Number(live.awayScore ?? 0)
+  // Prefer explicit winner; series score only counts once the frame is complete
+  // (full roster + first-to-N), matching auto-collapse / server win gate.
+  const homeWon =
+    winner === homeTeamId ||
+    (Number(winner ?? 0) <= 0 &&
+      frameDecided &&
+      showSeries &&
+      homeLegs >= need &&
+      homeLegs > awayLegs)
+  const awayWon =
+    winner === awayTeamId ||
+    (Number(winner ?? 0) <= 0 &&
+      frameDecided &&
+      showSeries &&
+      awayLegs >= need &&
+      awayLegs > homeLegs)
   const seriesLabel =
     seriesMode === 'race_to' ? `Race to ${games}` : `Bo${games}`
   const showClose = !!(item.showClose ?? initial?.showClose)
@@ -249,11 +268,11 @@ export default function Frame({
   const hidePlayerStats = showLegTallies
 
   const gate = resolveFrameGate(state.frameData, index)
-  // Active / preferExpanded stays open; completed / upcoming default collapsed but can expand.
-  const showFullBody =
-    preferExpanded || gate === 'active' || userExpanded
+  // PreferExpanded / becoming active opens the card (see effects above), but the
+  // user can still collapse the active game — do not force showFullBody open.
+  const showFullBody = userExpanded
   const canToggle =
-    !preferExpanded && (gate === 'complete' || gate === 'upcoming')
+    gate === 'active' || gate === 'complete' || gate === 'upcoming'
 
   function toggleExpanded() {
     Haptics.selectionAsync()
@@ -367,12 +386,8 @@ export default function Frame({
         {frameLabel ? ` · ${frameLabel}` : ''}
       </Text>
     )
-    const trailing = canToggle ? (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={opts?.collapsed ? t('expand') : t('collapse')}
-        hitSlop={8}
-        onPress={toggleExpanded}
+    const trailing = (
+      <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -385,17 +400,15 @@ export default function Frame({
             {kind}
           </Text>
         ) : null}
-        <MCI
-          name={opts?.collapsed ? 'chevron-down' : 'chevron-up'}
-          size={22}
-          color={theme.muted}
-        />
-      </Pressable>
-    ) : kind ? (
-      <Text style={{color: theme.muted, fontSize: 12, fontWeight: '600'}}>
-        {kind}
-      </Text>
-    ) : null
+        {canToggle ? (
+          <MCI
+            name={opts?.collapsed ? 'chevron-down' : 'chevron-up'}
+            size={22}
+            color={theme.muted}
+          />
+        ) : null}
+      </View>
+    )
 
     const row = (
       <View
@@ -412,11 +425,11 @@ export default function Frame({
       </View>
     )
 
-    if (canToggle && opts?.collapsed) {
+    if (canToggle) {
       return (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t('expand')}
+          accessibilityLabel={opts?.collapsed ? t('expand') : t('collapse')}
           onPress={toggleExpanded}>
           {row}
         </Pressable>

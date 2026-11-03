@@ -70,6 +70,8 @@ interface LeagueState {
   showPredictionsOnMatchCards: boolean
   /** Local preference: Player of the Week card on home. */
   showPlayerOfTheWeek: boolean
+  /** Local preference: coaching tips on the live scoresheet. */
+  showScoresheetTips: boolean
   /** League-level switch from /branding for match predictions. */
   predictionsEnabled: boolean
   /** League-level switch from /branding for Weeklies. Defaults on. */
@@ -134,6 +136,7 @@ const initialState: LeagueState = {
   showForumFabBadge: true,
   showPredictionsOnMatchCards: true,
   showPlayerOfTheWeek: true,
+  showScoresheetTips: true,
   predictionsEnabled: false,
   weekliesEnabled: true,
   forumsEnabled: true,
@@ -317,6 +320,12 @@ const LeagueReducer = (state: any, action: any) => {
       return {
         ...state,
         showPlayerOfTheWeek: action.payload,
+      }
+    }
+    case 'SET_SHOW_SCORESHEET_TIPS': {
+      return {
+        ...state,
+        showScoresheetTips: action.payload,
       }
     }
     case 'SET_PREDICTIONS_ENABLED': {
@@ -533,10 +542,27 @@ export const LeagueProvider = ({children}: any) => {
         console.error(e)
       }
     }
+    const getShowScoresheetTips = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('show_scoresheet_tips')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (typeof parsed?.show === 'boolean') {
+            dispatch({
+              type: 'SET_SHOW_SCORESHEET_TIPS',
+              payload: parsed.show,
+            })
+          }
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
     getShowLiveScores()
     getShowForumFabBadge()
     getShowPredictionsOnMatchCards()
     getShowPlayerOfTheWeek()
+    getShowScoresheetTips()
   }, [])
 
   useEffect(() => {

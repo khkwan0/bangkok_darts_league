@@ -100,6 +100,18 @@ const Interface = () => {
     }
   }
 
+  const handleScoresheetTipsToggle = async (value: boolean) => {
+    try {
+      dispatch({type: 'SET_SHOW_SCORESHEET_TIPS', payload: value})
+      await AsyncStorage.setItem(
+        'show_scoresheet_tips',
+        JSON.stringify({show: value}),
+      )
+    } catch (error) {
+      console.error('Error saving scoresheet tips preference:', error)
+    }
+  }
+
   const handleOtaAutoReloadToggle = async (value: boolean) => {
     try {
       await account.SetOtaAutoReload(value)
@@ -227,6 +239,34 @@ const Interface = () => {
         <AppSwitch
           value={state.showPlayerOfTheWeek ?? true}
           onValueChange={handlePlayerOfTheWeekToggle}
+        />
+      </View>
+
+      {/* Scoresheet coaching tips */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+        }}>
+        <View style={{flex: 1, paddingRight: 12}}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: 'bold',
+              color: colors.text,
+              marginBottom: 4,
+            }}>
+            {t('show_scoresheet_tips')}
+          </Text>
+          <Text style={{color: colors.text, opacity: 0.7}}>
+            {t('show_scoresheet_tips_description')}
+          </Text>
+        </View>
+        <AppSwitch
+          value={state.showScoresheetTips ?? true}
+          onValueChange={handleScoresheetTipsToggle}
         />
       </View>
 

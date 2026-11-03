@@ -2,6 +2,11 @@ import {FrameType, MatchInfoDataType} from '@/components/Match/types'
 import {useMatch, useTeams} from '@/hooks'
 import i18n from '@/i18n'
 import {hydrateFrameLegs} from '@/lib/hydrateFrameLegs'
+import {
+  saveShowScoresheetTips,
+  showScoresheetGateDialog,
+  winPlayersRequiredMessage,
+} from '@/lib/scoresheetTips'
 import React, {createContext, useContext, useReducer} from 'react'
 import {Alert} from 'react-native'
 import {io} from 'socket.io-client'
@@ -86,6 +91,28 @@ const MatchReducer = (state: StateType, action: any) => {
       return {
         ...state,
         teams: action.payload,
+      }
+    }
+    case 'UPSERT_TEAM_PLAYER': {
+      const {teamId, player} = action.payload as {
+        teamId: number | string
+        player: {id: number; playerId: number; nickname: string}
+      }
+      if (teamId == null || !player?.playerId) return state
+      const key = String(teamId)
+      const existing = state.teams[key] ?? state.teams[teamId as string] ?? {}
+      return {
+        ...state,
+        teams: {
+          ...state.teams,
+          [key]: {
+            ...existing,
+            [player.playerId]: {
+              ...existing[player.playerId],
+              ...player,
+            },
+          },
+        },
       }
     }
     case 'SET_PLAYER': {
@@ -261,7 +288,11 @@ const MatchReducer = (state: StateType, action: any) => {
 
 export const MatchProvider = (props: any) => {
   const [state, dispatch] = useReducer(MatchReducer, initialState)
-  const {state: leagueState, webSocketUrl}: any = useLeagueContext()
+  const {
+    state: leagueState,
+    dispatch: leagueDispatch,
+    webSocketUrl,
+  }: any = useLeagueContext()
   const matchHooks = useMatch()
   const teams = useTeams()
   const roomId = React.useRef('')
@@ -558,7 +589,8 @@ export const MatchProvider = (props: any) => {
     frameType?: string,
     frameNumber?: number,
   ) {
-    /*
+    // Optimistic local update so the scoresheet shows the pick immediately.
+    // Socket echo still reconciles; UpdateTeams refreshes full roster for new players.
     dispatch({
       type: 'SET_PLAYER',
       payload: {
@@ -568,7 +600,25 @@ export const MatchProvider = (props: any) => {
         side: side,
       },
     })
-      */
+    if (Number(playerId) > 0 && nickname) {
+      const teamId =
+        side === 'home'
+          ? state.matchInfo.home_team_id
+          : state.matchInfo.away_team_id
+      if (teamId != null) {
+        dispatch({
+          type: 'UPSERT_TEAM_PLAYER',
+          payload: {
+            teamId,
+            player: {
+              id: Number(playerId),
+              playerId: Number(playerId),
+              nickname,
+            },
+          },
+        })
+      }
+    }
 
     const initial = state.matchInfo.initialFrames?.[frameIdx]
     const frame = state.frameData?.[frameIdx]
@@ -676,18 +726,26 @@ export const MatchProvider = (props: any) => {
       SocketSend('win', data)
       return
     }
-    const shortSides: string[] = []
-    if (!homeOk) shortSides.push(i18n.t('home'))
-    if (!awayOk) shortSides.push(i18n.t('away'))
-    Alert.alert(
-      i18n.t('players_required_title'),
-      i18n.t('players_required_message', {
-        count: minNeeded,
-        home: homePlayerCount,
-        away: awayPlayerCount,
-        sides: shortSides.join(', '),
-      }),
-    )
+    const {title, message} = winPlayersRequiredMessage({
+      type: frame.type ?? initial?.type,
+      noPlayers: frame.noPlayers ?? initial?.noPlayers,
+      minPlayers: frame.minPlayers ?? initial?.minPlayers,
+      homePlayerIds: frame.homePlayerIds,
+      awayPlayerIds: frame.awayPlayerIds,
+      homeLabel: i18n.t('home'),
+      awayLabel: i18n.t('away'),
+      t: (key, params) => i18n.t(key, params),
+    })
+    showScoresheetGateDialog({
+      title,
+      message,
+      tipsEnabled: leagueState.showScoresheetTips !== false,
+      onDisableTips: async () => {
+        leagueDispatch({type: 'SET_SHOW_SCORESHEET_TIPS', payload: false})
+        await saveShowScoresheetTips(false)
+      },
+      t: key => i18n.t(key),
+    })
   }
 
   function UpdateFrameStats(

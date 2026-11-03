@@ -2,6 +2,10 @@ import {useLeagueContext} from '@/context/LeagueContext'
 import {useMatchContext} from '@/context/MatchContext'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import {getFinalizeBlockReason} from '@/lib/matchFormat'
+import {
+  saveShowScoresheetTips,
+  showScoresheetGateDialog,
+} from '@/lib/scoresheetTips'
 import * as Haptics from 'expo-haptics'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
@@ -106,7 +110,7 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
     FinalizeMatch,
     UnfinalizeMatch,
   }: any = useMatchContext()
-  const {state} = useLeagueContext()
+  const {state, dispatch: leagueDispatch} = useLeagueContext()
   const [localBusy, setLocalBusy] = React.useState(false)
   const [seenHome, setSeenHome] = React.useState(matchState.finalizedHome)
   const [seenAway, setSeenAway] = React.useState(matchState.finalizedAway)
@@ -202,7 +206,16 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
           Alert.alert(t('error'), t('not_on_team') + ' ' + side)
         }
       } else {
-        Alert.alert(t('error'), finalizeBlockMessage())
+        showScoresheetGateDialog({
+          title: t('tip_finalize_blocked_title'),
+          message: finalizeBlockMessage(),
+          tipsEnabled: state.showScoresheetTips !== false,
+          onDisableTips: async () => {
+            leagueDispatch({type: 'SET_SHOW_SCORESHEET_TIPS', payload: false})
+            await saveShowScoresheetTips(false)
+          },
+          t,
+        })
         setLocalBusy(false)
       }
     } catch (e) {
