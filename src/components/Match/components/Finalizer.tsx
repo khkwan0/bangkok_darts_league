@@ -210,6 +210,7 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
           title: t('tip_finalize_blocked_title'),
           message: finalizeBlockMessage(),
           tipsEnabled: state.showScoresheetTips !== false,
+          keepWhenDisabled: true,
           onDisableTips: async () => {
             leagueDispatch({type: 'SET_SHOW_SCORESHEET_TIPS', payload: false})
             await saveShowScoresheetTips(false)
