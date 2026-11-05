@@ -13,6 +13,18 @@ export type ClaimableShell = {
   has_history: boolean
 }
 
+export type ClaimParty = {
+  id: number
+  nickname: string | null
+  firstname: string | null
+  lastname: string | null
+  profile_picture: string | null
+  frame_count: number
+  frame_wins: number
+  darts_stat_count: number
+  teams: Array<{id: number; name: string}>
+}
+
 export type ClaimRequest = {
   id: number
   claimant_player_id: number
@@ -25,6 +37,8 @@ export type ClaimRequest = {
   shell_nickname?: string | null
   resolved_by_nickname?: string | null
   shell_teams?: Array<{id: number; name: string}>
+  claimant?: ClaimParty
+  shell?: ClaimParty
 }
 
 export function usePlayerClaim() {
