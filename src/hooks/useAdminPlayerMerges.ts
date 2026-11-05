@@ -49,6 +49,14 @@ export function useAdminPlayerMerges() {
   const networkRef = React.useRef(network)
   networkRef.current = network
 
+  const getPendingCount = React.useCallback(async (): Promise<number> => {
+    const res = await networkRef.current.Get('/admin/mergerequests/count')
+    if (res?.status === 'ok') {
+      return Number(res.count) || 0
+    }
+    return 0
+  }, [])
+
   const listMergeRequests = React.useCallback(async (): Promise<{
     data: AdminMergeRequest[]
     error?: string
@@ -140,6 +148,7 @@ export function useAdminPlayerMerges() {
   }, [])
 
   return {
+    getPendingCount,
     listMergeRequests,
     acceptMergeRequest,
     denyMergeRequest,

@@ -1,3 +1,6 @@
+import MessageReactions, {
+  type MessageReactionSummary,
+} from '@/components/Messages/MessageReactions'
 import { Message } from '@/components/Messages/types'
 import TextInput from '@/components/TextInput'
 import { ThemedText as Text } from '@/components/ThemedText'
@@ -128,9 +131,14 @@ function DateSeparator({ date }: { date: string }) {
 function MessageLine({
   message,
   nextMessage,
+  onReact,
 }: {
   message: Message
   nextMessage?: Message
+  onReact: (
+    messageId: number,
+    emoji: string,
+  ) => Promise<MessageReactionSummary[] | null>
 }) {
   const {state} = useLeagueContext()
   const timeZone = usePreferredTimeZone()
@@ -175,6 +183,12 @@ function MessageLine({
       <View style={messageStyle}>
         <Text style={textStyle}>{message.message}</Text>
       </View>
+      <MessageReactions
+        messageId={message.id}
+        reactions={message.reactions ?? []}
+        alignEnd={isUserMessage}
+        onReact={onReact}
+      />
       {formattedTimestamp && (
         <Text style={timestampStyle}>{formattedTimestamp}</Text>
       )}
@@ -361,6 +375,7 @@ export default function MessagesThread({
         to_player_id: data.to_player_id || 0,
         root_id: data.root_id || data.rootId || 0,
         reply_to: data.reply_to || data.replyTo || 0,
+        reactions: [],
       }
 
       setMessages((prev) => {
@@ -403,9 +418,22 @@ export default function MessagesThread({
     }
 
     // Set up event listeners
+    const handleReaction = (data: {
+      messageId?: number
+      reactions?: MessageReactionSummary[]
+    }) => {
+      if (!data?.messageId || !data.reactions) return
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === data.messageId ? {...msg, reactions: data.reactions} : msg,
+        ),
+      )
+    }
+
     socket.on('connect', handleConnect)
     socket.on('disconnect', handleDisconnect)
     socket.on('message', handleMessage)
+    socket.on('message-reaction', handleReaction)
 
     // Connect to socket
     if (!socket.connected) {
@@ -420,6 +448,7 @@ export default function MessagesThread({
       socket.off('connect', handleConnect)
       socket.off('disconnect', handleDisconnect)
       socket.off('message', handleMessage)
+      socket.off('message-reaction', handleReaction)
     }
   }, [roomName])
 
@@ -700,6 +729,23 @@ export default function MessagesThread({
     )
   }
 
+  const reactToMessage = async (messageId: number, emoji: string) => {
+    const res = await account.ReactToMessage(messageId, emoji)
+    if (res?.status !== 'ok' || !res.reactions) return null
+    const reactions = res.reactions as MessageReactionSummary[]
+    setMessages(prev =>
+      prev.map(msg => (msg.id === messageId ? {...msg, reactions} : msg)),
+    )
+    if (socketRef.current && roomName) {
+      socketRef.current.emit('message-reaction', {
+        room: roomName,
+        messageId,
+        reactions,
+      })
+    }
+    return reactions
+  }
+
   const content = (
     <View style={[styles.contentContainer, Platform.OS === 'android' && keyboardHeight > 0 && {paddingBottom: keyboardHeight}]}>
       <ListHeaderComponent />
@@ -747,6 +793,7 @@ export default function MessagesThread({
               <MessageLine
                 message={item}
                 nextMessage={messages[index + 1]}
+                onReact={reactToMessage}
               />
               {shouldShowDateAfter && prevMessage && (
                 <DateSeparator date={prevMessage!.created_at} />

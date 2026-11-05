@@ -1,6 +1,8 @@
 import {Colors} from '@/constants/Colors'
 import {useThemeColor} from '@/hooks/useThemeColor'
-import {useHasSupportActivity} from '@/lib/supportUnread'
+import {useAdminMergeRequestCount} from '@/lib/adminMergeRequests'
+import {useAdminSupportUnreadCount} from '@/lib/adminSupportUnread'
+import {useHasSupportActivity, useHasUnreadSupport} from '@/lib/supportUnread'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import {useRouter} from 'expo-router'
 import {Pressable, StyleSheet, useColorScheme, View} from 'react-native'
@@ -12,13 +14,23 @@ export const SettingsButton = () => {
   const isDark = useColorScheme() === 'dark'
   const {t} = useTranslation()
   const hasSupportActivity = useHasSupportActivity()
+  const pendingMerges = useAdminMergeRequestCount()
+  const hasMemberSupport = useHasUnreadSupport()
+  const hasAdminSupport = useAdminSupportUnreadCount() > 0
+  const hasSupport = hasMemberSupport || hasAdminSupport
+  const accessibilityLabel =
+    hasSupport && pendingMerges > 0
+      ? t('settings_support_and_merges')
+      : pendingMerges > 0
+        ? t('settings_pending_merge_requests')
+        : hasSupport
+          ? t('settings_unread_support')
+          : t('settings')
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={
-        hasSupportActivity ? t('settings_unread_support') : t('settings')
-      }
+      accessibilityLabel={accessibilityLabel}
       hitSlop={8}
       onPress={() => router.push('/Settings')}
       style={styles.button}>

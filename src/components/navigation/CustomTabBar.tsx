@@ -7,7 +7,9 @@ import {
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useForumActivitySync} from '@/hooks/useForumActivity'
 import {useHasNewForumPosts} from '@/lib/forumActivity'
-import {useHasSupportActivity} from '@/lib/supportUnread'
+import {useAdminMergeRequestCount} from '@/lib/adminMergeRequests'
+import {useAdminSupportUnreadCount} from '@/lib/adminSupportUnread'
+import {useHasSupportActivity, useHasUnreadSupport} from '@/lib/supportUnread'
 import {
   getCompetitionPalette,
   isCanonicalCompetition,
@@ -111,6 +113,10 @@ export function CustomTabBar({
   const {refreshForumActivity} = useForumActivitySync()
   const hasNewForumPosts = useHasNewForumPosts()
   const hasSupportActivity = useHasSupportActivity()
+  const pendingMerges = useAdminMergeRequestCount() > 0
+  const hasMemberSupport = useHasUnreadSupport()
+  const hasAdminSupport = useAdminSupportUnreadCount() > 0
+  const hasSupport = hasMemberSupport || hasAdminSupport
   const showForumFabBadge =
     leagueState.forumsEnabled !== false &&
     (leagueState.showForumFabBadge ?? true) &&
@@ -262,13 +268,21 @@ export function CustomTabBar({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              showForumFabBadge && hasSupportActivity
-                ? t('quick_actions_forum_and_support')
-                : showForumFabBadge
-                  ? t('forums_quick_actions_new_posts')
-                  : hasSupportActivity
-                    ? t('support_quick_actions_unread')
-                    : t('quick_actions')
+              showForumFabBadge && hasSupport && pendingMerges
+                ? t('quick_actions_forum_support_and_merges')
+                : showForumFabBadge && pendingMerges
+                  ? t('quick_actions_forum_and_merges')
+                  : showForumFabBadge && hasSupport
+                    ? t('quick_actions_forum_and_support')
+                    : showForumFabBadge
+                      ? t('forums_quick_actions_new_posts')
+                      : hasSupport && pendingMerges
+                        ? t('quick_actions_support_and_merges')
+                        : pendingMerges
+                          ? t('quick_actions_pending_merge_requests')
+                          : hasSupport
+                            ? t('support_quick_actions_unread')
+                            : t('quick_actions')
             }
             onPress={openQuickActions}
             style={({pressed}) => [

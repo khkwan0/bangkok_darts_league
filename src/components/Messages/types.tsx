@@ -10,6 +10,7 @@ export interface Message {
   to_player_id: number
   root_id: number
   reply_to: number
+  reactions?: Array<{emoji: string; count: number; mine: boolean}>
 }
 
 export interface MessageCardProps {

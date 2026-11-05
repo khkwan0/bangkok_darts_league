@@ -1,5 +1,10 @@
 import NavDest from '@/components/NavDest'
+import {useAdminPlayerMerges} from '@/hooks/useAdminPlayerMerges'
 import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
+import {
+  refreshAdminMergeRequests,
+  useAdminMergeRequestCount,
+} from '@/lib/adminMergeRequests'
 import {
   refreshAdminSupportUnread,
   useAdminSupportUnreadCount,
@@ -14,7 +19,9 @@ export default function Admin() {
   const navigation = useNavigation()
   const {t} = useTranslation()
   const {getUnreadCount} = useAdminSupportTickets()
+  const {getPendingCount} = useAdminPlayerMerges()
   const unreadCount = useAdminSupportUnreadCount()
+  const pendingMerges = useAdminMergeRequestCount()
 
   React.useEffect(() => {
     navigation.setOptions({
@@ -25,7 +32,8 @@ export default function Admin() {
   useFocusEffect(
     React.useCallback(() => {
       void refreshAdminSupportUnread(getUnreadCount)
-    }, [getUnreadCount]),
+      void refreshAdminMergeRequests(getPendingCount)
+    }, [getPendingCount, getUnreadCount]),
   )
 
   return (
@@ -42,6 +50,7 @@ export default function Admin() {
         icon="account-switch-outline"
         text={t('admin_player_merges')}
         url="/Settings/Admin/PlayerMerges"
+        messageCount={pendingMerges}
       />
       <NavDest
         icon="account-check-outline"

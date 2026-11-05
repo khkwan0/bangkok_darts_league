@@ -1,3 +1,4 @@
+import {useAdminMergeRequestCount} from '@/lib/adminMergeRequests'
 import {useAdminSupportUnreadCount} from '@/lib/adminSupportUnread'
 import {useSyncExternalStore} from 'react'
 
@@ -46,11 +47,12 @@ export function useHasUnreadSupport() {
   return useSupportUnreadCount() > 0
 }
 
-/** Member staff replies, or admin-side new tickets and member replies. */
+/** Member staff replies, admin support activity, or pending player merge requests. */
 export function useHasSupportActivity() {
   const hasMemberUnread = useHasUnreadSupport()
   const adminUnread = useAdminSupportUnreadCount()
-  return hasMemberUnread || adminUnread > 0
+  const pendingMerges = useAdminMergeRequestCount()
+  return hasMemberUnread || adminUnread > 0 || pendingMerges > 0
 }
 
 export async function refreshSupportUnread(

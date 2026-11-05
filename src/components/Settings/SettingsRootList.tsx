@@ -4,9 +4,15 @@ import NavDest from '@/components/NavDest'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useAccount} from '@/hooks/useAccount'
+import {useAdminPlayerMerges} from '@/hooks/useAdminPlayerMerges'
 import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
 import {useSettingsSplitLayout} from '@/hooks/useSettingsSplitLayout'
 import {useSupportTickets} from '@/hooks/useSupportTickets'
+import {
+  refreshAdminMergeRequests,
+  setAdminMergeRequestCount,
+  useAdminMergeRequestCount,
+} from '@/lib/adminMergeRequests'
 import {
   refreshAdminSupportUnread,
   useAdminSupportUnreadCount,
@@ -75,7 +81,9 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
   const {t} = useTranslation()
   const account = useAccount()
   const {getUnreadCount: getAdminSupportUnread} = useAdminSupportTickets()
+  const {getPendingCount: getPendingMergeCount} = useAdminPlayerMerges()
   const adminSupportUnread = useAdminSupportUnreadCount()
+  const pendingMerges = useAdminMergeRequestCount()
   const {getUnreadCount: getSupportUnread} = useSupportTickets()
   const supportUnread = useSupportUnreadCount()
   const [logoutPressed, setLogoutPressed] = useState(false)
@@ -104,10 +112,12 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
       void refreshSupportUnread(getSupportUnread)
     }
     if (!isLeagueAdmin(user)) {
+      setAdminMergeRequestCount(0)
       return
     }
     void refreshAdminSupportUnread(getAdminSupportUnread)
-  }, [getAdminSupportUnread, getSupportUnread, user])
+    void refreshAdminMergeRequests(getPendingMergeCount)
+  }, [getAdminSupportUnread, getPendingMergeCount, getSupportUnread, user])
 
   // Compact: index screen focus. Split: list lives outside the stack, so also refresh on mount.
   useFocusEffect(
@@ -313,7 +323,7 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
             url="/Settings/Admin"
             iconColor="#6366F1"
             iconBackground="rgba(99, 102, 241, 0.15)"
-            messageCount={adminSupportUnread}
+            messageCount={adminSupportUnread + pendingMerges}
             selected={hrefIsSelected(pathname, '/Settings/Admin')}
             onPress={() => openHref('/Settings/Admin')}
           />

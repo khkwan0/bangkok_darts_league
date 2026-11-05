@@ -8,6 +8,7 @@ import {
 } from '@/hooks/useAdminPlayerMerges'
 import {usePreferredTimeZone} from '@/hooks/usePreferredTimeZone'
 import {formatPreferredDateTime} from '@/lib/bangkokTime'
+import {setAdminMergeRequestCount} from '@/lib/adminMergeRequests'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import {useFocusEffect, useNavigation, useRouter} from 'expo-router'
 import React from 'react'
@@ -91,6 +92,9 @@ export default function AdminPlayerMerges() {
     ])
     if (reqRes.error || histRes.error) {
       setError(t('admin_player_merges_load_failed'))
+    }
+    if (!reqRes.error) {
+      setAdminMergeRequestCount(reqRes.data.length)
     }
     setRequests(reqRes.data)
     setHistory(histRes.data)

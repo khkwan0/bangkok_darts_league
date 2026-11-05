@@ -43,7 +43,12 @@ import {
   setAdminSupportUnreadCount,
 } from '@/lib/adminSupportUnread'
 import {useSupportTickets} from '@/hooks/useSupportTickets'
+import {useAdminPlayerMerges} from '@/hooks/useAdminPlayerMerges'
 import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
+import {
+  refreshAdminMergeRequests,
+  setAdminMergeRequestCount,
+} from '@/lib/adminMergeRequests'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
@@ -72,6 +77,7 @@ export default function TabLayout() {
   } = useAnnouncements()
   const {getUnreadCount: getSupportUnreadCount} = useSupportTickets()
   const {getUnreadCount: getAdminSupportUnreadCount} = useAdminSupportTickets()
+  const {getPendingCount: getPendingMergeCount} = useAdminPlayerMerges()
   const {refreshForumActivity} = useForumActivitySync()
   const hasNewForumPosts = useHasNewForumPosts()
   const hasSupportActivity = useHasSupportActivity()
@@ -412,19 +418,23 @@ export default function TabLayout() {
     if (!state.user?.id) {
       setSupportUnreadCount(0)
       setAdminSupportUnreadCount(0)
+      setAdminMergeRequestCount(0)
       return
     }
     void refreshSupportUnread(getSupportUnreadCount)
     if (isLeagueAdmin(state.user)) {
       void refreshAdminSupportUnread(getAdminSupportUnreadCount)
+      void refreshAdminMergeRequests(getPendingMergeCount)
     } else {
       setAdminSupportUnreadCount(0)
+      setAdminMergeRequestCount(0)
     }
   }, [
     isMounted,
     state.user,
     getSupportUnreadCount,
     getAdminSupportUnreadCount,
+    getPendingMergeCount,
   ])
 
   // Refresh unread whenever the app returns to foreground
@@ -436,6 +446,7 @@ export default function TabLayout() {
           void refreshSupportUnread(getSupportUnreadCount)
           if (isLeagueAdmin(state.user)) {
             void refreshAdminSupportUnread(getAdminSupportUnreadCount)
+            void refreshAdminMergeRequests(getPendingMergeCount)
           }
         }
         if (!showLanguageOption) {
@@ -452,6 +463,7 @@ export default function TabLayout() {
     checkUnreadAnnouncements,
     getSupportUnreadCount,
     getAdminSupportUnreadCount,
+    getPendingMergeCount,
   ])
 
   // Keep FCM token fresh and listen for foreground pushes (stable listener)

@@ -5,6 +5,8 @@ import config from '@/config.js'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useHasNewForumPosts} from '@/lib/forumActivity'
 import {useHasUnreadAnnouncements} from '@/lib/announcementUnread'
+import {useAdminMergeRequestCount} from '@/lib/adminMergeRequests'
+import {useAdminSupportUnreadCount} from '@/lib/adminSupportUnread'
 import {useHasSupportActivity, useHasUnreadSupport} from '@/lib/supportUnread'
 import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
 import {
@@ -117,6 +119,9 @@ export function QuickActionsContent({
   const hasUnreadAnnouncements = useHasUnreadAnnouncements()
   const hasUnreadSupport = useHasUnreadSupport()
   const hasSupportActivity = useHasSupportActivity()
+  const pendingMerges = useAdminMergeRequestCount()
+  const adminSupportUnread = useAdminSupportUnreadCount()
+  const hasSupport = hasUnreadSupport || adminSupportUnread > 0
   const competition = state.competition
   const loggedIn = Boolean(user?.id)
 
@@ -233,7 +238,16 @@ export function QuickActionsContent({
       return {showBadge: hasNewForumPosts, badgeLabel: t('forums_new_posts')}
     }
     if (id === 'settings') {
-      return {showBadge: hasSupportActivity, badgeLabel: t('support_new')}
+      const hasMerges = pendingMerges > 0
+      return {
+        showBadge: hasSupportActivity,
+        badgeLabel:
+          hasSupport && hasMerges
+            ? t('quick_actions_support_and_merges')
+            : hasMerges
+              ? t('quick_actions_pending_merge_requests')
+              : t('support_new'),
+      }
     }
     return {}
   }

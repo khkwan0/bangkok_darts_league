@@ -510,6 +510,16 @@ export const useAccount = () => {
     }
   }
 
+  async function ReactToMessage(messageId, emoji) {
+    try {
+      const res = await Post('/message/reactions', {messageId, emoji})
+      return res
+    } catch (e) {
+      console.error(e)
+      return {status: 'error', error: 'server_error'}
+    }
+  }
+
   async function SendMessage(
     senderId,
     recipientId,
@@ -766,6 +776,7 @@ export const useAccount = () => {
     Logout,
     MarkAllMessagesAsRead,
     MarkMessageAsRead,
+    ReactToMessage,
     Register,
     Recover,
     RefreshPushToken,
