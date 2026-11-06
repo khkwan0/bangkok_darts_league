@@ -18,6 +18,7 @@ import {
   Image,
   Modal,
   Pressable,
+  Text as RNText,
   View,
   useColorScheme,
 } from 'react-native'
@@ -69,6 +70,26 @@ interface TeamMembersProps {
   seasonId?: number | null
 }
 
+function MergeAccountButton({onPress}: {onPress: () => void}) {
+  const {t} = useTranslation()
+  const colorScheme = useColorScheme()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('merge_player_account')}
+      className="p-1.5 mr-2 bg-sky-50 dark:bg-sky-950 rounded-lg border border-sky-200 dark:border-sky-800"
+      onPress={onPress}>
+      <MCI
+        name="qrcode-scan"
+        size={24}
+        color={
+          colorScheme === 'dark' ? 'rgb(186, 230, 253)' : 'rgb(3, 105, 161)'
+        }
+      />
+    </Pressable>
+  )
+}
+
 const MemberSection = ({
   title,
   players,
@@ -79,6 +100,8 @@ const MemberSection = ({
   isAssistantOtherTeam,
   isAdmin,
   canEdit,
+  canMerge,
+  onMerge,
   onRefresh,
   onProfilePicturePress,
 }: {
@@ -91,6 +114,8 @@ const MemberSection = ({
   isCaptainOtherTeam: boolean
   isAssistantOtherTeam: boolean
   canEdit: boolean
+  canMerge: boolean
+  onMerge: (player: PlayerType) => void
   onRefresh: () => void
   onProfilePicturePress: (url: string) => void
 }) => {
@@ -185,6 +210,9 @@ const MemberSection = ({
                   </Pressable>
                 )}
               </View>
+              {canMerge ? (
+                <MergeAccountButton onPress={() => onMerge(player)} />
+              ) : null}
               {state.user.id && (
                 <View className="flex-row ml-2">
                   <Pressable
@@ -397,6 +425,22 @@ export default function TeamMembers({teamId, seasonId}: TeamMembersProps) {
   const canManageRoles = React.useMemo(() => {
     return isCurrentSeason && (isAdmin || isCaptain || isAssistant)
   }, [isCurrentSeason, isAdmin, isCaptain, isAssistant])
+
+  const canMergeAccounts =
+    isCurrentSeason && (isCaptain || isAssistant || isAdmin)
+
+  const openMerge = (player: PlayerType) => {
+    router.push({
+      pathname: './Team/MergePlayer',
+      params: {
+        mergeParams: JSON.stringify({
+          teamId: _teamId,
+          masterPlayerId: player.id,
+          masterNickname: player.nickname,
+        }),
+      },
+    })
+  }
 
   const handleSelectSeason = (nextSeasonId: number) => {
     const entry = lineage.find(l => Number(l.season_id) === Number(nextSeasonId))
@@ -643,6 +687,27 @@ export default function TeamMembers({teamId, seasonId}: TeamMembersProps) {
                 </Text>
               </Pressable>
             )}
+            {canMergeAccounts ? (
+              <>
+                <RNText className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  {t('merge_player_roster_hint')}
+                </RNText>
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: './Team/MergeHistory',
+                      params: {
+                        teamIdParams: JSON.stringify({teamId: _teamId}),
+                      },
+                    })
+                  }
+                  className="border border-gray-200 dark:border-gray-400 rounded-lg p-3 mb-3">
+                  <Text type="link" className="text-center">
+                    team_merge_history
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
             <MemberSection
               title="captains"
               players={teamData.captains}
@@ -653,6 +718,8 @@ export default function TeamMembers({teamId, seasonId}: TeamMembersProps) {
               isCaptainOtherTeam={isCaptainOtherTeam}
               isAssistantOtherTeam={isAssistantOtherTeam}
               canEdit={isCurrentSeason}
+              canMerge={canMergeAccounts}
+              onMerge={openMerge}
               onRefresh={refreshTeamInfo}
               onProfilePicturePress={setSelectedProfilePicture}
             />
@@ -666,6 +733,8 @@ export default function TeamMembers({teamId, seasonId}: TeamMembersProps) {
               isCaptainOtherTeam={isCaptainOtherTeam}
               isAssistantOtherTeam={isAssistantOtherTeam}
               canEdit={isCurrentSeason}
+              canMerge={canMergeAccounts}
+              onMerge={openMerge}
               onRefresh={refreshTeamInfo}
               onProfilePicturePress={setSelectedProfilePicture}
             />
@@ -714,6 +783,9 @@ export default function TeamMembers({teamId, seasonId}: TeamMembersProps) {
                   </Pressable>
                 )}
               </View>
+              {canMergeAccounts ? (
+                <MergeAccountButton onPress={() => openMerge(item)} />
+              ) : null}
               {canManageRoles && (
                 <View className="flex-row ml-2">
                   <Pressable

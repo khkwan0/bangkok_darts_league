@@ -53,6 +53,17 @@ export default {
     channelId: 'your-line-channel-id',
   },
 
+  /**
+   * Native Google Sign-In.
+   * webClientId is optional: the app loads it from GET /api/login/google-client.
+   * iosClientId is the iOS OAuth client (….apps.googleusercontent.com).
+   * The reversed form of that id belongs in GOOGLE_IOS_URL_SCHEME at build time.
+   */
+  google: {
+    webClientId: '',
+    iosClientId: '',
+  },
+
   // Facebook app ID (optional; login is commented out in Auth screen).
   // fbAppId: 'your-facebook-app-id',
 }

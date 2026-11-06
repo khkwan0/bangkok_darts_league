@@ -430,6 +430,44 @@ export const useLeague = () => {
     }
   }
 
+  const MergeAltIntoTeamMaster = async (
+    teamId,
+    masterPlayerId,
+    altPlayerId,
+  ) => {
+    try {
+      const res = await Post('/team/player/merge', {
+        teamId,
+        masterPlayerId,
+        altPlayerId,
+      })
+      return res
+    } catch (e) {
+      console.log(e)
+      return {status: 'error', error: 'network_error'}
+    }
+  }
+
+  const GetTeamPlayerMerges = async teamId => {
+    try {
+      const res = await Get('/team/player/merges?teamId=' + teamId)
+      return res
+    } catch (e) {
+      console.log(e)
+      return {status: 'error', error: 'network_error'}
+    }
+  }
+
+  const UnmergeTeamPlayer = async (teamId, mergeLogId) => {
+    try {
+      const res = await Post('/team/player/unmerge', {teamId, mergeLogId})
+      return res
+    } catch (e) {
+      console.log(e)
+      return {status: 'error', error: 'network_error'}
+    }
+  }
+
   const GetPostponed = async () => {
     try {
       const res = await Get('/matches/postponed')
@@ -664,6 +702,9 @@ export const useLeague = () => {
     MergePlayer,
     RevokePrivileges,
     RemovePlayerFromTeam,
+    MergeAltIntoTeamMaster,
+    GetTeamPlayerMerges,
+    UnmergeTeamPlayer,
     SaveNewPlayer,
     SaveNewTeam,
     SaveNewTeamV2,

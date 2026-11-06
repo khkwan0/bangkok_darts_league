@@ -13,7 +13,7 @@ import * as Sentry from '@sentry/react-native'
 import {useFocusEffect, useNavigation} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
-import {Button, View} from 'react-native'
+import {Button, ScrollView} from 'react-native'
 
 export default function Admin() {
   const navigation = useNavigation()
@@ -37,7 +37,7 @@ export default function Admin() {
   )
 
   return (
-    <View>
+    <ScrollView className="flex-1" contentContainerClassName="pb-10">
       <NavDest
         icon="lifebuoy"
         text={t('admin_support')}
@@ -91,6 +91,6 @@ export default function Admin() {
         title="Test Sentry"
         onPress={() => Sentry.captureException(new Error('Test Sentry'))}
       />
-    </View>
+    </ScrollView>
   )
 }

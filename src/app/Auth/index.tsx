@@ -23,6 +23,7 @@ import {
 
 import config from '@/config'
 import {useLeagueContext} from '@/context/LeagueContext'
+import {loadGoogleSignIn} from '@/lib/google-sign-in'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import {Platform, useColorScheme} from 'react-native'
 interface StatusType {
@@ -38,6 +39,7 @@ export default function AuthHome() {
   const {SocialLogin} = useAccount()
   const {state: leagueState} = useLeagueContext()
   const [disabledLoginButton, setDisabledLoginButton] = React.useState(false)
+  const [googleReady, setGoogleReady] = React.useState(false)
   const colorScheme = useColorScheme()
   const width = Dimensions.get('window').width
   const {t} = useTranslation()
@@ -55,6 +57,37 @@ export default function AuthHome() {
       console.log('LINE setup failed', e)
     })
   }, [navigation, t])
+
+  useEffect(() => {
+    let cancelled = false
+    const google = loadGoogleSignIn()
+    if (!google) return
+    const apply = (webClientId: string) => {
+      if (cancelled || !webClientId) return
+      const iosClientId = String(config.google?.iosClientId || '').trim()
+      google.GoogleSignin.configure({
+        webClientId,
+        ...(iosClientId ? {iosClientId} : {}),
+      })
+      setGoogleReady(true)
+    }
+    const fromConfig = String(config.google?.webClientId || '').trim()
+    if (fromConfig) {
+      Promise.resolve().then(() => apply(fromConfig))
+      return () => {
+        cancelled = true
+      }
+    }
+    fetch(`${config.apiUrl}/login/google-client`)
+      .then(res => res.json())
+      .then(json => apply(String(json?.data?.client_id || '').trim()))
+      .catch(() => {
+        /* button stays hidden until a web client id is available */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function HandleLineLogin() {
     try {
@@ -125,6 +158,57 @@ export default function AuthHome() {
     }
   }
     */
+
+  async function HandleGoogleSignIn() {
+    const google = loadGoogleSignIn()
+    if (!google) {
+      setErr('Google sign-in needs a new app build.')
+      return
+    }
+    try {
+      setErr('')
+      setDisabledLoginButton(true)
+      if (Platform.OS === 'android') {
+        await google.GoogleSignin.hasPlayServices({
+          showPlayServicesUpdateDialog: true,
+        })
+      }
+      const response = await google.GoogleSignin.signIn()
+      if (google.isCancelledResponse(response)) return
+      if (!google.isSuccessResponse(response) || !response.data?.idToken) {
+        setErr('Google did not return an ID token. Try again.')
+        return
+      }
+      setCompletingLogin(true)
+      const res: StatusType = (await SocialLogin('google', {
+        idToken: response.data.idToken,
+      }))!
+      if (res?.status === 'ok') {
+        router.back()
+      } else {
+        setErr(res?.error || 'Google signed in, but the server rejected the login.')
+      }
+    } catch (e: unknown) {
+      if (google.isErrorWithCode(e)) {
+        if (e.code === google.statusCodes.SIGN_IN_CANCELLED) return
+        if (
+          e.code === 'DEVELOPER_ERROR' ||
+          String(e.code) === '10' ||
+          /DEVELOPER_ERROR/i.test(e.message || '')
+        ) {
+          setErr(
+            'Google sign-in is not configured for this build. Add the Android SHA-1 in Firebase, and set GOOGLE_IOS_URL_SCHEME plus the iOS client id before the next iOS build.',
+          )
+          return
+        }
+      }
+      const message = e instanceof Error ? e.message : ''
+      setErr(message || 'Unable to sign in with Google.')
+    } finally {
+      setCompletingLogin(false)
+      setDisabledLoginButton(false)
+    }
+  }
 
   async function HandleAppleSignIn() {
     try {
@@ -228,6 +312,26 @@ export default function AuthHome() {
                 </Text>
               </View>
             </Pressable>
+
+            {googleReady ? (
+              <Pressable
+                disabled={busy}
+                onPress={() => HandleGoogleSignIn()}
+                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-[8px] overflow-hidden my-1"
+                style={busy ? styles.buttonDisabled : undefined}>
+                <View className="flex-row items-center justify-center h-[48px] px-4">
+                  <MaterialCommunityIcons
+                    name="google"
+                    size={24}
+                    color="#4285F4"
+                    style={{marginRight: 12}}
+                  />
+                  <Text className="font-medium text-[18px] text-gray-900 dark:text-white">
+                    {t('continue_with_google')}
+                  </Text>
+                </View>
+              </Pressable>
+            ) : null}
 
             {/*
           <Pressable

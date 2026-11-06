@@ -27,6 +27,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-firebase/app": "^23.0.2",
     "@react-native-firebase/messaging": "^23.0.2",
+    "@react-native-google-signin/google-signin": "^17.0.0",
     "@react-native-picker/picker": "2.11.4",
     "@sentry/react-native": "~8.28.0",
     "@types/jest": "30.0.0",
@@ -112,10 +113,14 @@
   "expo": {
     "autolinking": {
       "ios": {
-        "buildFromSource": ["expo-camera"]
+        "buildFromSource": [
+          "expo-camera"
+        ]
       },
       "android": {
-        "buildFromSource": ["expo-camera"]
+        "buildFromSource": [
+          "expo-camera"
+        ]
       }
     }
   }

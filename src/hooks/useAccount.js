@@ -194,6 +194,7 @@ export const useAccount = () => {
           return {status: 'ok'}
         }
       }
+      return res
     } catch (e) {
       console.log(e)
       return null

@@ -43,6 +43,16 @@ function applyEnvConfig(expo) {
     ])
   }
 
+  // iOS Google Sign-In needs the reversed client id at prebuild time.
+  // Android uses the web client id from /api/login/google-client.
+  const googleIosUrlScheme = process.env.GOOGLE_IOS_URL_SCHEME?.trim()
+  if (googleIosUrlScheme?.startsWith('com.googleusercontent.apps.')) {
+    plugins.push([
+      '@react-native-google-signin/google-signin',
+      {iosUrlScheme: googleIosUrlScheme},
+    ])
+  }
+
   // Always last: Sentry rewrites its upload phase on every prebuild; this
   // replaces the bare-`node` wrapper that breaks under Xcode's PATH.
   plugins.push(SENTRY_NODE_ENV_PLUGIN)

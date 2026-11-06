@@ -87,6 +87,34 @@ export interface League {
     playerId: number,
     teamId: number,
   ): Promise<{status: string}>
+  MergeAltIntoTeamMaster(
+    teamId: number,
+    masterPlayerId: number,
+    altPlayerId: number,
+  ): Promise<{status: string; error?: string}>
+  GetTeamPlayerMerges(teamId: number): Promise<{
+    status: string
+    error?: string
+    data?: Array<{
+      merge_log_id: number
+      alt_player_id: number
+      master_player_id: number
+      alt_nickname: string | null
+      master_nickname: string | null
+      merged_at: string
+      merged_by_nickname: string | null
+      transferred_frames_count: number
+      transferred_darts_stats_count: number
+      copied_avatar: boolean
+      reverted_at: string | null
+      reverted_by_nickname: string | null
+      active: boolean
+    }>
+  }>
+  UnmergeTeamPlayer(
+    teamId: number,
+    mergeLogId: number,
+  ): Promise<{status: string; error?: string}>
   GetLiveScores(
     miniLeagueId?: number | null,
   ): Promise<{status: string; data: Match[]}>

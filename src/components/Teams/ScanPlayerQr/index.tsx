@@ -5,10 +5,11 @@ import {
   Modal,
   Pressable,
   StyleSheet,
+  Text as RNText,
   View,
 } from 'react-native'
 import {CameraView, useCameraPermissions} from 'expo-camera'
-import {useNavigation} from 'expo-router/react-navigation'
+import {useNavigation, useTheme} from 'expo-router/react-navigation'
 import {useTranslation} from 'react-i18next'
 import {MaterialCommunityIcons} from '@expo/vector-icons'
 import {ThemedText as Text} from '@/components/ThemedText'
@@ -28,10 +29,24 @@ export type ScannedPlayer = {
 
 type Props = {
   onConfirm: (player: ScannedPlayer) => Promise<void> | void
+  screenTitleKey?: string
+  /** Already translated. Falls back to the add-player hint. */
+  hint?: string
+  confirmTitle?: (player: ScannedPlayer) => string
+  confirmButtonKey?: string
+  formatError?: (error: unknown) => string
 }
 
-export default function ScanPlayerQr({onConfirm}: Props) {
+export default function ScanPlayerQr({
+  onConfirm,
+  screenTitleKey = 'scan_player_qr',
+  hint,
+  confirmTitle,
+  confirmButtonKey = 'confirm_add_player',
+  formatError,
+}: Props) {
   const {t} = useTranslation()
+  const {colors} = useTheme()
   const navigation = useNavigation()
   const league = useLeague()
   const [permission, requestPermission] = useCameraPermissions()
@@ -43,8 +58,8 @@ export default function ScanPlayerQr({onConfirm}: Props) {
   const resumeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   React.useEffect(() => {
-    navigation.setOptions({title: t('scan_player_qr')})
-  }, [navigation, t])
+    navigation.setOptions({title: t(screenTitleKey)})
+  }, [navigation, screenTitleKey, t])
 
   React.useEffect(() => {
     return () => {
@@ -110,7 +125,9 @@ export default function ScanPlayerQr({onConfirm}: Props) {
       await onConfirm(player)
     } catch (e) {
       console.error(e)
-      setScanError(t('error_adding_player'))
+      setScanError(
+        formatError ? formatError(e) : t('error_adding_player'),
+      )
       setPlayer(null)
       setConfirming(false)
       resumeScanning()
@@ -144,9 +161,17 @@ export default function ScanPlayerQr({onConfirm}: Props) {
   return (
     <ThemedView className="flex-1">
       <View className="px-4 pt-4 pb-2">
-        <Text className="text-center text-sm opacity-70">
-          {t('scan_player_qr_hint')}
-        </Text>
+        {hint != null ? (
+          <RNText
+            className="text-center text-sm opacity-70"
+            style={{color: colors.text}}>
+            {hint}
+          </RNText>
+        ) : (
+          <Text className="text-center text-sm opacity-70">
+            {t('scan_player_qr_hint')}
+          </Text>
+        )}
       </View>
 
       <View className="flex-1 overflow-hidden mx-4 mb-4 rounded-2xl">
@@ -173,10 +198,12 @@ export default function ScanPlayerQr({onConfirm}: Props) {
       </View>
 
       {scanError ? (
-        <Text className="px-4 pb-4 text-center text-red-500">{scanError}</Text>
+        <RNText className="px-4 pb-4 text-center text-red-500">
+          {scanError}
+        </RNText>
       ) : (
         <Text className="px-4 pb-4 text-center text-sm opacity-60">
-          {t('scan_player_qr')}
+          {t(screenTitleKey)}
         </Text>
       )}
 
@@ -191,9 +218,17 @@ export default function ScanPlayerQr({onConfirm}: Props) {
           <Pressable
             className="w-full max-w-sm rounded-2xl bg-white p-6 dark:bg-slate-800"
             onPress={e => e.stopPropagation()}>
-            <Text className="mb-4 text-center text-lg font-semibold">
-              {t('confirm_add_player')}
-            </Text>
+            {player && confirmTitle ? (
+              <RNText
+                className="mb-4 text-center text-lg font-semibold"
+                style={{color: colors.text}}>
+                {confirmTitle(player)}
+              </RNText>
+            ) : (
+              <Text className="mb-4 text-center text-lg font-semibold">
+                {t('confirm_add_player')}
+              </Text>
+            )}
             <View className="items-center mb-4">
               {picUri ? (
                 <Image
@@ -223,7 +258,7 @@ export default function ScanPlayerQr({onConfirm}: Props) {
               </Text>
             </View>
             <Button onPress={() => void handleConfirm()} disabled={confirming}>
-              {confirming ? t('loading') : t('confirm_add_player')}
+              {confirming ? t('loading') : t(confirmButtonKey)}
             </Button>
             <View className="mt-3">
               <Button

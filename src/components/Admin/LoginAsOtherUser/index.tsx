@@ -21,8 +21,8 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 type UserType = {
   id: number
   nickname: string
-  first_name?: string
-  last_name?: string
+  firstname?: string | null
+  lastname?: string | null
   profile_picture?: string
 }
 
@@ -40,9 +40,12 @@ export default function LoginAsOtherUser() {
   const [error, setError] = useState('')
   const [loginInProgress, setLoginInProgress] = useState(false)
 
-  // Create a trie search instance with the keys we want to search on
+  // Players from /players/all use firstname/lastname, which can be null.
+  // TrieSearch 2.2+ throws on null key fields unless an id is provided.
   const trie = useRef<any>(
-    new TrieSearch(['nickname', 'first_name', 'last_name']),
+    new TrieSearch<UserType>(['nickname', 'firstname', 'lastname'], {
+      idFieldOrFunction: 'id',
+    }),
   )
 
   useEffect(() => {
@@ -130,7 +133,7 @@ export default function LoginAsOtherUser() {
       <View className="flex-1">
         <Text className="font-medium">{user.nickname}</Text>
         <Text className="text-sm text-gray-500 dark:text-gray-400">
-          {user.first_name} {user.last_name}
+          {[user.firstname, user.lastname].filter(Boolean).join(' ')}
         </Text>
         <Text className="text-xs text-gray-400 dark:text-gray-500">
           ID: {user.id}

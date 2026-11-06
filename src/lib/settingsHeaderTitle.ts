@@ -25,6 +25,8 @@ export function settingsHeaderTitleKey(pathname: string): string {
     ['/Settings/Preferences', 'preferences'],
     ['/Settings/ProfileClaims', 'admin_player_claims'],
     ['/Settings/Admin/PlayerClaims', 'admin_player_claims'],
+    ['/Settings/Teams/Team/MergeHistory', 'team_merge_history'],
+    ['/Settings/Teams/Team/MergePlayer', 'merge_player_account'],
     ['/Settings/Teams', 'teams'],
     ['/Settings/Tournaments', 'tournaments'],
     ['/Settings/RegisterTeam', 'register_team'],

@@ -2,6 +2,8 @@ import {ThemedText as Text} from './ThemedText'
 import Row from './Row'
 import {useMatchContext} from '@/context/MatchContext'
 import {useColorScheme, Image, View, Pressable} from 'react-native'
+import {MaterialCommunityIcons} from '@expo/vector-icons'
+import {useTranslation} from 'react-i18next'
 import {useRouter} from 'expo-router'
 import config from '@/config'
 import {useTeams} from '@/hooks'
@@ -19,6 +21,8 @@ type PlayerCardPropsType = {
   abbrevLast?: boolean
   isExisting?: boolean
   mfpp: number
+  /** Opens the QR merge flow for this player. Does not select them for the frame. */
+  onMerge?: () => void
 }
 export default function PlayerCard({
   frameIndex,
@@ -32,6 +36,7 @@ export default function PlayerCard({
   abbrevLast = true,
   isExisting = false,
   mfpp,
+  onMerge,
 }: PlayerCardPropsType) {
   const router = useRouter()
   const {UpdateFramePlayers, UpdateTeams}: any = useMatchContext()
@@ -135,6 +140,7 @@ export default function PlayerCard({
     }
   }, [state.stats])
 
+  const {t} = useTranslation()
   const theme = useColorScheme()
   const backgroundColor = theme === 'light' ? 'bg-blue-300' : 'bg-gray-500'
   return (
@@ -180,6 +186,19 @@ export default function PlayerCard({
             )}
         </View>
         <View style={{flex: 1, alignItems: 'flex-end'}}>
+          {onMerge ? (
+            <Pressable
+              onPress={onMerge}
+              accessibilityRole="button"
+              accessibilityLabel={t('merge_player_account')}
+              className="mb-2 p-2 rounded-lg bg-sky-100 dark:bg-sky-900">
+              <MaterialCommunityIcons
+                name="qrcode-scan"
+                size={22}
+                color={theme === 'dark' ? '#BAE6FD' : '#0369A1'}
+              />
+            </Pressable>
+          ) : null}
           <Pressable
             onPressIn={() => setIsPressed(true)}
             onPressOut={() => setIsPressed(false)}

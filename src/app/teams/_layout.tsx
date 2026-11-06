@@ -11,6 +11,8 @@ function teamsHeaderTitleKey(pathname: string): string {
   if (path.includes('/copy')) return 'add_from_league'
   if (path.includes('/settings')) return 'settings'
   if (path.includes('/players')) return 'players'
+  if (path.toLowerCase().includes('/mergehistory')) return 'team_merge_history'
+  if (path.toLowerCase().includes('/mergeplayer')) return 'merge_player_account'
   if (path.includes('/team/')) return 'roster'
   if (/\/mini-leagues\/[^/]+\/teams$/.test(path)) return 'teams'
   if (/\/mini-leagues\/[^/]+$/.test(path)) return 'mini_league'
