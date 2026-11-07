@@ -470,6 +470,13 @@ export default function AdminPlayerMerges() {
                         → #{row.master_player_id} {row.master_nickname || '—'}
                       </Text>
                     </Text>
+                    {row.merged_by_nickname?.trim() ? (
+                      <Text className="mt-1 text-xs text-gray-500">
+                        {t('admin_player_merges_by', {
+                          name: row.merged_by_nickname.trim(),
+                        })}
+                      </Text>
+                    ) : null}
                     <Text className="mt-1 text-xs text-gray-500">
                       {row.transfer_stats
                         ? t('admin_player_merges_transfer_counts', {
@@ -481,9 +488,14 @@ export default function AdminPlayerMerges() {
                           : '—'}
                       {' · '}
                       {row.reverted_at
-                        ? t('admin_player_merges_status_reverted', {
-                            when: formatWhen(row.reverted_at, timeZone),
-                          })
+                        ? row.reverted_by_nickname?.trim()
+                          ? t('admin_player_merges_status_reverted_by', {
+                              name: row.reverted_by_nickname.trim(),
+                              when: formatWhen(row.reverted_at, timeZone),
+                            })
+                          : t('admin_player_merges_status_reverted', {
+                              when: formatWhen(row.reverted_at, timeZone),
+                            })
                         : row.active
                           ? t('admin_player_merges_status_active')
                           : t('admin_player_merges_status_inactive')}

@@ -23,7 +23,9 @@ export type AdminPlayerMergeRecord = {
   transfer_stats?: boolean
   transferred_frames_count?: number
   transferred_darts_stats_count?: number
+  merged_by_nickname?: string | null
   reverted_at?: string | null
+  reverted_by_nickname?: string | null
 }
 
 export type MergePlayersResult = {
