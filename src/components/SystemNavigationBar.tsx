@@ -5,9 +5,9 @@ import {useEffect} from 'react'
 import {AppState, Platform, useColorScheme} from 'react-native'
 
 /**
- * Keeps the Android system navigation bar aligned with app light/dark themes.
- * `auto` → dark icons on light backgrounds, light icons on dark backgrounds.
- * Background uses expo-system-ui (SDK 57 navigation bar API is style-only).
+ * Hides the Android system navigation bar and keeps residual chrome
+ * aligned with app light/dark themes when the bar briefly reappears
+ * (e.g. after a bottom-edge swipe).
  *
  * Avoid the declarative `<NavigationBar />` component: its unmount path always
  * calls `setHidden`, which rejects with "current activity is no longer available"
@@ -28,6 +28,7 @@ export function SystemNavigationBar() {
       }
 
       try {
+        NavigationBar.setHidden(true)
         NavigationBar.setStyle('auto')
       } catch {
         // Activity may already be gone.

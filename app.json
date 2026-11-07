@@ -88,7 +88,8 @@
       [
         "expo-navigation-bar",
         {
-          "enforceContrast": false
+          "enforceContrast": false,
+          "hidden": true
         }
       ],
       [
