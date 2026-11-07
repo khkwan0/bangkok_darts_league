@@ -3,9 +3,8 @@ import config from '@/config'
 import {leagueRequestHeaders} from '@/lib/leagueRequest'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useNetwork} from '@/hooks/useNetwork'
-import {ensureUserChannels} from '@/lib/notifications'
+import {ensureUserChannels, getPushToken} from '@/lib/notifications'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import {getMessaging, getToken} from '@react-native-firebase/messaging'
 import {File} from 'expo-file-system'
 import {manipulateAsync, SaveFormat} from 'expo-image-manipulator'
 import {useEffect, useRef} from 'react'
@@ -78,9 +77,10 @@ export const useAccount = () => {
       }
 
       try {
-        const messaging = getMessaging()
-        const token = await getToken(messaging)
-        await Post('/user/token', {token: token})
+        const token = await getPushToken()
+        if (token) {
+          await Post('/user/token', {token: token})
+        }
         await ensureUserChannels({
           includeAdmin: isLeagueAdmin(userData?.id ? userData : null),
         })
@@ -97,9 +97,10 @@ export const useAccount = () => {
 
   const RefreshPushToken = async () => {
     try {
-      const messaging = getMessaging()
-      const token = await getToken(messaging)
-      await Post('/user/token', {token: token})
+      const token = await getPushToken()
+      if (token) {
+        await Post('/user/token', {token: token})
+      }
       return token
     } catch (e) {
       console.error('Error refreshing FCM token:', e)
@@ -127,9 +128,10 @@ export const useAccount = () => {
                 console.log(e)
               }
             }
-            const messaging = getMessaging()
-            const token = await getToken(messaging)
-            await Post('/user/token', {token: token})
+            const token = await getPushToken()
+            if (token) {
+              await Post('/user/token', {token: token})
+            }
             dispatch({type: 'SET_USER', payload: res.data.user})
             return {status: 'ok'}
           }

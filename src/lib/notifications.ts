@@ -1,3 +1,11 @@
+import {
+  AuthorizationStatus,
+  getAPNSToken,
+  getMessaging,
+  getToken,
+  registerDeviceForRemoteMessages,
+  requestPermission,
+} from '@react-native-firebase/messaging'
 import * as Notifications from 'expo-notifications'
 import {Platform} from 'react-native'
 
@@ -24,6 +32,9 @@ const CHANNELS = [
   {id: 'Admin', name: 'Admin'},
   {id: 'App Wide', name: 'General'},
   {id: 'match_confirmation', name: 'Match Confirmation'},
+  // Fresh id so heads-up importance applies. Android will not raise the
+  // importance of a channel that Notifee or an older build already created.
+  {id: 'bkk-alerts', name: 'Alerts'},
 ] as const
 
 export async function setAppBadgeCount(count: number | null | undefined) {
@@ -43,11 +54,22 @@ async function createChannel(id: string, name: string) {
   if (Platform.OS !== 'android') {
     return
   }
+  const existing = await Notifications.getNotificationChannelAsync(id)
+  if (
+    existing &&
+    existing.importance < Notifications.AndroidImportance.MAX
+  ) {
+    await Notifications.deleteNotificationChannelAsync(id)
+  } else if (existing) {
+    return
+  }
   await Notifications.setNotificationChannelAsync(id, {
     name,
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
     enableLights: true,
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    sound: 'default',
     showBadge: true,
   })
 }
@@ -170,29 +192,54 @@ export async function presentRemoteNotification(remoteMessage: {
     return
   }
 
-  const channelId =
-    remoteMessage.notification?.android?.channelId ||
-    (typeof remoteMessage.data?.channelId === 'string'
-      ? remoteMessage.data.channelId
-      : 'General')
+  const channelId = Platform.OS === 'android' ? 'bkk-alerts' : 'General'
 
   if (Platform.OS === 'android') {
     await ensureAllNotificationChannels()
   }
 
   const badge = getBadgeFromRemoteMessage(remoteMessage)
+  const data: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(remoteMessage.data ?? {})) {
+    if (value == null) continue
+    data[key] = typeof value === 'string' ? value : String(value)
+  }
 
   await Notifications.scheduleNotificationAsync({
     content: {
       title: title || 'Bangkok Darts League',
       body: body || undefined,
-      data: remoteMessage.data ?? {},
-      sound: true,
+      data,
+      sound: 'default',
+      interruptionLevel: 'active',
+      priority: Notifications.AndroidNotificationPriority.MAX,
       ...(badge != null ? {badge} : {}),
     },
-    trigger:
-      Platform.OS === 'android'
-        ? {channelId}
-        : null,
+    trigger: Platform.OS === 'android' ? {channelId} : null,
   })
+}
+
+/**
+ * FCM token that can actually receive a push while the app is closed.
+ * On iOS that requires an APNs device token first. Saving the FCM token
+ * before Apple registration succeeds is why Android delivers and iPhone does not.
+ */
+export async function getPushToken(): Promise<string | null> {
+  const messaging = getMessaging()
+  if (Platform.OS === 'ios') {
+    const authStatus = await requestPermission(messaging)
+    const allowed =
+      authStatus === AuthorizationStatus.AUTHORIZED ||
+      authStatus === AuthorizationStatus.PROVISIONAL
+    if (!allowed) return null
+    await registerDeviceForRemoteMessages(messaging)
+    let apnsToken = await getAPNSToken(messaging)
+    for (let attempt = 0; attempt < 10 && !apnsToken; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 300))
+      apnsToken = await getAPNSToken(messaging)
+    }
+    if (!apnsToken) return null
+  }
+  const token = await getToken(messaging)
+  return token || null
 }

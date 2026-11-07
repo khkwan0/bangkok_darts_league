@@ -1,4 +1,6 @@
 import {Stack} from 'expo-router'
+import {CompetitionSwitcher} from '@/components/navigation/CompetitionSwitcher'
+import {SettingsButton} from '@/components/navigation/SettingsButton'
 import {useStackContentSafeStyle} from '@/hooks/useStackContentSafeStyle'
 import {useTranslation} from 'react-i18next'
 
@@ -9,7 +11,13 @@ export default function MoreLayout() {
     <Stack screenOptions={{contentStyle}}>
       <Stack.Screen
         name="index"
-        options={{title: t('quick_actions'), headerShown: true}}
+        options={{
+          headerShown: true,
+          headerTitle: () => <CompetitionSwitcher />,
+          headerRight: () => <SettingsButton />,
+          // Custom headerTitle leaves iOS with the route name ("index") otherwise.
+          headerBackTitle: t('quick_actions'),
+        }}
       />
     </Stack>
   )

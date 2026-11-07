@@ -93,7 +93,7 @@ function RootLayout() {
       const authStatus = await requestPermission(messaging)
       const enabled =
         authStatus === AuthorizationStatus.AUTHORIZED ||
-        AuthorizationStatus.PROVISIONAL
+        authStatus === AuthorizationStatus.PROVISIONAL
       if (enabled) {
         console.log('Authorization status: ', authStatus)
       }
