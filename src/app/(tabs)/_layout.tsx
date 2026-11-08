@@ -30,6 +30,7 @@ import {
 } from '@/lib/announcementReads'
 import {
   applyBadgeFromRemoteMessage,
+  dismissAnnouncementNotifications,
   getBadgeFromRemoteMessage,
   isAdminSupportTicketRemoteMessage,
   isAnnouncementRemoteMessage,
@@ -56,7 +57,6 @@ import {
   onMessage,
   onTokenRefresh,
 } from '@react-native-firebase/messaging'
-import * as Notifications from 'expo-notifications'
 import {NativeTabs} from 'expo-router/native-tabs'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
@@ -199,9 +199,7 @@ export default function TabLayout() {
         ) {
           setUnreadAnnouncement(announcement)
           setShowAnnouncementDialog(true)
-          if (Platform.OS !== 'web') {
-            void Notifications.dismissAllNotificationsAsync()
-          }
+          void dismissAnnouncementNotifications()
         } else if (
           !presentDialog ||
           !announcement ||

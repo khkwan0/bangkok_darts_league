@@ -54,13 +54,10 @@ async function createChannel(id: string, name: string) {
   if (Platform.OS !== 'android') {
     return
   }
-  const existing = await Notifications.getNotificationChannelAsync(id)
-  if (
-    existing &&
-    existing.importance < Notifications.AndroidImportance.MAX
-  ) {
-    await Notifications.deleteNotificationChannelAsync(id)
-  } else if (existing) {
+  // Never delete an existing channel: deleting cancels every notification
+  // showing on it, and Android restores the old settings when the same id is
+  // recreated, so it would not raise importance anyway.
+  if (await Notifications.getNotificationChannelAsync(id)) {
     return
   }
   await Notifications.setNotificationChannelAsync(id, {
@@ -123,6 +120,23 @@ export function isAnnouncementRemoteMessage(remoteMessage: {
   data?: Record<string, unknown> | null
 }): boolean {
   return remoteMessage?.data?.type === 'announcement'
+}
+
+/** Clear announcement pushes from the tray; leave every other notification. */
+export async function dismissAnnouncementNotifications() {
+  if (Platform.OS === 'web') {
+    return
+  }
+  try {
+    const presented = await Notifications.getPresentedNotificationsAsync()
+    await Promise.all(
+      presented
+        .filter(n => n.request.content.data?.type === 'announcement')
+        .map(n => Notifications.dismissNotificationAsync(n.request.identifier)),
+    )
+  } catch (e) {
+    console.error('Error dismissing announcement notifications:', e)
+  }
 }
 
 export function isSupportTicketRemoteMessage(remoteMessage: {

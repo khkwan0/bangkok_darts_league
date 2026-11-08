@@ -1,4 +1,5 @@
 import PlayerCard from '@/components/PlayerCard'
+import MergeRosterHint from '@/components/MergeRosterHint'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import {useLeagueContext} from '@/context/LeagueContext'
@@ -9,7 +10,7 @@ import {useLocalSearchParams, useRouter} from 'expo-router'
 import {useNavigation} from 'expo-router/react-navigation'
 import {t} from 'i18next'
 import React from 'react'
-import {FlatList, Pressable, Text as RNText} from 'react-native'
+import {FlatList, Pressable} from 'react-native'
 
 export default function ChoosePlayer(props: any) {
   const router = useRouter()
@@ -99,18 +100,10 @@ export default function ChoosePlayer(props: any) {
             </Text>
           </Pressable>
           {canMerge ? (
-            <View className="mt-3">
-              <RNText className="text-center text-xs text-gray-600 dark:text-gray-400 mb-2">
-                {t('merge_player_roster_hint')}
-              </RNText>
-              <Pressable
-                onPress={openMergeHistory}
-                className="py-3 border border-gray-300 dark:border-gray-500 rounded">
-                <Text className="text-center" style={{textAlign: 'center'}}>
-                  team_merge_history
-                </Text>
-              </Pressable>
-            </View>
+            <MergeRosterHint
+              className="mt-3 mb-2 px-2"
+              onMergeHistory={openMergeHistory}
+            />
           ) : null}
         </View>
       }

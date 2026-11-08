@@ -17,7 +17,7 @@ Expo / React Native app for the Bangkok Darts League (league id 3), sibling to B
    cp .env.example .env.local
    ```
 
-   Edit `src/config.js` for your API host and third-party IDs. Set Sentry, Apple team ID, and signing vars in `.env.local`. See [Configuration](#configuration) below.
+   Edit `src/config.js` for your API host and third-party IDs (including Google / LINE). Set Sentry, Apple team ID, `GOOGLE_IOS_URL_SCHEME`, and signing vars in `.env.local`. See [Configuration](#configuration) and [OAuth](#oauth--social-login-setup).
 
 3. Start the app
 
@@ -54,6 +54,7 @@ Copy `.env.example` → `.env.local` (gitignored). Expo loads it for **`app.conf
 | `SENTRY_ORG` | Sentry org for `@sentry/react-native/expo` plugin |
 | `SENTRY_PROJECT` | Sentry project for the plugin |
 | `APPLE_TEAM_ID` | Apple Developer team ID (`app.config.js` + `archive_ios` export) |
+| `GOOGLE_IOS_URL_SCHEME` | Reversed iOS Google OAuth client id (native plugin; see [OAuth](#oauth--social-login-setup)) |
 
 `app.config.js` merges these into `app.json` — Sentry plugin and `ios.appleTeamId` are not hardcoded in the repo.
 
@@ -73,8 +74,104 @@ Release-build credentials (`ASC_*`, `ANDROID_*`, `PLAY_*`) are also documented i
 | `forumImagesUrl` | Optional; forum post images (defaults to `/forum_images/` on the `apiUrl` host) |
 | `ONESIGNAL_APP_ID` | OneSignal push notification app ID |
 | `line.channelId` | LINE Login channel ID |
+| `google.iosClientId` | iOS Google OAuth client id (`….apps.googleusercontent.com`) |
+| `google.webClientId` | Optional web client id; otherwise loaded from `/api/login/google-client` |
 | `version` | User-facing app version string |
 | `build` | Native build number shown in Settings |
+
+## OAuth / social login setup
+
+The Auth screen uses **Google**, **LINE**, and **Apple** (Facebook UI is commented out). Native Google / LINE / Apple need a **dev client or store build** — Expo Go is not enough.
+
+App ids for this project:
+
+| Platform | Id |
+|----------|----|
+| iOS bundle | `com.bangkok-darts-league` |
+| Android package | `com.bangkok_darts_league` |
+| API host | `darts.bkkleague.com` |
+| League id | `3` |
+
+### Google Sign-In
+
+Uses `@react-native-google-signin/google-signin`. The native SDK needs an iOS client id at runtime (`GIDConfiguration`); Android uses the web client id plus SHA-1 fingerprints.
+
+1. In [Google Cloud Console](https://console.cloud.google.com/) (same project as Firebase for this app), create OAuth clients:
+   - **Web** application — used by the backend to verify ID tokens and by Android Sign-In
+   - **iOS** application — bundle id `com.bangkok-darts-league`
+2. Put Firebase config files in the repo root (gitignored):
+   - `GoogleService-Info.plist` (iOS)
+   - `firebase.google-services.json` (Android)
+3. **Backend** (`bkkleague_backend`): set `GOOGLE_CLIENT_ID` (and usually `GOOGLE_CLIENT_SECRET`) to the **web** client. The app loads that id from `GET /api/login/google-client`.
+4. **App runtime** — `src/config.js`:
+
+   ```js
+   google: {
+     webClientId: '', // optional; leave empty to use /api/login/google-client
+     iosClientId: 'XXXX-YYYY.apps.googleusercontent.com', // iOS OAuth client
+   },
+   ```
+
+5. **App native build** — `.env.local` (then rebuild iOS):
+
+   ```bash
+   # Reverse of iosClientId:
+   #  XXXX-YYYY.apps.googleusercontent.com
+   #  → com.googleusercontent.apps.XXXX-YYYY
+   GOOGLE_IOS_URL_SCHEME=com.googleusercontent.apps.XXXX-YYYY
+   ```
+
+   `app.config.js` adds the `@react-native-google-signin/google-signin` plugin with that scheme at prebuild.
+6. **Android**: in Firebase → Project settings → your Android app, add the **debug** and **release** SHA-1 fingerprints for `com.bangkok_darts_league`, then re-download `firebase.google-services.json` if prompted.
+
+```bash
+# Debug keystore SHA-1
+keytool -list -v -alias androiddebugkey \
+  -keystore ~/.android/debug.keystore -storepass android -keypass android
+
+# Release keystore SHA-1 (path from ANDROID_KEYSTORE_PATH)
+keytool -list -v -alias "$ANDROID_KEY_ALIAS" -keystore "$ANDROID_KEYSTORE_PATH"
+```
+
+**Symptom:** `You must specify [clientID] in [GIDConfiguration]` → `google.iosClientId` is missing in `src/config.js` (JS reload is enough). Missing URL scheme or SHA-1 needs a new native build / Firebase update.
+
+### LINE Login
+
+1. [LINE Developers Console](https://developers.line.biz/) → create a **LINE Login** channel for this app (separate from pool if they use different channels).
+2. Mobile app settings:
+   - iOS bundle id: `com.bangkok-darts-league`
+   - Android package: `com.bangkok_darts_league`
+   - Android **debug + release** SHA-1 (same fingerprints as Google / Firebase)
+3. Put the channel id in `src/config.js`:
+
+   ```js
+   line: { channelId: 'your-line-channel-id' },
+   ```
+
+4. **Backend**: darts uses `LINE_DARTS_CLIENT_ID` / `LINE_DARTS_CLIENT_SECRET` (or the admin OAuth UI for league 3). Channel id on the league row must match the app.
+
+`app.json` already lists `LSApplicationQueriesSchemes: ["lineauth2"]` for opening the LINE app.
+
+### Sign in with Apple (iOS only)
+
+1. Apple Developer → Identifiers → App ID `com.bangkok-darts-league` → enable **Sign In with Apple**.
+2. Capability is already declared in `app.json` (`usesAppleSignIn`, entitlements).
+3. Associated domain: `webcredentials:darts.bkkleague.com` (and the matching apple-app-site-association on that host for web credentials if you use them).
+4. Rebuild after enabling the capability. Test on a **real device** (`appleAuth.getCredentialStateForUser` fails on simulator).
+
+Backend verifies the identity token via `/api/login/social/apple`.
+
+### Facebook (optional / currently disabled)
+
+UI is commented out on the Auth screen. If you re-enable it, set `fbAppId` in `src/config.js` and configure the Facebook app with the same iOS/Android ids; backend route is `/api/login/social/facebook`.
+
+### Checklist after changing OAuth
+
+| Change | What to do |
+|--------|------------|
+| `google.iosClientId` / `line.channelId` only | Reload Metro |
+| `GOOGLE_IOS_URL_SCHEME`, Firebase plist/json, LINE native ids, Apple capability | `npm run deploy_ios` / `deploy_android` (or archive) |
+| Backend `GOOGLE_CLIENT_ID` / LINE secrets | Deploy API; no app rebuild |
 
 ### Version sync
 

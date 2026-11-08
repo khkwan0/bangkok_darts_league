@@ -2,6 +2,7 @@ import Row from '@/components/Row'
 import {ThemedText as Text} from '@/components/ThemedText'
 import TeamNameEdit from '@/components/Teams/TeamNameEdit'
 import TeamLogoEdit from '@/components/Teams/TeamLogoEdit'
+import MergeRosterHint from '@/components/MergeRosterHint'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
 import config from '@/config'
 import {LeagueContextType, useLeagueContext} from '@/context/LeagueContext'
@@ -18,7 +19,6 @@ import {
   Image,
   Modal,
   Pressable,
-  Text as RNText,
   View,
   useColorScheme,
 } from 'react-native'
@@ -688,25 +688,18 @@ export default function TeamMembers({teamId, seasonId}: TeamMembersProps) {
               </Pressable>
             )}
             {canMergeAccounts ? (
-              <>
-                <RNText className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  {t('merge_player_roster_hint')}
-                </RNText>
-                <Pressable
-                  onPress={() =>
-                    router.push({
-                      pathname: './Team/MergeHistory',
-                      params: {
-                        teamIdParams: JSON.stringify({teamId: _teamId}),
-                      },
-                    })
-                  }
-                  className="border border-gray-200 dark:border-gray-400 rounded-lg p-3 mb-3">
-                  <Text type="link" className="text-center">
-                    team_merge_history
-                  </Text>
-                </Pressable>
-              </>
+              <MergeRosterHint
+                className="mb-3"
+                titleClassName="text-base"
+                onMergeHistory={() =>
+                  router.push({
+                    pathname: './Team/MergeHistory',
+                    params: {
+                      teamIdParams: JSON.stringify({teamId: _teamId}),
+                    },
+                  })
+                }
+              />
             ) : null}
             <MemberSection
               title="captains"
