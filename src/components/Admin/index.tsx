@@ -1,4 +1,6 @@
 import NavDest from '@/components/NavDest'
+import {useLeagueContext} from '@/context/LeagueContext'
+import {isSuperAdminUser} from '@/lib/isLeagueAdmin'
 import {useAdminPlayerMerges} from '@/hooks/useAdminPlayerMerges'
 import {useAdminSupportTickets} from '@/hooks/useAdminSupportTickets'
 import {
@@ -18,6 +20,7 @@ import {Button, ScrollView} from 'react-native'
 export default function Admin() {
   const navigation = useNavigation()
   const {t} = useTranslation()
+  const {state} = useLeagueContext()
   const {getUnreadCount} = useAdminSupportTickets()
   const {getPendingCount} = useAdminPlayerMerges()
   const unreadCount = useAdminSupportUnreadCount()
@@ -79,6 +82,13 @@ export default function Admin() {
         text={t('announcements')}
         url="/Settings/Admin/Announcements"
       />
+      {isSuperAdminUser(state.user) ? (
+        <NavDest
+          icon="text-box-outline"
+          text={t('release_notes_admin')}
+          url="/Settings/Admin/ReleaseNotes"
+        />
+      ) : null}
       <NavDest
         icon="robot-outline"
         text={t('admin_ai_agent')}

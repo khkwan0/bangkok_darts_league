@@ -355,6 +355,15 @@ export function SettingsRootList({showPaneTitle = false}: Props) {
           selected={hrefIsSelected(pathname, '/Settings/Announcements')}
           onPress={() => openHref('/Settings/Announcements')}
         />
+        <NavDest
+          icon="text-box-outline"
+          text={t('release_notes')}
+          url="/Settings/ReleaseNotes"
+          iconColor="#0284C7"
+          iconBackground="rgba(2, 132, 199, 0.15)"
+          selected={hrefIsSelected(pathname, '/Settings/ReleaseNotes')}
+          onPress={() => openHref('/Settings/ReleaseNotes')}
+        />
         {state.forumsEnabled !== false ? (
           <NavDest
             icon="forum-outline"

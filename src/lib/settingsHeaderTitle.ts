@@ -9,6 +9,8 @@ export function settingsHeaderTitleKey(pathname: string): string {
   const rules: Array<[string, string]> = [
     ['/Settings/Forums', 'forums'],
     ['/Settings/Support', 'support'],
+    ['/Settings/Admin/ReleaseNotes', 'release_notes_admin'],
+    ['/Settings/ReleaseNotes', 'release_notes'],
     ['/Settings/Announcements', 'announcements'],
     ['/Settings/Achievements', 'achievements'],
     ['/Settings/Weeklies', 'weeklies'],
