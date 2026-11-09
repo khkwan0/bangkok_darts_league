@@ -1,5 +1,5 @@
 import config from '@/config'
-import {configuredLeagueId} from '@/lib/leagueRequest'
+import {configuredLeagueId, leagueRequestHeaders} from '@/lib/leagueRequest'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {Platform} from 'react-native'
 import {io, type Socket} from 'socket.io-client'
@@ -43,7 +43,7 @@ export async function loadSocketAuth(options: SocketAuthOptions = {}) {
   if (leagueHost) leagueAuth.leagueHost = leagueHost
 
   const leagueHeaders: Record<string, string> = {
-    'X-League-Id': String(leagueId),
+    ...leagueRequestHeaders(),
   }
   if (leagueHost) leagueHeaders['X-League-Host'] = leagueHost
 

@@ -1,15 +1,3 @@
 {
-  "servers": {
-    "repowise": {
-      "type": "stdio",
-      "command": "repowise",
-      "args": [
-        "mcp",
-        "/Users/ken/dev/bangkok_darts_league",
-        "--transport",
-        "stdio"
-      ],
-      "description": "repowise: codebase intelligence \u2014 docs, graph, git signals, dead code, decisions"
-    }
-  }
+  "servers": {}
 }

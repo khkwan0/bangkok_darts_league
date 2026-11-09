@@ -1,6 +1,14 @@
 ---
-alwaysApply: true
+description: Repowise distill helpers (opt-in only)
+alwaysApply: false
 ---
+
+<!-- alwaysApply is intentionally false. Always-on distill/MCP was adding
+     schema-discovery round-trips and the agent still used Grep/Read anyway.
+     Repowise MCP is disabled in ~/.cursor/mcp.json and this project's
+     .cursor/mcp.json. Default to Grep, Glob, and Read. Re-enable MCP and
+     set alwaysApply true only if you explicitly want Repowise for orientation
+     on huge files. -->
 
 <!-- Add your own Cursor rules above or below the Repowise section. Repowise only updates the managed section between markers. -->
 

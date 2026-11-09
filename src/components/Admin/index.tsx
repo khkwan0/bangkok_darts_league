@@ -58,6 +58,13 @@ export default function Admin() {
         url="/Settings/Admin/PlayerClaims"
       />
       <NavDest
+        icon="clock-check-outline"
+        text={t('admin_last_seen')}
+        url="/Settings/Admin/LastSeen"
+        iconColor="#6366F1"
+        iconBackground="rgba(99, 102, 241, 0.15)"
+      />
+      <NavDest
         icon="palette"
         text={t('admin_branding')}
         url="/Settings/Admin/Branding"
