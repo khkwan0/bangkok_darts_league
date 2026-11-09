@@ -440,6 +440,17 @@ export default function TabLayout() {
     const subscription = AppState.addEventListener('change', nextState => {
       if (nextState === 'active') {
         if (state.user?.id) {
+          if (Platform.OS !== 'web') {
+            accountRef.current
+              .RefreshPushToken({
+                playerId: state.user.id,
+                force: false,
+                prompt: false,
+              })
+              .catch((e: unknown) => {
+                console.error('Error re-registering FCM token on resume:', e)
+              })
+          }
           syncUnreadFromServer()
           void refreshSupportUnread(getSupportUnreadCount)
           if (isLeagueAdmin(state.user)) {
@@ -477,16 +488,18 @@ export default function TabLayout() {
         return
       }
       try {
-        await accountRef.current.RefreshPushToken()
+        await accountRef.current.RefreshPushToken({playerId: state.user.id})
       } catch (e) {
         console.error('Error refreshing FCM token:', e)
       }
     })
 
     if (state.user?.id) {
-      accountRef.current.RefreshPushToken().catch((e: unknown) => {
-        console.error('Error ensuring FCM token:', e)
-      })
+      accountRef.current
+        .RefreshPushToken({playerId: state.user.id})
+        .catch((e: unknown) => {
+          console.error('Error ensuring FCM token:', e)
+        })
     }
 
     const unsubscribeMessage = onMessage(messaging, async remoteMessage => {

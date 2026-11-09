@@ -3,7 +3,8 @@ import config from '@/config'
 import {leagueRequestHeaders} from '@/lib/leagueRequest'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useNetwork} from '@/hooks/useNetwork'
-import {ensureUserChannels, getPushToken} from '@/lib/notifications'
+import {ensureUserChannels} from '@/lib/notifications'
+import {registerPushToken} from '@/lib/pushTokenRegistration'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {File} from 'expo-file-system'
 import {manipulateAsync, SaveFormat} from 'expo-image-manipulator'
@@ -77,10 +78,7 @@ export const useAccount = () => {
       }
 
       try {
-        const token = await getPushToken()
-        if (token) {
-          await Post('/user/token', {token: token})
-        }
+        await registerPushToken(Post, userData?.id)
         await ensureUserChannels({
           includeAdmin: isLeagueAdmin(userData?.id ? userData : null),
         })
@@ -95,13 +93,14 @@ export const useAccount = () => {
     }
   }
 
-  const RefreshPushToken = async () => {
+  /** options: {playerId, force, prompt} — see registerPushToken. Defaults keep launch behaviour. */
+  const RefreshPushToken = async ({playerId, ...options} = {}) => {
     try {
-      const token = await getPushToken()
-      if (token) {
-        await Post('/user/token', {token: token})
-      }
-      return token
+      return await registerPushToken(
+        Post,
+        playerId ?? stateRef.current.user?.id,
+        options,
+      )
     } catch (e) {
       console.error('Error refreshing FCM token:', e)
     }
@@ -128,10 +127,7 @@ export const useAccount = () => {
                 console.log(e)
               }
             }
-            const token = await getPushToken()
-            if (token) {
-              await Post('/user/token', {token: token})
-            }
+            await registerPushToken(Post, res.data.user?.id)
             dispatch({type: 'SET_USER', payload: res.data.user})
             return {status: 'ok'}
           }

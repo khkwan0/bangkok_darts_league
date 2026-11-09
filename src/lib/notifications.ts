@@ -3,6 +3,7 @@ import {
   getAPNSToken,
   getMessaging,
   getToken,
+  hasPermission,
   registerDeviceForRemoteMessages,
   requestPermission,
 } from '@react-native-firebase/messaging'
@@ -238,10 +239,14 @@ export async function presentRemoteNotification(remoteMessage: {
  * On iOS that requires an APNs device token first. Saving the FCM token
  * before Apple registration succeeds is why Android delivers and iPhone does not.
  */
-export async function getPushToken(): Promise<string | null> {
+export async function getPushToken({
+  prompt = true,
+}: {prompt?: boolean} = {}): Promise<string | null> {
   const messaging = getMessaging()
   if (Platform.OS === 'ios') {
-    const authStatus = await requestPermission(messaging)
+    const authStatus = prompt
+      ? await requestPermission(messaging)
+      : await hasPermission(messaging)
     const allowed =
       authStatus === AuthorizationStatus.AUTHORIZED ||
       authStatus === AuthorizationStatus.PROVISIONAL
