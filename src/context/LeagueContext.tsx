@@ -72,6 +72,8 @@ interface LeagueState {
   showPlayerOfTheWeek: boolean
   /** Local preference: coaching tips on the live scoresheet. */
   showScoresheetTips: boolean
+  /** Local preference (Android): hide the system navigation bar. */
+  hideSystemNavBar: boolean
   /** League-level switch from /branding for match predictions. */
   predictionsEnabled: boolean
   /** League-level switch from /branding for Weeklies. Defaults on. */
@@ -137,6 +139,7 @@ const initialState: LeagueState = {
   showPredictionsOnMatchCards: true,
   showPlayerOfTheWeek: true,
   showScoresheetTips: true,
+  hideSystemNavBar: false,
   predictionsEnabled: false,
   weekliesEnabled: true,
   forumsEnabled: true,
@@ -326,6 +329,12 @@ const LeagueReducer = (state: any, action: any) => {
       return {
         ...state,
         showScoresheetTips: action.payload,
+      }
+    }
+    case 'SET_HIDE_SYSTEM_NAV_BAR': {
+      return {
+        ...state,
+        hideSystemNavBar: Boolean(action.payload),
       }
     }
     case 'SET_PREDICTIONS_ENABLED': {
@@ -558,11 +567,25 @@ export const LeagueProvider = ({children}: any) => {
         console.error(e)
       }
     }
+    const getHideSystemNavBar = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('hide_system_nav_bar')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (typeof parsed?.hide === 'boolean') {
+            dispatch({type: 'SET_HIDE_SYSTEM_NAV_BAR', payload: parsed.hide})
+          }
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
     getShowLiveScores()
     getShowForumFabBadge()
     getShowPredictionsOnMatchCards()
     getShowPlayerOfTheWeek()
     getShowScoresheetTips()
+    getHideSystemNavBar()
   }, [])
 
   useEffect(() => {

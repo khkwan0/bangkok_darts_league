@@ -1,6 +1,6 @@
 import AppSwitch from '@/components/AppSwitch'
 import React, {useEffect} from 'react'
-import {View, Text, ScrollView} from 'react-native'
+import {View, Text, ScrollView, Platform} from 'react-native'
 import {useTranslation} from 'react-i18next'
 import {useTheme} from "expo-router/react-navigation"
 import {useSafeAreaInsets} from 'react-native-safe-area-context'
@@ -109,6 +109,18 @@ const Interface = () => {
       )
     } catch (error) {
       console.error('Error saving scoresheet tips preference:', error)
+    }
+  }
+
+  const handleHideSystemNavBarToggle = async (value: boolean) => {
+    try {
+      dispatch({type: 'SET_HIDE_SYSTEM_NAV_BAR', payload: value})
+      await AsyncStorage.setItem(
+        'hide_system_nav_bar',
+        JSON.stringify({hide: value}),
+      )
+    } catch (error) {
+      console.error('Error saving system navigation bar preference:', error)
     }
   }
 
@@ -269,6 +281,36 @@ const Interface = () => {
           onValueChange={handleScoresheetTipsToggle}
         />
       </View>
+
+      {/* Android system navigation bar */}
+      {Platform.OS === 'android' ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 16,
+          }}>
+          <View style={{flex: 1, paddingRight: 12}}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: 'bold',
+                color: colors.text,
+                marginBottom: 4,
+              }}>
+              {t('hide_system_nav_bar')}
+            </Text>
+            <Text style={{color: colors.text, opacity: 0.7}}>
+              {t('hide_system_nav_bar_description')}
+            </Text>
+          </View>
+          <AppSwitch
+            value={state.hideSystemNavBar ?? false}
+            onValueChange={handleHideSystemNavBarToggle}
+          />
+        </View>
+      ) : null}
 
       {/* Silent OTA updates */}
       <View

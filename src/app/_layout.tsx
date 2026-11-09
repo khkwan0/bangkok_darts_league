@@ -361,8 +361,8 @@ function RootLayout() {
         <BottomSheetModalProvider>
           <ThemeProvider
             value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <SystemNavigationBar />
             <LeagueProvider>
+              <SystemNavigationBar />
               <LayoutModeProvider>
                 <MatchProvider>
                   <StartupGates />

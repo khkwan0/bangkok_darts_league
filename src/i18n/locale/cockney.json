@@ -827,6 +827,8 @@
   "live_scores_description": "Show live scores at the top of the matches screen",
   "show_scoresheet_tips": "Scoresheet tips",
   "show_scoresheet_tips_description": "Show coaching tips on the scoresheet when a game cannot win, collapse, or finalize",
+  "hide_system_nav_bar": "Hide system navigation bar",
+  "hide_system_nav_bar_description": "Hide Android's back/home bar for more screen space. Swipe up from the bottom edge to bring it back.",
   "tip_turn_off": "Don't show tips",
   "tip_turned_off_title": "Tips turned off",
   "tip_turned_off_body": "You can turn them back on in Settings → Preferences → Interface → Scoresheet tips.",

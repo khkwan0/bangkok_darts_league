@@ -1,13 +1,15 @@
 import {Colors} from '@/constants/Colors'
+import {useLeagueContext} from '@/context/LeagueContext'
 import {NavigationBar} from 'expo-navigation-bar'
 import * as SystemUI from 'expo-system-ui'
 import {useEffect} from 'react'
 import {AppState, Platform, useColorScheme} from 'react-native'
 
 /**
- * Hides the Android system navigation bar and keeps residual chrome
- * aligned with app light/dark themes when the bar briefly reappears
- * (e.g. after a bottom-edge swipe).
+ * Applies the user's Android system navigation bar preference (visible by
+ * default; optionally hidden from Settings → Preferences → Interface) and keeps
+ * residual chrome aligned with app light/dark themes when a hidden bar briefly
+ * reappears (e.g. after a bottom-edge swipe).
  *
  * Avoid the declarative `<NavigationBar />` component: its unmount path always
  * calls `setHidden`, which rejects with "current activity is no longer available"
@@ -16,6 +18,8 @@ import {AppState, Platform, useColorScheme} from 'react-native'
 export function SystemNavigationBar() {
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
+  const {state} = useLeagueContext()
+  const hidden = state.hideSystemNavBar === true
 
   useEffect(() => {
     if (Platform.OS !== 'android') {
@@ -28,7 +32,7 @@ export function SystemNavigationBar() {
       }
 
       try {
-        NavigationBar.setHidden(true)
+        NavigationBar.setHidden(hidden)
         NavigationBar.setStyle('auto')
       } catch {
         // Activity may already be gone.
@@ -45,7 +49,7 @@ export function SystemNavigationBar() {
     })
 
     return () => sub.remove()
-  }, [colorScheme, colors.background])
+  }, [colorScheme, colors.background, hidden])
 
   return null
 }

@@ -89,7 +89,7 @@
         "expo-navigation-bar",
         {
           "enforceContrast": false,
-          "hidden": true
+          "hidden": false
         }
       ],
       [
