@@ -57,8 +57,13 @@ export default function MatchPredictionsScreen() {
       if (res.ok && res.data) {
         setPayload(res.data)
         if (res.data.prediction) {
-          setSide(res.data.prediction.predicted_side)
-          setMargin(res.data.prediction.predicted_margin)
+          const tipped = res.data.prediction.predicted_side
+          setSide(tipped)
+          setMargin(
+            tipped === 'tie'
+              ? 0
+              : Math.max(1, res.data.prediction.predicted_margin),
+          )
         } else {
           setSide('home')
           setMargin(1)
@@ -97,7 +102,7 @@ export default function MatchPredictionsScreen() {
       const res = await predictions.upsert({
         matchId,
         predictedSide: side,
-        predictedMargin: margin,
+        predictedMargin: side === 'tie' ? 0 : margin,
       })
       if (res.ok) {
         Alert.alert(t('predictions_saved'))
@@ -243,17 +248,27 @@ export default function MatchPredictionsScreen() {
         {t('predictions_pick_winner')}
       </Text>
       <View style={{flexDirection: 'row', gap: 10, marginBottom: 20}}>
-        {(['home', 'away'] as PredictedSide[]).map(key => {
+        {(
+          (payload.ties_allowed || side === 'tie'
+            ? ['home', 'tie', 'away']
+            : ['home', 'away']) as PredictedSide[]
+        ).map(key => {
           const active = side === key
           const label =
-            key === 'home'
-              ? matchup.home_team_short_name
-              : matchup.away_team_short_name
+            key === 'tie'
+              ? t('predictions_tie')
+              : key === 'home'
+                ? matchup.home_team_short_name
+                : matchup.away_team_short_name
           return (
             <Pressable
               key={key}
               disabled={!canEdit}
-              onPress={() => setSide(key)}
+              onPress={() => {
+                setSide(key)
+                if (key === 'tie') setMargin(0)
+                else setMargin(current => (current >= 1 ? current : 1))
+              }}
               style={{
                 flex: 1,
                 paddingVertical: 14,
@@ -276,6 +291,18 @@ export default function MatchPredictionsScreen() {
         })}
       </View>
 
+      {side === 'tie' ? (
+        <Text
+          style={{
+            textAlign: 'center',
+            color: muted,
+            fontSize: 13,
+            marginBottom: 24,
+          }}>
+          {t('predictions_tie_help')}
+        </Text>
+      ) : (
+        <>
       <Text
         style={{
           fontSize: 15,
@@ -343,6 +370,8 @@ export default function MatchPredictionsScreen() {
         }}>
         {t('predictions_margin_range', {max: maxMargin})}
       </Text>
+        </>
+      )}
 
       {canEdit ? (
         <Pressable

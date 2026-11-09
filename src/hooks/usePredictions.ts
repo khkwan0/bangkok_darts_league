@@ -1,7 +1,7 @@
 import {useNetwork} from '@/hooks/useNetwork'
 import React from 'react'
 
-export type PredictedSide = 'home' | 'away'
+export type PredictedSide = 'home' | 'away' | 'tie'
 export type PredictionStatus = 'open' | 'locked' | 'scored' | 'void'
 export type PredictionWindowStatus = 'open' | 'locked' | 'settled' | 'void'
 
@@ -51,6 +51,7 @@ export type PredictionMatchPayload = {
   match_id: number
   window_status: PredictionWindowStatus
   max_margin: number
+  ties_allowed: boolean
   match_status_id: number
   home_frames: number | null
   away_frames: number | null

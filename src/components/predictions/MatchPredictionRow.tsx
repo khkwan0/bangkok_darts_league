@@ -71,15 +71,16 @@ export default function MatchPredictionRow({
         if (cancelled) return
         if (res.ok && res.data?.prediction) {
           const tip = res.data.prediction
-          const side =
-            tip.predicted_side === 'home'
-              ? t('predictions_home')
-              : t('predictions_away')
           setSummary(
-            t('predictions_row_tip', {
-              side,
-              margin: tip.predicted_margin,
-            }),
+            tip.predicted_side === 'tie'
+              ? t('predictions_row_tie')
+              : t('predictions_row_tip', {
+                  side:
+                    tip.predicted_side === 'home'
+                      ? t('predictions_home')
+                      : t('predictions_away'),
+                  margin: tip.predicted_margin,
+                }),
           )
         } else {
           setSummary(null)

@@ -205,9 +205,11 @@ export default function PredictionsHistoryScreen() {
       renderItem={({item}) => {
         const chip = statusColors(item.status, isDark)
         const side =
-          item.predicted_side === 'home'
-            ? t('predictions_home')
-            : t('predictions_away')
+          item.predicted_side === 'tie'
+            ? t('predictions_tie')
+            : item.predicted_side === 'home'
+              ? t('predictions_home')
+              : t('predictions_away')
         const home = item.home_team_short_name || '?'
         const away = item.away_team_short_name || '?'
         const result =
@@ -261,10 +263,12 @@ export default function PredictionsHistoryScreen() {
             </View>
 
             <Text style={{fontSize: 14, fontWeight: '600', color: colors.text}}>
-              {t('predictions_history_tip', {
-                side,
-                margin: item.predicted_margin,
-              })}
+              {item.predicted_side === 'tie'
+                ? t('predictions_row_tie')
+                : t('predictions_history_tip', {
+                    side,
+                    margin: item.predicted_margin,
+                  })}
             </Text>
 
             <View
