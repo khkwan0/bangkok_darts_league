@@ -1,4 +1,5 @@
-import {Pressable, View} from 'react-native'
+import {Pressable, ScrollView, View} from 'react-native'
+import {useSafeAreaInsets} from 'react-native-safe-area-context'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {useTranslation} from 'react-i18next'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
@@ -62,13 +63,17 @@ export default function Preferences() {
   const navigation = useNavigation()
   const {state} = useLeagueContext()
   const user = state.user
+  const insets = useSafeAreaInsets()
 
   React.useEffect(() => {
     navigation.setOptions({title: t('preferences')})
   }, [t])
 
   return (
-    <View className="flex-1 p-4" style={{backgroundColor: colors.background}}>
+    <ScrollView
+      className="flex-1"
+      style={{backgroundColor: colors.background}}
+      contentContainerStyle={{padding: 16, paddingBottom: insets.bottom + 16}}>
       <View className="mb-6">
         <View className="mb-2">
           <Text
@@ -199,6 +204,6 @@ export default function Preferences() {
           ) : null}
         </View>
       </View>
-    </View>
+    </ScrollView>
   )
 }
