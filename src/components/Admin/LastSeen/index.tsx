@@ -71,11 +71,11 @@ function formatByteSize(bytes: number | null | undefined): string {
   return `${mb < 10 ? mb.toFixed(2) : mb.toFixed(1)} MB`
 }
 
-function redisKeyLabel(key: string): string {
-  if (key.endsWith(':last')) return 'Last platform'
-  if (key.endsWith(':ios')) return 'iOS'
-  if (key.endsWith(':android')) return 'Android'
-  if (key.endsWith(':web')) return 'Web'
+function redisKeyLabel(key: string, t: (key: string) => string): string {
+  if (key.endsWith(':last')) return t('admin_last_seen_redis_key_last')
+  if (key.endsWith(':ios')) return t('admin_last_seen_platform_ios')
+  if (key.endsWith(':android')) return t('admin_last_seen_platform_android')
+  if (key.endsWith(':web')) return t('admin_last_seen_platform_web')
   return key
 }
 
@@ -272,7 +272,7 @@ export default function AdminLastSeen() {
               key={row.key}
               className="mt-2 flex-row items-center justify-between">
               <View className="flex-1 pr-3">
-                <Text className="text-sm">{redisKeyLabel(row.key)}</Text>
+                <Text className="text-sm">{redisKeyLabel(row.key, t)}</Text>
                 <Text className="text-xs" style={{color: muted}}>
                   {row.key}
                 </Text>
