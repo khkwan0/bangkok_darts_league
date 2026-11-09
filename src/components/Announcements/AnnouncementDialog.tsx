@@ -72,7 +72,7 @@ export default function AnnouncementDialog({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('close')}
-          style={[StyleSheet.absoluteFillObject, styles.backdrop]}
+          style={[StyleSheet.absoluteFill, styles.backdrop]}
           disabled={submitting}
           onPress={() => {
             if (!submitting) {

@@ -16,6 +16,7 @@ import {
   useColorScheme,
 } from 'react-native'
 import type {
+  HighlightCompetition,
   HighlightDivisionOption,
   HighlightGameTypeOption,
   HighlightTeamOption,
@@ -224,6 +225,8 @@ export default function HighlightsExplorer() {
   })
 
   const [weekDate, setWeekDate] = React.useState<string | null>(null)
+  const [competition, setCompetition] =
+    React.useState<HighlightCompetition | null>(null)
   const [gameType, setGameType] = React.useState('all')
   const [divisionId, setDivisionId] = React.useState<number | null>(null)
   const [teamId, setTeamId] = React.useState<number | null>(null)
@@ -243,6 +246,7 @@ export default function HighlightsExplorer() {
       try {
         const res = await getWeeklyHighlights({
           date: weekDate,
+          competition,
           gameType,
           divisionId,
           teamId,
@@ -257,7 +261,7 @@ export default function HighlightsExplorer() {
         setRefreshing(false)
       }
     },
-    [getWeeklyHighlights, weekDate, gameType, divisionId, teamId],
+    [getWeeklyHighlights, weekDate, competition, gameType, divisionId, teamId],
   )
 
   React.useEffect(() => {
@@ -272,6 +276,15 @@ export default function HighlightsExplorer() {
   const teams: HighlightTeamOption[] = data?.teams ?? []
   const potw = data?.playerOfTheWeek
   const candidates = data?.candidates ?? []
+  const competitions = data?.competitions ?? []
+  const isCup = data?.competition === 'cup'
+  const cupNames = (data?.tournaments ?? []).map(c => c.name).join(', ')
+
+  // Let the server pick league vs cup for each week.
+  const goToWeek = (date: string) => {
+    setWeekDate(date)
+    setCompetition(null)
+  }
 
   const canGoNext = React.useMemo(() => {
     if (!data?.weekStart) return false
@@ -313,7 +326,7 @@ export default function HighlightsExplorer() {
           hitSlop={8}
           onPress={() => {
             if (!data?.weekStart) return
-            setWeekDate(shiftWeek(data.weekStart, -1))
+            goToWeek(shiftWeek(data.weekStart, -1))
           }}
           style={{padding: 6}}>
           <MaterialIcons name="chevron-left" size={28} color={primary} />
@@ -333,12 +346,47 @@ export default function HighlightsExplorer() {
           disabled={!canGoNext}
           onPress={() => {
             if (!data?.weekStart || !canGoNext) return
-            setWeekDate(shiftWeek(data.weekStart, 1))
+            goToWeek(shiftWeek(data.weekStart, 1))
           }}
           style={{padding: 6, opacity: canGoNext ? 1 : 0.35}}>
           <MaterialIcons name="chevron-right" size={28} color={primary} />
         </Pressable>
       </View>
+
+      {competitions.length > 1 ? (
+        <View className="mx-4 mb-2" style={{backgroundColor: 'transparent'}}>
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: '700',
+              color: muted,
+              marginBottom: 6,
+            }}>
+            {t('weekly_highlights_competition')}
+          </Text>
+          <View
+            className="flex-row flex-wrap"
+            style={{backgroundColor: 'transparent'}}>
+            {competitions.map(c => (
+              <Chip
+                key={c}
+                label={t(
+                  c === 'cup'
+                    ? 'weekly_highlights_cup'
+                    : 'weekly_highlights_league',
+                )}
+                active={data?.competition === c}
+                onPress={() => {
+                  setCompetition(c)
+                  setDivisionId(null)
+                  setTeamId(null)
+                }}
+                isDark={isDark}
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       <View className="mx-4 mb-2" style={{backgroundColor: 'transparent'}}>
         <Text
@@ -468,8 +516,17 @@ export default function HighlightsExplorer() {
                 color: isDark ? '#E8C6F0' : '#37003C',
                 letterSpacing: 0.4,
               }}>
-              {t('player_of_the_week').toUpperCase()}
+              {t(
+                isCup ? 'cup_player_of_the_week' : 'player_of_the_week',
+              ).toUpperCase()}
             </Text>
+            {isCup && cupNames ? (
+              <Text
+                style={{fontSize: 12, color: muted, marginTop: 2}}
+                numberOfLines={1}>
+                {cupNames}
+              </Text>
+            ) : null}
             <View
               className="flex-row items-center"
               style={{marginTop: 12, gap: 14, backgroundColor: 'transparent'}}>

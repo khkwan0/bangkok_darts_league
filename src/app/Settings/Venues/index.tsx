@@ -311,7 +311,7 @@ export default function Venues() {
       locations={[0, 0.55, 1]}
       start={{x: 0.2, y: 0}}
       end={{x: 0.9, y: 1}}
-      style={StyleSheet.absoluteFillObject}
+      style={StyleSheet.absoluteFill}
     />
   )
 

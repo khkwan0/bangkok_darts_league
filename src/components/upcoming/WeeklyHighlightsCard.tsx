@@ -229,6 +229,8 @@ export default function WeeklyHighlightsCard() {
   const record = `${potw.won}–${potw.lost}${
     potw.played > 0 ? ` · ${potw.winPct}%` : ''
   }`
+  const isCup = data.competition === 'cup'
+  const cupNames = (data.tournaments ?? []).map(c => c.name).join(', ')
 
   // Collapsed strip: always visible with Expand — never unmount the card.
   if (collapsed) {
@@ -241,6 +243,13 @@ export default function WeeklyHighlightsCard() {
           style={[styles.collapsedCard, {borderColor: theme.border}]}>
           <View style={styles.collapsedLeft}>
             <Ionicons name="trophy" size={16} color={theme.pillText} />
+            {isCup ? (
+              <View style={[styles.cupTag, {backgroundColor: theme.pillBg}]}>
+                <Text style={[styles.cupTagText, {color: theme.pillText}]}>
+                  {t('weekly_highlights_cup')}
+                </Text>
+              </View>
+            ) : null}
             <Text style={[styles.collapsedName, {color: theme.title}]} numberOfLines={1}>
               {potw.nickname}
             </Text>
@@ -308,8 +317,15 @@ export default function WeeklyHighlightsCard() {
         </View>
 
         <Text style={[styles.title, {color: theme.title}]}>
-          {t('player_of_the_week')}
+          {t(isCup ? 'cup_player_of_the_week' : 'player_of_the_week')}
         </Text>
+        {isCup && cupNames ? (
+          <Text
+            style={[styles.cupNames, {color: theme.pillText}]}
+            numberOfLines={1}>
+            {cupNames}
+          </Text>
+        ) : null}
 
         <Pressable
           onPress={() => openPlayer(router, potw.playerId)}
@@ -417,6 +433,22 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.2,
     textAlign: 'center',
+  },
+  cupNames: {
+    marginTop: 2,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  cupTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  cupTagText: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   iconBtn: {
     width: 34,

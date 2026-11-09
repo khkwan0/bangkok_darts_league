@@ -34,6 +34,14 @@ export type HighlightTeamOption = {
   divisionId: number | null
 }
 
+/** league = regular fixtures; cup = tournament matches. */
+export type HighlightCompetition = 'league' | 'cup'
+
+export type HighlightTournamentOption = {
+  id: number
+  name: string
+}
+
 export type WeeklyHighlights = {
   weekStart: string
   weekEnd: string
@@ -42,6 +50,12 @@ export type WeeklyHighlights = {
   seasonId: number
   leagueId: number
   sport: string
+  /** Absent on servers that predate cup highlights (treat as league). */
+  competition?: HighlightCompetition
+  /** Competitions with finalized frames this week (league first). */
+  competitions?: HighlightCompetition[]
+  /** Cups played this week (cup competition only). */
+  tournaments?: HighlightTournamentOption[]
   gameType: string
   gameTypes: HighlightGameTypeOption[]
   divisionId: number | null

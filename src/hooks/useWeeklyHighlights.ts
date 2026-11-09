@@ -1,5 +1,8 @@
 import {useNetwork} from '@/hooks/useNetwork'
-import type {WeeklyHighlights} from '@/types/weeklyHighlights'
+import type {
+  HighlightCompetition,
+  WeeklyHighlights,
+} from '@/types/weeklyHighlights'
 import React from 'react'
 
 export function useWeeklyHighlights() {
@@ -14,9 +17,12 @@ export function useWeeklyHighlights() {
       gameType?: string | null
       divisionId?: number | null
       teamId?: number | null
+      /** Omitted = auto: league, or the cup when the week had only cup matches. */
+      competition?: HighlightCompetition | null
       includeCandidates?: boolean
     }): Promise<WeeklyHighlights | null> => {
       const params = new URLSearchParams()
+      params.set('competition', opts?.competition ?? 'auto')
       if (opts?.seasonId != null && opts.seasonId > 0) {
         params.set('season', String(opts.seasonId))
       }
@@ -35,11 +41,9 @@ export function useWeeklyHighlights() {
       if (opts?.includeCandidates) {
         params.set('includeCandidates', '1')
       }
-      const qs = params.toString()
-      const path = qs
-        ? `/stats/weekly-highlights?${qs}`
-        : '/stats/weekly-highlights'
-      const res = await networkRef.current.Get(path)
+      const res = await networkRef.current.Get(
+        `/stats/weekly-highlights?${params.toString()}`,
+      )
       if (!res || res.status === 'error' || res.httpStatus) {
         return null
       }
