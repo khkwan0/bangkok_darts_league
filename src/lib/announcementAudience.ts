@@ -6,11 +6,14 @@ export type AnnouncementAudienceFields = {
   max_build?: number | null
   min_app_version?: string | null
   max_app_version?: string | null
+  show_ios?: boolean | null
+  show_android?: boolean | null
 }
 
 export type AppClientAudience = {
   build: number | null
   version: string | null
+  platform: typeof Platform.OS
 }
 
 /** Native build + marketing version for this install (matches X-App-* headers). */
@@ -29,6 +32,7 @@ export function getAppClientAudience(): AppClientAudience {
   return {
     build: Number.isFinite(build) && build >= 0 ? build : null,
     version,
+    platform: Platform.OS,
   }
 }
 
@@ -85,5 +89,7 @@ export function matchesAnnouncementAudience(
       return false
     }
   }
+  if (audience.platform === 'ios' && row.show_ios === false) return false
+  if (audience.platform === 'android' && row.show_android === false) return false
   return true
 }

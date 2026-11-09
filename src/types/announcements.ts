@@ -18,6 +18,8 @@ export type AnnouncementListItem = {
   max_build?: number | null
   min_app_version?: string | null
   max_app_version?: string | null
+  show_ios?: boolean
+  show_android?: boolean
 }
 
 export type AdminAnnouncementListItem = {

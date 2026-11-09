@@ -12,9 +12,10 @@ export function configuredLeagueId(): number {
   return LEGACY_DARTS_LEAGUE_ID
 }
 
-/** Marketing version + native build for announcement audience targeting. */
+/** Marketing version + native build + OS for announcement audience targeting. */
 function appClientHeaders(): Record<string, string> {
   const headers: Record<string, string> = {}
+  headers['X-App-Platform'] = Platform.OS
   const version = Constants.expoConfig?.version
   if (version) {
     headers['X-App-Version'] = String(version)
