@@ -1107,6 +1107,7 @@
   "predictions_tie_help": "A correct tie scores 3 points.",
   "predictions_frames": "legs",
   "predictions_margin_range": "Choose 1–{max} legs",
+  "predictions_margin_range_tie": "Choose 0–{max} legs. 0 is a tie.",
   "predictions_submit": "Save tip",
   "predictions_update": "Update tip",
   "predictions_saved": "Tip saved",

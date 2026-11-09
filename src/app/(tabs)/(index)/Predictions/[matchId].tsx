@@ -92,6 +92,10 @@ export default function MatchPredictionsScreen() {
   }, [navigation, matchup, t])
 
   const maxMargin = Math.max(1, Number(payload?.max_margin ?? 1))
+  const tiesAllowed =
+    payload?.ties_allowed === true ||
+    (payload?.ties_allowed == null && maxMargin % 2 === 0)
+  const isTiePick = side === 'tie' || (tiesAllowed && margin === 0)
   const windowOpen = payload?.window_status === 'open'
   const canEdit = windowOpen && (!payload?.prediction || payload.prediction.status === 'open')
 
@@ -101,8 +105,8 @@ export default function MatchPredictionsScreen() {
     try {
       const res = await predictions.upsert({
         matchId,
-        predictedSide: side,
-        predictedMargin: side === 'tie' ? 0 : margin,
+        predictedSide: isTiePick ? 'tie' : side === 'tie' ? 'home' : side,
+        predictedMargin: isTiePick ? 0 : Math.max(1, margin),
       })
       if (res.ok) {
         Alert.alert(t('predictions_saved'))
@@ -248,26 +252,19 @@ export default function MatchPredictionsScreen() {
         {t('predictions_pick_winner')}
       </Text>
       <View style={{flexDirection: 'row', gap: 10, marginBottom: 20}}>
-        {(
-          (payload.ties_allowed || side === 'tie'
-            ? ['home', 'tie', 'away']
-            : ['home', 'away']) as PredictedSide[]
-        ).map(key => {
-          const active = side === key
+        {(['home', 'away'] as const).map(key => {
+          const active = !isTiePick && side === key
           const label =
-            key === 'tie'
-              ? t('predictions_tie')
-              : key === 'home'
-                ? matchup.home_team_short_name
-                : matchup.away_team_short_name
+            key === 'home'
+              ? matchup.home_team_short_name
+              : matchup.away_team_short_name
           return (
             <Pressable
               key={key}
               disabled={!canEdit}
               onPress={() => {
                 setSide(key)
-                if (key === 'tie') setMargin(0)
-                else setMargin(current => (current >= 1 ? current : 1))
+                setMargin(current => (current >= 1 ? current : 1))
               }}
               style={{
                 flex: 1,
@@ -291,18 +288,6 @@ export default function MatchPredictionsScreen() {
         })}
       </View>
 
-      {side === 'tie' ? (
-        <Text
-          style={{
-            textAlign: 'center',
-            color: muted,
-            fontSize: 13,
-            marginBottom: 24,
-          }}>
-          {t('predictions_tie_help')}
-        </Text>
-      ) : (
-        <>
       <Text
         style={{
           fontSize: 15,
@@ -321,8 +306,15 @@ export default function MatchPredictionsScreen() {
           marginBottom: 12,
         }}>
         <Pressable
-          disabled={!canEdit || margin <= 1}
-          onPress={() => setMargin(m => Math.max(1, m - 1))}
+          disabled={!canEdit || isTiePick || (margin <= 1 && !tiesAllowed)}
+          onPress={() => {
+            if (tiesAllowed && margin <= 1) {
+              setMargin(0)
+              setSide('tie')
+              return
+            }
+            setMargin(current => Math.max(1, current - 1))
+          }}
           style={{
             width: 48,
             height: 48,
@@ -332,21 +324,21 @@ export default function MatchPredictionsScreen() {
             borderColor: border,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: !canEdit || margin <= 1 ? 0.4 : 1,
+            opacity: !canEdit || isTiePick || (margin <= 1 && !tiesAllowed) ? 0.4 : 1,
           }}>
           <Ionicons name="remove" size={24} color={colors.text} />
         </Pressable>
         <View style={{alignItems: 'center', minWidth: 80}}>
           <Text style={{fontSize: 32, fontWeight: '800', color: colors.text}}>
-            {margin}
+            {isTiePick ? 0 : margin}
           </Text>
           <Text style={{fontSize: 12, color: muted}}>
-            {t('predictions_frames')}
+            {isTiePick ? t('predictions_tie') : t('predictions_frames')}
           </Text>
         </View>
         <Pressable
-          disabled={!canEdit || margin >= maxMargin}
-          onPress={() => setMargin(m => Math.min(maxMargin, m + 1))}
+          disabled={!canEdit || isTiePick || margin >= maxMargin}
+          onPress={() => setMargin(current => Math.min(maxMargin, current + 1))}
           style={{
             width: 48,
             height: 48,
@@ -356,7 +348,7 @@ export default function MatchPredictionsScreen() {
             borderColor: border,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: !canEdit || margin >= maxMargin ? 0.4 : 1,
+            opacity: !canEdit || isTiePick || margin >= maxMargin ? 0.4 : 1,
           }}>
           <Ionicons name="add" size={24} color={colors.text} />
         </Pressable>
@@ -368,10 +360,12 @@ export default function MatchPredictionsScreen() {
           fontSize: 12,
           marginBottom: 24,
         }}>
-        {t('predictions_margin_range', {max: maxMargin})}
+        {isTiePick
+          ? t('predictions_tie_help')
+          : tiesAllowed
+            ? t('predictions_margin_range_tie', {max: maxMargin})
+            : t('predictions_margin_range', {max: maxMargin})}
       </Text>
-        </>
-      )}
 
       {canEdit ? (
         <Pressable
