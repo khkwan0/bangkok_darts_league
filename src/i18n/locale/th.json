@@ -281,6 +281,7 @@
   "failed_to_postpone": "ไม่สามารถเลื่อนการแข่งขันได้",
   "finalize": "สุด",
   "first_break": "ลูกแรก",
+  "not_played": "ยังไม่เล่น",
   "first_name": "ชื่อ",
   "first_name_label": "ชื่อจริง (ไม่จำเป็น)",
   "first_name_placeholder": "กรอกชื่อจริงของคุณ",

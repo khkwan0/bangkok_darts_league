@@ -5,7 +5,12 @@ import {
 } from '@/components/Match/components/scoresheetTheme'
 import {useMatch} from '@/hooks'
 import {formatBangkokDateMed} from '@/lib/bangkokTime'
+import {
+  loadCompletedHeaderSticky,
+  saveCompletedHeaderSticky,
+} from '@/lib/completedHeaderSticky'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
+import * as Haptics from 'expo-haptics'
 import {useNavigation, useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
@@ -13,9 +18,19 @@ import {FlatList, Image, Pressable, Text, View} from 'react-native'
 
 type Frame = {
   frameId: number
+  /** Scoresheet game number. Section breaks use -1. */
+  frameNo?: number
+  section?: boolean
+  label?: string
+  type?: string
+  games?: number
+  seriesMode?: 'race_to' | 'best_of' | null
+  homeGames?: number
+  awayGames?: number
   homePlayers: {nickName: string; playerId: number}[]
   awayPlayers: {nickName: string; playerId: number}[]
-  homeWin: number
+  /** 1 home won, 0 away won, null not played. */
+  homeWin: number | null
 }
 
 type MatchDetails = Frame[]
@@ -116,6 +131,31 @@ function CompletedSide({
   )
 }
 
+function gameTitle(frame: Frame, index: number, t: (key: string) => string) {
+  const gameNo =
+    frame.section != null && frame.frameNo != null && frame.frameNo > 0
+      ? frame.frameNo
+      : index + 1
+  const parts = [`${t('frame')} ${gameNo}`]
+  const label = frame.label?.trim()
+  if (label) parts.push(label)
+  const games = Math.max(1, Math.trunc(Number(frame.games ?? 1)))
+  if (games > 1) {
+    parts.push(
+      frame.seriesMode === 'race_to' ? `Race to ${games}` : `Bo${games}`,
+    )
+  }
+  return parts.join(' · ')
+}
+
+function seriesScore(frame: Frame) {
+  const home = Math.max(0, Math.trunc(Number(frame.homeGames ?? 0)))
+  const away = Math.max(0, Math.trunc(Number(frame.awayGames ?? 0)))
+  const games = Math.max(1, Math.trunc(Number(frame.games ?? 1)))
+  if (games <= 1 && home + away === 0) return null
+  return `${home}–${away}`
+}
+
 function FrameRow({frame, index}: {frame: Frame; index: number}) {
   const {t} = useTranslation()
   const router = useRouter()
@@ -124,6 +164,37 @@ function FrameRow({frame, index}: {frame: Frame; index: number}) {
   const [awayPressed, setAwayPressed] = React.useState(false)
   const homeWon = frame.homeWin === 1
   const awayWon = frame.homeWin === 0
+  const played = homeWon || awayWon
+
+  if (frame.section) {
+    const label = frame.label?.trim()
+    return (
+      <View style={{paddingVertical: label ? 10 : 6}}>
+        {label ? (
+          <Text
+            style={{
+              color: theme.text,
+              fontSize: 13,
+              fontWeight: '800',
+              letterSpacing: 0.6,
+              textTransform: 'uppercase',
+            }}>
+            {label}
+          </Text>
+        ) : (
+          <View
+            style={{
+              height: 1,
+              backgroundColor: theme.cardBorder,
+              marginHorizontal: 8,
+            }}
+          />
+        )}
+      </View>
+    )
+  }
+
+  const score = seriesScore(frame)
 
   function openPlayer(playerId: number) {
     router.replace({
@@ -146,19 +217,38 @@ function FrameRow({frame, index}: {frame: Frame; index: number}) {
         },
         theme.shadow,
       ]}>
-      <Text
+      <View
         style={{
-          color: theme.muted,
-          fontSize: 12,
-          fontWeight: '800',
-          letterSpacing: 0.8,
-          textTransform: 'uppercase',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
           paddingHorizontal: 14,
           paddingTop: 12,
           paddingBottom: 8,
         }}>
-        {t('frame')} {index + 1}
-      </Text>
+        <Text
+          style={{
+            flex: 1,
+            color: theme.muted,
+            fontSize: 12,
+            fontWeight: '800',
+            letterSpacing: 0.8,
+            textTransform: 'uppercase',
+          }}>
+          {gameTitle(frame, index, t)}
+        </Text>
+        {score || !played ? (
+          <Text
+            style={{
+              color: played ? theme.text : theme.muted,
+              fontSize: played ? 14 : 12,
+              fontWeight: '800',
+              fontVariant: ['tabular-nums'],
+            }}>
+            {score ?? t('not_played')}
+          </Text>
+        ) : null}
+      </View>
       <View style={{flexDirection: 'row', gap: 8, paddingHorizontal: 10}}>
         <CompletedSide
           players={frame.homePlayers}
@@ -207,6 +297,26 @@ export default function CompletedMatchDetails({
   const router = useRouter()
   const theme = useScoresheetTheme()
   const {t} = useTranslation()
+  const [headerSticky, setHeaderSticky] = React.useState(true)
+
+  React.useEffect(() => {
+    let cancelled = false
+    loadCompletedHeaderSticky().then(sticky => {
+      if (!cancelled) setHeaderSticky(sticky)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  function toggleHeaderSticky() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setHeaderSticky(prev => {
+      const next = !prev
+      void saveCompletedHeaderSticky(next)
+      return next
+    })
+  }
   const validMatchId = (() => {
     const id = Number(matchId)
     return Number.isFinite(id) && id > 0 ? id : null
@@ -308,16 +418,17 @@ export default function CompletedMatchDetails({
   const awayName =
     matchMetadata?.away_team_short_name || matchMetadata?.away_team_name
 
-  return (
-    <View style={{flex: 1, backgroundColor: theme.canvas}}>
+  const header = (
+    <>
       <View
         style={[
           {
-            marginHorizontal: 12,
+            marginHorizontal: headerSticky ? 12 : 0,
             marginTop: 12,
             marginBottom: 8,
             borderRadius: 18,
           },
+          headerSticky ? {backgroundColor: theme.canvas} : null,
           theme.shadow,
         ]}>
         <View
@@ -336,18 +447,43 @@ export default function CompletedMatchDetails({
         <View
           style={{
             flexDirection: 'row',
-            justifyContent: 'space-between',
+            alignItems: 'center',
             paddingHorizontal: 16,
             paddingTop: 14,
+            gap: 8,
           }}>
           <Text style={{color: theme.muted, fontSize: 13, fontWeight: '700'}}>
             Match #{validMatchId}
           </Text>
+          <View style={{flex: 1}} />
           {typeof matchDate === 'string' && (
             <Text style={{color: theme.muted, fontSize: 13, fontWeight: '600'}}>
               {formatBangkokDateMed(matchDate)}
             </Text>
           )}
+          <Pressable
+            onPress={toggleHeaderSticky}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={
+              headerSticky ? 'Unpin match header' : 'Pin match header'
+            }
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.faint,
+            }}>
+            {({pressed}) => (
+              <MCI
+                name={headerSticky ? 'pin' : 'pin-off'}
+                size={16}
+                color={pressed ? theme.win : headerSticky ? theme.text : theme.muted}
+              />
+            )}
+          </Pressable>
         </View>
         <View
           style={{
@@ -545,14 +681,22 @@ export default function CompletedMatchDetails({
       </View>
 
       {validMatchId ? <More matchId={validMatchId} /> : null}
+    </>
+  )
 
+  return (
+    <View style={{flex: 1, backgroundColor: theme.canvas}}>
+      {headerSticky ? header : null}
       <FlatList
         style={{flex: 1}}
         contentContainerStyle={{paddingBottom: 24, paddingHorizontal: 12}}
         data={matchDetails}
+        ListHeaderComponent={headerSticky ? undefined : header}
         renderItem={({item, index}) => <FrameRow frame={item} index={index} />}
         ItemSeparatorComponent={() => <View style={{height: 8}} />}
-        keyExtractor={item => item.frameId.toString()}
+        keyExtractor={(item, index) =>
+          `${item.section ? 'section' : 'game'}-${item.frameNo ?? item.frameId}-${index}`
+        }
       />
     </View>
   )
