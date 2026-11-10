@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bangkok-darts-league",
-      "buildNumber": "21",
+      "buildNumber": "22",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
       "associatedDomains": [
@@ -25,9 +25,9 @@
         "CFBundleDisplayName": "Bangkok Darts League",
         "LSApplicationCategoryType": "public.app-category.sports",
         "UIBackgroundModes": ["fetch", "remote-notification"],
-        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
+        "NSCameraUsageDescription": "Bangkok Darts League uses the camera to take your player profile photo or team logo, and to scan a player QR code when adding someone to a team. For example, you can take a photo of yourself to set as your profile picture.",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
-        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
+        "NSPhotoLibraryUsageDescription": "Bangkok Darts League uses your photo library so you can choose a profile photo or team logo, attach a picture to a chat, forum post, or support request, or add a photo or video to a league announcement. For example, you can select a photo from your library to use as your profile picture.",
         "LSApplicationQueriesSchemes": ["lineauth2"],
         "CFBundleURLTypes": [
           {
@@ -41,7 +41,7 @@
     },
     "android": {
       "package": "com.bangkok_darts_league",
-      "versionCode": 21,
+      "versionCode": 22,
       "googleServicesFile": "./firebase.google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#111111",
@@ -129,15 +129,15 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos",
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "photosPermission": "Bangkok Darts League uses your photo library so you can choose a profile photo or team logo, attach a picture to a chat, forum post, or support request, or add a photo or video to a league announcement. For example, you can select a photo from your library to use as your profile picture.",
+          "cameraPermission": "Bangkok Darts League uses the camera to take your player profile photo or team logo, and to scan a player QR code when adding someone to a team. For example, you can take a photo of yourself to set as your profile picture.",
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to scan player QR codes",
+          "cameraPermission": "Bangkok Darts League uses the camera to take your player profile photo or team logo, and to scan a player QR code when adding someone to a team. For example, you can take a photo of yourself to set as your profile picture.",
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
           "recordAudioAndroid": false,
           "barcodeScannerEnabled": true

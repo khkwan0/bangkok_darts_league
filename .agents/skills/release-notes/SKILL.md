@@ -30,3 +30,7 @@ Call the bkkleague MCP tool `create_release_note` once. Do not insert SQL yourse
 The tool needs an authenticated admin session on the bkkleague MCP server. If the call is denied, say so in the final reply. Do not write the row another way.
 
 One note per finished task. Do not create a second note for the same change in the same turn.
+
+## Correcting a note
+
+`admin_manage_release_notes` is the full CRUD tool. Actions: `list`, `get`, `create`, `update`, `delete`. `id` is required for get, update, and delete. `update` may change `title`, `body`, `kind`, `audiences`, and `hidden`. `list` includes hidden notes. `delete` removes the row.
