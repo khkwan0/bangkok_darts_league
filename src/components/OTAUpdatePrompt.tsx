@@ -88,9 +88,10 @@ export default function OTAUpdatePrompt({enabled = true}: {enabled?: boolean}) {
         }
         // Settings/teams/etc. are root Stack siblings of (tabs). replace()
         // would swap tabs out and leave no back target / tab bar. push()
-        // keeps (tabs) underneath, matching normal navigation into Settings.
+        // keeps (tabs) underneath. withAnchor also seeds the layout anchor
+        // when this action is applied as the first route after reload.
         if (isRootStackOverlayPath(saved.pathname)) {
-          router.push(href)
+          router.push(href, {withAnchor: true})
         } else {
           router.replace(href, {withAnchor: true})
         }

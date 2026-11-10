@@ -34,6 +34,12 @@ export default function StatisticsLayout() {
           }}
         />
         <Stack.Screen
+          name="LeagueStandings/Internal/index"
+          options={{
+            title: t('internal_stats'),
+          }}
+        />
+        <Stack.Screen
           name="TeamStatistics/index"
           options={{
             title: t('team_statistics'),

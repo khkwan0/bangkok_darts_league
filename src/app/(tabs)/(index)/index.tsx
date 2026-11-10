@@ -1,4 +1,3 @@
-import AppSwitch from '@/components/AppSwitch'
 import Button from '@/components/Button'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
@@ -7,6 +6,7 @@ import WeeklyHighlightsCard from '@/components/upcoming/WeeklyHighlightsCard'
 import MatchCard from '@/components/upcoming/MatchCard'
 import MatchCardOld from '@/components/upcoming/MatchCardOld'
 import MatchesCalendar from '@/components/upcoming/MatchesCalendar'
+import LiveConnectionDot from '@/components/upcoming/LiveConnectionDot'
 import {
   loadHomeHeaderSticky,
   saveHomeHeaderSticky,
@@ -20,7 +20,6 @@ import {MiniLeagueHome} from '@/components/mini-leagues/MiniLeagueHome'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {isMiniCompetition} from '@/types/competition'
 import {useAccount, useAd, useLeague, useSeason} from '@/hooks'
-import {useIsRegularLayout} from '@/hooks/useLayoutMode'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
 import {MaterialCommunityIcons, MaterialIcons} from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -31,7 +30,6 @@ import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
   ActivityIndicator,
-  Animated,
   FlatList,
   Pressable,
   RefreshControl,
@@ -39,6 +37,41 @@ import {
   useColorScheme,
   useWindowDimensions,
 } from 'react-native'
+
+function MatchFilterCheck({
+  label,
+  value,
+  disabled,
+  onValueChange,
+}: {
+  label: string
+  value: boolean
+  disabled?: boolean
+  onValueChange: (value: boolean) => void
+}) {
+  const colorScheme = useColorScheme()
+  const tint = colorScheme === 'dark' ? '#FFFFFF' : '#37003C'
+
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityLabel={label}
+      accessibilityState={{checked: value, disabled: !!disabled}}
+      disabled={disabled}
+      onPress={() => onValueChange(!value)}
+      className="flex-row items-center py-1"
+      style={{opacity: disabled ? 0.45 : 1}}>
+      <MaterialIcons
+        name={value ? 'check-box' : 'check-box-outline-blank'}
+        size={22}
+        color={tint}
+      />
+      <Text className="ml-1.5 text-base" style={{color: tint}}>
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
 
 interface ItemType {
   home_team_id: number
@@ -64,12 +97,10 @@ export default function UpcomingMatches(props: any) {
   const [showMineOnly, setShowMineOnly] = React.useState(true)
   const [showPostponed, setShowPostponed] = React.useState(false)
   const [seasonNumber, setSeasonNumber] = React.useState('')
-  const [showFilters, setShowFilters] = React.useState(false)
   const [headerSticky, setHeaderSticky] = React.useState(false)
   const [matchesView, setMatchesView] = React.useState<HomeMatchesView | null>(
     null,
   )
-  const filterHeight = React.useRef(new Animated.Value(0)).current
   const fetchIdRef = React.useRef(0)
   const adRefreshGenRef = React.useRef(0)
   const hasLoadedOnce = React.useRef(false)
@@ -79,9 +110,7 @@ export default function UpcomingMatches(props: any) {
   const adHook = useAd()
   const {t} = useTranslation()
   const router = useRouter()
-  const isRegular = useIsRegularLayout()
   const {width, height} = useWindowDimensions()
-  const isLandscapeRegular = isRegular && width > height
   const colorScheme = useColorScheme()
   const screenBg = colorScheme === 'dark' ? '#1A1A1A' : '#F5F5F5'
   const listContentStyle = useTabListContentContainerStyle({
@@ -328,14 +357,12 @@ export default function UpcomingMatches(props: any) {
     }
   }
 
-  // Duo / iPad list: fill width with a card grid; tap still pushes /Match.
+  // Grid view fills the width with compact cards; tap still pushes /Match.
   const matchGridColumns = React.useMemo(() => {
-    if (!isRegular || matchesView === 'calendar') {
-      return 1
-    }
+    if (matchesView !== 'grid') return 1
     if (width >= 1100) return 3
     return 2
-  }, [isRegular, matchesView, width])
+  }, [matchesView, width])
   const useMatchGrid = matchGridColumns > 1
 
   const listFixtures = React.useMemo(() => {
@@ -357,11 +384,18 @@ export default function UpcomingMatches(props: any) {
             matchInfo={item}
             idx={index}
             handlePress={HandlePress}
+            compact={useMatchGrid}
           />
         )
         if (!useMatchGrid) return card
         return (
-          <View style={{flex: 1, paddingHorizontal: 6, paddingBottom: 12}}>
+          <View
+            style={{
+              flex: 1,
+              maxWidth: `${100 / matchGridColumns}%`,
+              paddingHorizontal: 6,
+              paddingBottom: 12,
+            }}>
             {card}
           </View>
         )
@@ -376,28 +410,8 @@ export default function UpcomingMatches(props: any) {
         />
       )
     },
-    [showMineOnly, state.isNewMatchCard, useMatchGrid],
+    [showMineOnly, state.isNewMatchCard, useMatchGrid, matchGridColumns],
   )
-
-  const toggleFilters = () => {
-    Animated.timing(filterHeight, {
-      toValue: showFilters ? 0 : 1,
-      duration: 500,
-      useNativeDriver: false,
-    }).start()
-    setShowFilters(s => !s)
-  }
-
-  const closeFilters = () => {
-    if (showFilters) {
-      Animated.timing(filterHeight, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: false,
-      }).start()
-      setShowFilters(false)
-    }
-  }
 
   React.useEffect(() => {
     let cancelled = false
@@ -489,16 +503,25 @@ export default function UpcomingMatches(props: any) {
                     borderWidth: colorScheme === 'dark' ? 0 : 1,
                     borderColor: '#E0E0E0',
                   }}>
-                  {(['list', 'calendar'] as const).map(mode => {
+                  {(['list', 'grid', 'calendar'] as const).map(mode => {
                     const active = matchesView === mode
                     const labelColor = active
                       ? '#FFFFFF'
                       : colorScheme === 'dark'
                         ? '#FFFFFF'
                         : '#37003C'
-                    const listLabel = isLandscapeRegular
-                      ? t('grid_view')
-                      : t('list_view')
+                    const label =
+                      mode === 'list'
+                        ? t('list_view')
+                        : mode === 'grid'
+                          ? t('grid_view')
+                          : t('calendar')
+                    const icon =
+                      mode === 'list'
+                        ? 'view-list'
+                        : mode === 'grid'
+                          ? 'grid-view'
+                          : 'calendar-today'
                     return (
                       <Pressable
                         key={mode}
@@ -510,72 +533,22 @@ export default function UpcomingMatches(props: any) {
                           backgroundColor: active ? '#37003C' : 'transparent',
                         }}>
                         <MaterialIcons
-                          name={
-                            mode === 'list'
-                              ? isLandscapeRegular
-                                ? 'grid-view'
-                                : 'view-list'
-                              : 'calendar-today'
-                          }
+                          name={icon}
                           size={18}
                           color={labelColor}
-                          style={{marginRight: 6}}
+                          style={{marginRight: 4}}
                         />
                         <Text
                           className="font-semibold"
+                          numberOfLines={1}
                           style={{color: labelColor}}>
-                          {mode === 'list' ? listLabel : t('calendar')}
+                          {label}
                         </Text>
                       </Pressable>
                     )
                   })}
                 </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{expanded: showFilters}}
-                  accessibilityLabel={
-                    showFilters ? t('hide_filters') : t('show_filters')
-                  }
-                  onPress={toggleFilters}
-                  className="mr-2 flex-row items-center justify-center rounded-lg px-3"
-                  style={({pressed}) => {
-                    const isDark = colorScheme === 'dark'
-                    const active = showFilters
-                    return {
-                      backgroundColor: active
-                        ? '#37003C'
-                        : isDark
-                          ? pressed
-                            ? '#2A2A2A'
-                            : '#1E1E1E'
-                          : pressed
-                            ? '#F0F0F0'
-                            : '#FFFFFF',
-                      borderWidth: isDark ? 0 : 1,
-                      borderColor: active ? '#37003C' : '#E0E0E0',
-                      minWidth: 48,
-                    }
-                  }}>
-                  <MaterialIcons
-                    name="filter-list"
-                    size={20}
-                    color={
-                      showFilters || colorScheme === 'dark'
-                        ? '#FFFFFF'
-                        : '#37003C'
-                    }
-                  />
-                  <MaterialIcons
-                    name={showFilters ? 'expand-less' : 'expand-more'}
-                    size={18}
-                    style={{marginLeft: 2}}
-                    color={
-                      showFilters || colorScheme === 'dark'
-                        ? '#FFFFFF'
-                        : '#37003C'
-                    }
-                  />
-                </Pressable>
+                <LiveConnectionDot />
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{selected: headerSticky}}
@@ -619,63 +592,22 @@ export default function UpcomingMatches(props: any) {
                   )}
                 </Pressable>
               </View>
-              <Animated.View
-                style={{
-                  maxHeight: filterHeight.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 200],
-                  }),
-                  opacity: filterHeight,
-                  overflow: 'hidden',
-                  backgroundColor:
-                    colorScheme === 'dark' ? '#1E1E1E' : '#FFFFFF',
-                  borderRadius: 8,
-                  marginHorizontal: 12,
-                  marginBottom: 4,
-                  shadowColor: '#000',
-                  shadowOffset: {
-                    width: 0,
-                    height: 2,
-                  },
-                  shadowOpacity: filterHeight.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 0.15],
-                  }),
-                  shadowRadius: 4,
-                  elevation: filterHeight.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 4],
-                  }),
-                  borderWidth: filterHeight.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 1],
-                  }),
-                  borderColor: colorScheme === 'dark' ? '#37003C' : '#E0E0E0',
-                }}>
-                {typeof user?.teams !== 'undefined' &&
-                  user.teams.length > 0 && (
-                    <View className="flex-row items-center justify-between border-b border-gray-200 px-3 py-2.5 dark:border-gray-700">
-                      <Text className="mr-3 flex-1 text-base">
-                        {t('show_mine_only')}
-                      </Text>
-                      <AppSwitch
-                        disabled={refreshing}
-                        value={showMineOnly}
-                        onValueChange={setShowMineOnly}
-                      />
-                    </View>
-                  )}
-                <View className="flex-row items-center justify-between px-3 py-2.5">
-                  <Text className="mr-3 flex-1 text-base">
-                    {t('show_postponed')}
-                  </Text>
-                  <AppSwitch
+              <View className="mx-4 mb-3 flex-row items-center justify-center gap-x-6">
+                {typeof user?.teams !== 'undefined' && user.teams.length > 0 && (
+                  <MatchFilterCheck
+                    label={t('show_mine_only')}
                     disabled={refreshing}
-                    value={showPostponed}
-                    onValueChange={setShowPostponed}
+                    value={showMineOnly}
+                    onValueChange={setShowMineOnly}
                   />
-                </View>
-              </Animated.View>
+                )}
+                <MatchFilterCheck
+                  label={t('show_postponed')}
+                  disabled={refreshing}
+                  value={showPostponed}
+                  onValueChange={setShowPostponed}
+                />
+              </View>
             </View>
           )
 
@@ -713,7 +645,6 @@ export default function UpcomingMatches(props: any) {
                 onOpenMatch={HandlePress}
                 refreshing={refreshing}
                 onRefresh={() => RefreshMatches('pull')}
-                onScrollBeginDrag={closeFilters}
                 contentContainerStyle={listContentStyle}
                 listHeader={headerSticky ? null : matchesHeader}
               />
@@ -733,7 +664,6 @@ export default function UpcomingMatches(props: any) {
                 style={{flex: 1, backgroundColor: screenBg}}
                 contentContainerStyle={{flexGrow: 1}}
                 showsVerticalScrollIndicator={false}
-                onScrollBeginDrag={closeFilters}
                 refreshControl={
                   <RefreshControl
                     refreshing={refreshing}
@@ -805,7 +735,6 @@ export default function UpcomingMatches(props: any) {
                 windowSize={11}
                 maxToRenderPerBatch={useMatchGrid ? 12 : 8}
                 initialNumToRender={useMatchGrid ? 8 : 6}
-                onScrollBeginDrag={closeFilters}
                 refreshControl={
                   <RefreshControl
                     refreshing={refreshing}

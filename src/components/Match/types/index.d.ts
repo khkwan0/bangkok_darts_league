@@ -25,6 +25,9 @@ export type MatchInfoDataType = {
   game_type_label?: string | null
   home_confirmed: number
   away_confirmed: number
+  /** Present only while the scoresheet is in progress. */
+  live_home_score?: number
+  live_away_score?: number
   team_role_id: number
   player_team_id: number
   home_logo?: string

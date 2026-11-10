@@ -4,15 +4,26 @@ const STORAGE_KEY = 'ota_restore_location_v1'
 
 /**
  * Root Stack screens that sit beside `(tabs)`, not inside NativeTabs.
- * Restoring these with `router.replace` swaps out `(tabs)` and leaves the
- * user with no tab bar and no back target after an OTA reload.
+ * Opening one of these as the only root route (OTA restore, a notification,
+ * or a deep link) drops the tab bar and leaves no back target.
  */
 const ROOT_STACK_OVERLAY_PREFIXES = [
   '/Settings',
   '/teams',
   '/history',
   '/player',
+  '/Completed',
+  '/Messages',
 ] as const
+
+export const TABS_ROUTE_NAME = '(tabs)'
+
+export type RootStackRouteSnapshot = {
+  name: string
+  params?: object
+  state?: object
+  path?: string
+}
 
 export type OtaRestoreLocation = {
   pathname: string
@@ -48,6 +59,46 @@ export function isRootStackOverlayPath(pathname: string): boolean {
   return ROOT_STACK_OVERLAY_PREFIXES.some(
     prefix => path === prefix || path.startsWith(`${prefix}/`),
   )
+}
+
+function routeHref(route: {name: string; path?: string}): string {
+  if (route.path && route.path.length > 0) {
+    return route.path.startsWith('/') ? route.path : `/${route.path}`
+  }
+  return `/${route.name}`
+}
+
+/**
+ * True when the root stack is showing Settings/teams/etc. with `(tabs)` not
+ * underneath. That state has no back button and no tab bar.
+ */
+export function rootOverlayMissingTabs(
+  routes: Array<{name: string; path?: string}>,
+): boolean {
+  if (routes.length === 0) return false
+  if (routes.some(route => route.name === TABS_ROUTE_NAME)) return false
+  return routes.some(route => isRootStackOverlayPath(routeHref(route)))
+}
+
+/** Root reset that keeps the current screens and puts `(tabs)` behind them. */
+export function tabsAnchorReset(
+  routes: RootStackRouteSnapshot[],
+  index: number,
+): {index: number; routes: RootStackRouteSnapshot[]} | null {
+  if (!rootOverlayMissingTabs(routes)) return null
+  const safeIndex = Math.min(Math.max(index, 0), routes.length - 1)
+  return {
+    index: safeIndex + 1,
+    routes: [
+      {name: TABS_ROUTE_NAME},
+      ...routes.map(route => ({
+        name: route.name,
+        params: route.params,
+        state: route.state,
+        path: route.path,
+      })),
+    ],
+  }
 }
 
 export async function saveOtaRestoreLocation(

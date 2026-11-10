@@ -488,6 +488,58 @@ export function isMatchCompleteByMode(
   return false
 }
 
+/**
+ * Team id that won this row.
+ * Uses the stored winner, and for a finished race/best-of also the leg score
+ * when that winner id was never written (section totals and finalize were
+ * treating those games as still open).
+ */
+export function resolvedRowWinnerId(
+  frame: {
+    winner?: unknown
+    games?: unknown
+    seriesMode?: unknown
+    homeScore?: unknown
+    awayScore?: unknown
+    type?: string
+    noPlayers?: number
+    minPlayers?: number
+    maxPlayers?: number
+    homePlayerIds?: number[]
+    awayPlayerIds?: number[]
+  } | null | undefined,
+  homeTeamId: number,
+  awayTeamId: number,
+): number {
+  if (frame == null) return 0
+  const homeId = Number(homeTeamId)
+  const awayId = Number(awayTeamId)
+  const explicit = Number(frame.winner ?? 0)
+  if (Number.isFinite(explicit) && explicit > 0) {
+    if (explicit === homeId || explicit === awayId) return explicit
+    if (homeId <= 0 && awayId <= 0) return explicit
+    // Winner id is set but doesn't match either side — still decided.
+    return explicit
+  }
+
+  const games = Math.max(1, Math.trunc(Number(frame.games ?? 1)))
+  const seriesRaw = String(frame.seriesMode ?? '')
+  const seriesMode =
+    seriesRaw === 'race_to' || seriesRaw === 'best_of'
+      ? seriesRaw
+      : games > 1
+        ? 'best_of'
+        : undefined
+  if (!seriesMode && games <= 1) return 0
+  if (!frameHasCompleteRosters(frame)) return 0
+  const need = seriesWinsNeeded(seriesMode ?? 'best_of', games)
+  const home = Number(frame.homeScore ?? 0)
+  const away = Number(frame.awayScore ?? 0)
+  if (home >= need && home > away && homeId > 0) return homeId
+  if (away >= need && away > home && awayId > 0) return awayId
+  return 0
+}
+
 export function frameHasRequiredPlayers(frame: {
   type?: string
   noPlayers?: number
@@ -543,7 +595,13 @@ type FinalizeFrame = {
   frameNumber?: number
   type?: string
   noPlayers?: number
+  minPlayers?: number
+  maxPlayers?: number
   winner?: number
+  games?: number
+  seriesMode?: string
+  homeScore?: number
+  awayScore?: number
   homePlayerIds?: number[]
   awayPlayerIds?: number[]
   /** Team id that throws first dart in this game. */
@@ -600,7 +658,7 @@ export function getFinalizeBlockReason(
 
   for (const frame of playable) {
     const frameNumber = Number(frame.frameNumber)
-    const winner = Number(frame.winner ?? 0)
+    const winner = resolvedRowWinnerId(frame, homeTeamId, awayTeamId)
     const rostersOk = frameHasCompleteRosters(frame)
 
     if (winner <= 0) {
@@ -674,9 +732,10 @@ export function getFinalizeBlockReason(
 
   // full_play: every frame needs a winner and complete rosters
   if (missingWinner.length > 0) {
+    const games = missingWinner.join(', ')
     return {
       key: 'finalize_missing_winner',
-      params: {frames: missingWinner.join(', ')},
+      params: {frames: games, games},
     }
   }
   if (missingPlayers.length > 0) {

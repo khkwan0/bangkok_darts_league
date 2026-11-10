@@ -1,9 +1,11 @@
 import {LeagueProvider} from '@/context/LeagueContext'
+import {LiveCardScoresProvider} from '@/context/LiveCardScoresContext'
 import {LayoutModeProvider} from '@/context/LayoutModeContext'
 import {MatchProvider} from '@/context/MatchContext'
 import OTAUpdatePrompt from '@/components/OTAUpdatePrompt'
 import StoreUpdatePrompt from '@/components/StoreUpdatePrompt'
 import WelcomeGate from '@/components/WelcomeGate'
+import {RootTabsAnchor} from '@/components/navigation/RootTabsAnchor'
 import {SystemNavigationBar} from '@/components/SystemNavigationBar'
 import {useAdaptiveOrientationLock} from '@/hooks/useAdaptiveOrientationLock'
 import '@/i18n'
@@ -45,6 +47,13 @@ import '../../global.css'
 // Keep opaque branding for now; re-test on Duo Device Hub — remove only if this
 // blocks the system vertical side-rail nav bars on iPhone Duo.
 enableLegacyHeaderAppearance()
+
+// Deep links and reloads onto Settings/teams/etc. keep `(tabs)` underneath,
+// so the back button still has a target. RootTabsAnchor covers the cases
+// this anchor does not (a restore that replaced the root route).
+export const unstable_settings = {
+  anchor: '(tabs)',
+}
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN
 
@@ -362,10 +371,12 @@ function RootLayout() {
           <ThemeProvider
             value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <LeagueProvider>
+              <LiveCardScoresProvider>
               <SystemNavigationBar />
               <LayoutModeProvider>
                 <MatchProvider>
                   <StartupGates />
+                  <RootTabsAnchor />
                   <Stack>
                     <Stack.Screen
                       name="(tabs)"
@@ -409,6 +420,7 @@ function RootLayout() {
                   </Stack>
                 </MatchProvider>
               </LayoutModeProvider>
+              </LiveCardScoresProvider>
             </LeagueProvider>
           </ThemeProvider>
         </BottomSheetModalProvider>

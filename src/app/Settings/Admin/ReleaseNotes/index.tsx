@@ -2,6 +2,8 @@ import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {
+  releaseNoteClientScope,
+  releaseNoteSportScope,
   useReleaseNotes,
   type ReleaseNote,
   type ReleaseNoteKind,
@@ -156,6 +158,12 @@ export default function AdminReleaseNotesScreen() {
             )
           })}
         </RNView>
+        <Text className="mt-2 text-xs opacity-60">
+          {t(`release_notes_sport_${releaseNoteSportScope(draft.audiences)}`)}
+          {' · '}
+          {t(`release_notes_client_${releaseNoteClientScope(draft.audiences)}`)}
+        </Text>
+        <Text className="mt-1 text-xs opacity-60">{t('release_notes_audiences_hint')}</Text>
         <RNView className="mt-4 flex-row items-center justify-between">
           <Text>{t('release_notes_hidden')}</Text>
           <Switch
@@ -214,6 +222,10 @@ export default function AdminReleaseNotesScreen() {
               <Text className="font-semibold">{item.title}</Text>
               <Text className="mt-1 text-xs opacity-60">
                 {t(`release_notes_kind_${item.kind}`)}
+                {' · '}
+                {t(`release_notes_sport_${releaseNoteSportScope(item.audiences)}`)}
+                {' · '}
+                {t(`release_notes_client_${releaseNoteClientScope(item.audiences)}`)}
                 {item.hidden ? ` · ${t('release_notes_hidden')}` : ''}
               </Text>
             </Pressable>

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bangkok Darts League",
     "slug": "bangkok_darts_league",
-    "version": "1.17",
+    "version": "1.18",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "bangkokdartsleague",

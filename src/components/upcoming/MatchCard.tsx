@@ -2,6 +2,8 @@ import Button from '@/components/Button'
 import RivalryStrip from '@/components/habits/RivalryStrip'
 import MatchPredictionRow from '@/components/predictions/MatchPredictionRow'
 import {MatchInfoDataType} from '@/components/Match/types'
+import {readLiveCardScores} from '@/lib/liveCardScore'
+import {useLiveCardScore} from '@/context/LiveCardScoresContext'
 import {ThemedText as Text} from '@/components/ThemedText'
 import CupMatchBanner, {
   formatCupBannerLabel,
@@ -495,6 +497,9 @@ export default function MatchCard({
   }
   const homeNameSize = teamNameSize(matchInfo.home_team_short_name)
   const awayNameSize = teamNameSize(matchInfo.away_team_short_name)
+  const socketScore = useLiveCardScore(Number(matchInfo.match_id) || 0)
+  const liveScore =
+    socketScore === undefined ? readLiveCardScores(matchInfo) : socketScore
   const pageColors = isTournament ? theme.cupPage : theme.page
   const cupBoardBg = isDark ? cupTier.boardBgDark : cupTier.boardBgLight
 
@@ -654,6 +659,11 @@ export default function MatchCard({
                     numberOfLines={2}>
                     {matchInfo.home_team_short_name}
                   </Text>
+                  {liveScore ? (
+                    <Text style={[styles.liveScore, {color: theme.text}]}>
+                      {liveScore.home}
+                    </Text>
+                  ) : null}
                   <Text style={[styles.record, {color: theme.textSecondary}]}>
                     {matchInfo?.homeStats?.won ?? 0}-
                     {matchInfo?.homeStats?.lost ?? 0}-
@@ -670,7 +680,16 @@ export default function MatchCard({
                     ]}>
                     <MCI name="bullseye-arrow" size={22} color={accent} />
                   </View>
-                  <Text style={[styles.vsHint, {color: theme.textMuted}]}>VS</Text>
+                  <Text
+                    style={[
+                      styles.vsHint,
+                      {
+                        color: liveScore ? theme.confirm : theme.textMuted,
+                        letterSpacing: liveScore ? 0.6 : 1.2,
+                      },
+                    ]}>
+                    {liveScore ? 'LIVE' : 'VS'}
+                  </Text>
                 </View>
 
                 <View style={styles.teamCol}>
@@ -699,6 +718,11 @@ export default function MatchCard({
                     numberOfLines={2}>
                     {matchInfo.away_team_short_name}
                   </Text>
+                  {liveScore ? (
+                    <Text style={[styles.liveScore, {color: theme.text}]}>
+                      {liveScore.away}
+                    </Text>
+                  ) : null}
                   <Text style={[styles.record, {color: theme.textSecondary}]}>
                     {matchInfo?.awayStats?.won ?? 0}-
                     {matchInfo?.awayStats?.lost ?? 0}-
@@ -1020,6 +1044,13 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontWeight: '800',
     textAlign: 'center',
+  },
+  liveScore: {
+    marginTop: 2,
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
   },
   record: {
     marginTop: 8,

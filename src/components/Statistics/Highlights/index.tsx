@@ -99,14 +99,14 @@ function Chip({
         borderColor: active
           ? isDark
             ? '#FFFFFF'
-            : '#37003C'
+            : '#DC2626'
           : isDark
             ? '#4A4A4A'
             : '#D0D0D0',
         backgroundColor: active
           ? isDark
             ? '#FFFFFF'
-            : '#37003C'
+            : '#DC2626'
           : isDark
             ? '#2A2A2A'
             : '#F5F5F5',
@@ -504,16 +504,16 @@ export default function HighlightsExplorer() {
             onPress={() => openPlayer(router, potw.playerId)}
             className="mx-4 mb-3 rounded-2xl p-4"
             style={{
-              backgroundColor: isDark ? '#2A102F' : '#F3E8F5',
+              backgroundColor: isDark ? '#3F1518' : '#FEF2F2',
               borderWidth: 1,
-              borderColor: isDark ? '#5A2A62' : '#E4C8EA',
+              borderColor: isDark ? '#7F1D1D' : '#FECACA',
               opacity: loading ? 0.7 : 1,
             }}>
             <Text
               style={{
                 fontSize: 12,
                 fontWeight: '800',
-                color: isDark ? '#E8C6F0' : '#37003C',
+                color: isDark ? '#FECACA' : '#DC2626',
                 letterSpacing: 0.4,
               }}>
               {t(
@@ -546,7 +546,7 @@ export default function HighlightsExplorer() {
                   style={{
                     marginTop: 4,
                     fontWeight: '700',
-                    color: isDark ? '#E8C6F0' : '#37003C',
+                    color: isDark ? '#FECACA' : '#DC2626',
                   }}>
                   {potw.won}–{potw.lost}
                   {potw.played > 0 ? ` · ${potw.winPct}%` : ''}

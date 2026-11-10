@@ -81,6 +81,11 @@ export default function WinButton({
     ClearWinner()
   }
 
+  const winnerId = Number(winner)
+  const sideId = Number(teamId)
+  const hasWinner = Number.isFinite(winnerId) && winnerId > 0
+  const thisSideWon = hasWinner && winnerId === sideId
+
   const bar = {
     minHeight: 40,
     borderRadius: 10,
@@ -116,7 +121,7 @@ export default function WinButton({
           message={t('confirm_clear_winner_message')}
         />
       )}
-      {winner === teamId && (
+      {thisSideWon && (
         <Pressable
           onPress={() => {
             if (!canRecord()) return
@@ -133,7 +138,7 @@ export default function WinButton({
           />
         </Pressable>
       )}
-      {winner !== teamId && !winner && (
+      {!hasWinner && (
         <Pressable
           style={{
             ...bar,
@@ -159,7 +164,7 @@ export default function WinButton({
           </Text>
         </Pressable>
       )}
-      {winner !== teamId && winner !== 0 && (
+      {hasWinner && !thisSideWon && (
         <Pressable
           onPress={() => {
             if (!canRecord()) return

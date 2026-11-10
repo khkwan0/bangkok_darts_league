@@ -18,11 +18,13 @@ import config from '@/config'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useStatsScope} from '@/context/StatsScopeContext'
 import {useAchievements} from '@/hooks/useAchievements'
+import {useLeague} from '@/hooks/useLeague'
 import {useLeagueSeasonSelection} from '@/hooks/useLeagueSeasonSelection'
 import {useSeason} from '@/hooks/useSeason'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
 import type {PlayerAchievements} from '@/types/achievements'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
+import {useRouter} from 'expo-router'
 import {
   PANEL_I18N_KEY,
   PANEL_STATS_KEY,
@@ -34,6 +36,7 @@ import {useTranslation} from 'react-i18next'
 import {
   ActivityIndicator,
   Image,
+  Pressable,
   RefreshControl,
   ScrollView,
   Text as RNText,
@@ -51,6 +54,12 @@ interface PlayerInfo {
   gender?: string
   pic?: string | null
   teams?: string[]
+}
+
+type SeasonTeam = {
+  id: number
+  name?: string
+  short_name?: string
 }
 
 type StatBucket = {
@@ -90,6 +99,8 @@ export default function PlayerStatistics({
   path: string | undefined
 }) {
   const season = useSeason()
+  const league = useLeague()
+  const router = useRouter()
   const {state} = useLeagueContext()
   const {scope} = useStatsScope()
   const {seasons, seasonId, setSeasonId, selectedSeason, pastSeasonId} =
@@ -105,6 +116,7 @@ export default function PlayerStatistics({
   const [achievements, setAchievements] = useState<PlayerAchievements | null>(
     null,
   )
+  const [seasonTeams, setSeasonTeams] = useState<SeasonTeam[]>([])
   const {getPlayerAchievements} = useAchievements()
   const {t, i18n} = useTranslation()
   const colors = useStatColors()
@@ -235,6 +247,32 @@ export default function PlayerStatistics({
     }
   }, [playerInfo.player_id, getPlayerAchievements, isRefreshing])
 
+  React.useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (!playerInfo.player_id || seasonId == null) {
+        setSeasonTeams([])
+        return
+      }
+      const rows = await league.GetPlayerTeamsForSeason(
+        playerInfo.player_id,
+        seasonId,
+      )
+      if (cancelled) return
+      const teams = (Array.isArray(rows) ? rows : [])
+        .map((team: SeasonTeam) => ({
+          id: Number(team.id),
+          name: team.name ? String(team.name) : undefined,
+          short_name: team.short_name ? String(team.short_name) : undefined,
+        }))
+        .filter(team => Number.isFinite(team.id) && team.id > 0)
+      setSeasonTeams(teams)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [playerInfo.player_id, seasonId])
+
   const nationalityName =
     (i18n.language?.startsWith('th')
       ? playerInfo.nationality?.th
@@ -242,7 +280,6 @@ export default function PlayerStatistics({
     playerInfo.nationality?.en ||
     ''
   const nationLine = [playerInfo.flag, nationalityName].filter(Boolean).join(' ')
-  const teams = Array.isArray(playerInfo.teams) ? playerInfo.teams : []
 
   const seasonRows = useMemo(() => {
     if (!stats) return []
@@ -353,30 +390,6 @@ export default function PlayerStatistics({
                 </RNView>
               ) : null}
             </RNView>
-            {teams.length > 0 ? (
-              <RNView
-                style={{
-                  flexDirection: 'row',
-                  flexWrap: 'wrap',
-                  gap: 6,
-                  marginTop: 8,
-                }}>
-                {teams.map(team => (
-                  <RNView
-                    key={team}
-                    style={{
-                      borderRadius: 999,
-                      backgroundColor: colors.chip,
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                    }}>
-                    <RNText style={{fontSize: 12, color: colors.text}}>
-                      {team}
-                    </RNText>
-                  </RNView>
-                ))}
-              </RNView>
-            ) : null}
           </RNView>
         </RNView>
       </Surface>
@@ -387,6 +400,77 @@ export default function PlayerStatistics({
         seasonId={seasonId}
         onSelect={setSeasonId}
       />
+      {seasonTeams.length > 0 ? (
+        <RNView style={{gap: 8, marginBottom: 12}}>
+          {seasonTeams.map(team => {
+            const label = team.name || team.short_name || ''
+            return (
+              <Pressable
+                key={team.id}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                onPress={() =>
+                  router.push({
+                    pathname: '/statistics/LeagueStandings/Internal',
+                    params: {
+                      params: JSON.stringify({
+                        teamId: team.id,
+                        teamName: label,
+                      }),
+                    },
+                  })
+                }
+                style={({pressed}) => ({
+                  opacity: pressed ? 0.85 : 1,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.card,
+                })}>
+                <RNView
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    paddingHorizontal: 12,
+                    gap: 12,
+                  }}>
+                  <RNView
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: colors.isDark
+                        ? 'rgba(10,126,164,0.28)'
+                        : 'rgba(10,126,164,0.14)',
+                    }}>
+                    <MCI name="shield-account" size={18} color={colors.accent} />
+                  </RNView>
+                  <RNView style={{flex: 1, minWidth: 0}}>
+                    <RNText
+                      numberOfLines={1}
+                      style={{
+                        fontSize: 15,
+                        fontWeight: '700',
+                        color: colors.text,
+                      }}>
+                      {label}
+                    </RNText>
+                    <RNText
+                      numberOfLines={1}
+                      style={{marginTop: 2, fontSize: 12, color: colors.muted}}>
+                      {t('internal_stats')}
+                    </RNText>
+                  </RNView>
+                  <MCI name="chevron-right" size={18} color={colors.muted} />
+                </RNView>
+              </Pressable>
+            )
+          })}
+        </RNView>
+      ) : null}
 
       <SectionTitle
         label={

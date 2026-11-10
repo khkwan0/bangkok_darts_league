@@ -1,5 +1,7 @@
 import MatchPredictionRow from '@/components/predictions/MatchPredictionRow'
 import {MatchInfoDataType} from '@/components/Match/types'
+import {readLiveCardScores} from '@/lib/liveCardScore'
+import {useLiveCardScore} from '@/context/LiveCardScoresContext'
 import {ThemedText as Text} from '@/components/ThemedText'
 import CupMatchBanner, {
   formatCupBannerLabel,
@@ -320,12 +322,15 @@ export default function MatchCardOld({
   matchInfo: propsMatchInfo,
   idx = 0,
   scoresheetPathname = '/Match',
+  compact = false,
 }: {
   matchInfo: MatchInfoDataType
   idx?: number
   handlePress?: (idx: number) => void
   /** Route for the scoresheet Link (Settings stack needs its own path). */
   scoresheetPathname?: string
+  /** Narrower tile for the home matches grid. */
+  compact?: boolean
 }) {
   const router = useRouter()
   const {t} = useTranslation()
@@ -344,7 +349,7 @@ export default function MatchCardOld({
     ? previewTier.accent
     : ACCENTS[idx % ACCENTS.length]
   const theme = getCardTheme(isDark, accent)
-  const logoSize = Math.min(width * 0.16, 68)
+  const logoSize = compact ? 36 : Math.min(width * 0.16, 68)
 
   const teamRoleKey =
     user?.teams?.map((t: {id: number; team_role_id: number}) =>
@@ -514,12 +519,20 @@ export default function MatchCardOld({
   // Cap sizes for tablets — width-based sizing alone overflows fixed lineHeight on iPad
   const teamNameSize = (name: string) => {
     const len = name.length
+    if (compact) {
+      if (len > 12) return 11
+      if (len > 8) return 12
+      return 13
+    }
     if (len > 12) return Math.min(16, Math.max(13, width * 0.034))
     if (len > 8) return Math.min(17, Math.max(14, width * 0.038))
     return Math.min(19, Math.max(15, width * 0.042))
   }
   const homeNameSize = teamNameSize(matchInfo.home_team_short_name ?? '')
   const awayNameSize = teamNameSize(matchInfo.away_team_short_name ?? '')
+  const socketScore = useLiveCardScore(Number(matchInfo.match_id) || 0)
+  const liveScore =
+    socketScore === undefined ? readLiveCardScores(matchInfo) : socketScore
 
   function renderCaptainActions(isHome: boolean) {
     const reviewProposal =
@@ -620,6 +633,7 @@ export default function MatchCardOld({
     <View
       style={[
         styles.wrap,
+        compact && {marginHorizontal: 0, marginVertical: 0},
         {
           backgroundColor: theme.cardSurface,
           shadowColor: theme.shadow,
@@ -633,6 +647,12 @@ export default function MatchCardOld({
         end={{x: 1, y: 1}}
         style={[
           styles.board,
+          compact && {
+            paddingHorizontal: 8,
+            paddingTop: 10,
+            paddingBottom: 10,
+            paddingLeft: 10,
+          },
           {
             borderColor: isTournament ? cupTier.border : theme.boardBorder,
             borderWidth: isTournament ? 2 : 1,
@@ -775,9 +795,19 @@ export default function MatchCardOld({
                       lineHeight: Math.round(homeNameSize * 1.25),
                     },
                   ]}
-                  numberOfLines={2}>
+                    numberOfLines={2}>
                   {matchInfo.home_team_short_name}
                 </Text>
+                {liveScore ? (
+                  <Text
+                    style={[
+                      styles.liveScore,
+                      compact && styles.liveScoreCompact,
+                      {color: theme.text},
+                    ]}>
+                    {liveScore.home}
+                  </Text>
+                ) : null}
                 {(matchInfo.homeStats || winProb) && (
                   <Text style={[styles.record, {color: theme.textSecondary}]}>
                     {matchInfo?.homeStats?.won ?? 0}-
@@ -788,19 +818,38 @@ export default function MatchCardOld({
                 )}
               </View>
 
-              <View style={styles.vsCol}>
+              <View
+                style={[
+                  styles.vsCol,
+                  compact && {
+                    width: liveScore ? 44 : 32,
+                    paddingTop: 8,
+                  },
+                ]}>
                 <View
                   style={[
                     styles.vsBadge,
+                    compact && {width: 28, height: 28, borderRadius: 14},
                     {
                       backgroundColor: `${accent}22`,
                       borderColor: `${accent}55`,
                     },
                   ]}>
-                  <MCI name="bullseye-arrow" size={20} color={accent} />
+                  <MCI
+                    name="bullseye-arrow"
+                    size={compact ? 14 : 20}
+                    color={accent}
+                  />
                 </View>
-                <Text style={[styles.vsHint, {color: theme.textSubtle}]}>
-                  VS
+                <Text
+                  style={[
+                    styles.vsHint,
+                    {
+                      color: liveScore ? theme.confirm : theme.textSubtle,
+                      letterSpacing: liveScore ? 0.6 : 1,
+                    },
+                  ]}>
+                  {liveScore ? 'LIVE' : 'VS'}
                 </Text>
               </View>
 
@@ -827,9 +876,19 @@ export default function MatchCardOld({
                       lineHeight: Math.round(awayNameSize * 1.25),
                     },
                   ]}
-                  numberOfLines={2}>
+                    numberOfLines={2}>
                   {matchInfo.away_team_short_name}
                 </Text>
+                {liveScore ? (
+                  <Text
+                    style={[
+                      styles.liveScore,
+                      compact && styles.liveScoreCompact,
+                      {color: theme.text},
+                    ]}>
+                    {liveScore.away}
+                  </Text>
+                ) : null}
                 {(matchInfo.awayStats || winProb) && (
                   <Text style={[styles.record, {color: theme.textSecondary}]}>
                     {matchInfo?.awayStats?.won ?? 0}-
@@ -1227,6 +1286,16 @@ const styles = StyleSheet.create({
   teamName: {
     fontWeight: '800',
     textAlign: 'center',
+  },
+  liveScore: {
+    marginTop: 2,
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+  },
+  liveScoreCompact: {
+    fontSize: 16,
   },
   record: {
     marginTop: 6,

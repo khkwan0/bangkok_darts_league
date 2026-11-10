@@ -93,6 +93,11 @@ fs.writeFileSync(path, config)
 console.log(`Updated src/config.js → version ${version}, build ${build}`)
 EOF
 
+# Cap CPU + JVM heaps so an 8GB Mac stays out of swap. Node heap applies to prebuild.
+# shellcheck source=android_gradle_limits.sh
+source "$(dirname "$0")/android_gradle_limits.sh"
+begin_android_build_limits release
+
 echo "Running prebuild…"
 npx expo prebuild --platform android
 
@@ -105,9 +110,6 @@ keyAlias=${ANDROID_KEY_ALIAS}
 storeFile=${STORE_FILE_PATH}
 EOF
 
-# Cap CPU + JVM heaps so the Mac mini stays out of swap.
-# shellcheck source=android_gradle_limits.sh
-source "$(dirname "$0")/android_gradle_limits.sh"
 apply_android_gradle_limits
 
 echo "Building release AAB…"
@@ -115,7 +117,8 @@ echo "Building release AAB…"
 export SENTRY_ALLOW_FAILURE="${SENTRY_ALLOW_FAILURE:-true}"
 (
   cd android
-  ./gradlew bundleRelease --max-workers="$MAX_CPUS" "$@"
+  # --no-daemon so the multi-GB Gradle JVM exits with the build instead of sitting in RAM.
+  ./gradlew --no-daemon bundleRelease --max-workers="$MAX_CPUS" "$@"
 )
 
 if [ ! -f "$AAB_PATH" ]; then

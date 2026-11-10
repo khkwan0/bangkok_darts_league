@@ -1,12 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-export type HomeMatchesView = 'list' | 'calendar'
+export type HomeMatchesView = 'list' | 'grid' | 'calendar'
 
 const STORAGE_KEY = 'home_matches_view'
 
 /** Stored home layout. Anything missing or unrecognized falls back to the list. */
 export function parseHomeMatchesView(raw: string | null): HomeMatchesView {
-  if (raw === 'calendar' || raw === 'list') return raw
+  if (raw === 'calendar' || raw === 'list' || raw === 'grid') return raw
   return 'list'
 }
 

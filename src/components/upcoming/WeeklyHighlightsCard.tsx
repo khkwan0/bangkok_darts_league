@@ -50,11 +50,11 @@ const SPOTLIGHT_ICON: Record<
 function getTheme(isDark: boolean) {
   if (isDark) {
     return {
-      gradient: ['#2A1830', '#1C1220'] as const,
-      border: 'rgba(232, 198, 240, 0.25)',
+      gradient: ['#3F1214', '#1C0A0C'] as const,
+      border: 'rgba(254, 202, 202, 0.28)',
       title: '#F8FAFC',
       muted: 'rgba(226,232,240,0.7)',
-      accent: '#E8C6F0',
+      accent: '#FECACA',
       pillBg: 'rgba(245, 215, 110, 0.18)',
       pillText: '#F5D76E',
       spotlightBg: 'rgba(255,255,255,0.07)',
@@ -64,11 +64,11 @@ function getTheme(isDark: boolean) {
     }
   }
   return {
-    gradient: ['#3F0A48', '#37003C'] as const,
-    border: 'rgba(55, 0, 60, 0.3)',
+    gradient: ['#B91C1C', '#7F1D1D'] as const,
+    border: 'rgba(127, 29, 29, 0.35)',
     title: '#FFFFFF',
     muted: 'rgba(255,255,255,0.75)',
-    accent: '#F3D9F8',
+    accent: '#FDE68A',
     pillBg: 'rgba(245, 215, 110, 0.22)',
     pillText: '#FFE9A8',
     spotlightBg: 'rgba(255,255,255,0.12)',

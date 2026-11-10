@@ -1,4 +1,5 @@
 import {Stack} from 'expo-router'
+import {CompetitionSwitcher} from '@/components/navigation/CompetitionSwitcher'
 import {SettingsButton} from '@/components/navigation/SettingsButton'
 import {useStackContentSafeStyle} from '@/hooks/useStackContentSafeStyle'
 import {useTranslation} from 'react-i18next'
@@ -14,7 +15,13 @@ export default function MessagesLayout() {
       }}>
       <Stack.Screen
         name="index"
-        options={{headerShown: true, title: t('messages')}}
+        options={{
+          headerShown: true,
+          headerTitle: () => <CompetitionSwitcher />,
+          // Custom headerTitle leaves iOS with the route name ("index") otherwise.
+          title: t('messages'),
+          headerBackTitle: t('messages'),
+        }}
       />
       <Stack.Screen
         name="[playerId]/index"

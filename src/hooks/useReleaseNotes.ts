@@ -3,6 +3,32 @@ import React from 'react'
 
 export type ReleaseNoteKind = 'feature' | 'fix' | 'change'
 
+export type ReleaseNoteSportScope = 'pool' | 'darts' | 'both'
+
+export type ReleaseNoteClientScope = 'web' | 'mobile' | 'both'
+
+/** Pool only, darts only, or both. `all` and notes with no sport tag count as both. */
+export function releaseNoteSportScope(audiences: readonly string[]): ReleaseNoteSportScope {
+  const tags = new Set(audiences)
+  if (tags.has('all')) return 'both'
+  const pool = tags.has('pool')
+  const darts = tags.has('darts')
+  if (pool && !darts) return 'pool'
+  if (darts && !pool) return 'darts'
+  return 'both'
+}
+
+/** App only, website only, or both. `all` and notes with no client tag count as both. */
+export function releaseNoteClientScope(audiences: readonly string[]): ReleaseNoteClientScope {
+  const tags = new Set(audiences)
+  if (tags.has('all')) return 'both'
+  const web = tags.has('web')
+  const mobile = tags.has('mobile')
+  if (web && !mobile) return 'web'
+  if (mobile && !web) return 'mobile'
+  return 'both'
+}
+
 export type ReleaseNote = {
   id: number
   title: string
@@ -26,23 +52,26 @@ export function useReleaseNotes() {
   const networkRef = React.useRef(network)
   networkRef.current = network
 
-  const listPublic = React.useCallback(async (): Promise<{
+  const listPublic = React.useCallback(async (
+    page = 1,
+  ): Promise<{
     items: ReleaseNote[]
+    total: number
     error?: string
   }> => {
     const res = (await networkRef.current.Get(
-      '/release-notes?client=mobile&page=1&pageSize=50',
+      `/release-notes?page=${page}&pageSize=50`,
     )) as ListResponse
     const data = res?.data
     if (res?.status === 'ok' && data && 'items' in data) {
-      return {items: data.items ?? []}
+      return {items: data.items ?? [], total: data.total ?? 0}
     }
-    return {items: [], error: res?.error ?? 'request_failed'}
+    return {items: [], total: 0, error: res?.error ?? 'request_failed'}
   }, [])
 
   const getPublic = React.useCallback(async (id: number): Promise<ReleaseNote | null> => {
     const res = (await networkRef.current.Get(
-      `/release-notes?client=mobile&id=${id}`,
+      `/release-notes?id=${id}`,
     )) as ListResponse
     if (res?.status === 'ok' && res.data && !('items' in res.data)) {
       return res.data

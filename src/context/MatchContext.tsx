@@ -718,10 +718,15 @@ export const MatchProvider = (props: any) => {
           (id: number) => id != null && Number(id) > 0,
         ),
         goldenBreak: goldenBreak,
-        homeTeamId: state.matchInfo.home_team_id,
-        awayTeamId: state.matchInfo.away_team_id,
+        homeTeamId: Number(state.matchInfo.home_team_id ?? 0),
+        awayTeamId: Number(state.matchInfo.away_team_id ?? 0),
         games: frame.games ?? initial?.games ?? 1,
         seriesMode: frame.seriesMode ?? initial?.seriesMode,
+        minPlayers:
+          frame.minPlayers ??
+          initial?.minPlayers ??
+          frame.noPlayers ??
+          initial?.noPlayers,
       }
       SocketSend('win', data)
       return
@@ -769,8 +774,13 @@ export const MatchProvider = (props: any) => {
       seriesMode: frame?.seriesMode ?? initial?.seriesMode,
       frameType: frame?.type ?? initial?.type ?? '',
       mfpp: frame?.mfpp ?? initial?.mfpp ?? 0,
-      homeTeamId: state.matchInfo.home_team_id,
-      awayTeamId: state.matchInfo.away_team_id,
+      homeTeamId: Number(state.matchInfo.home_team_id ?? 0),
+      awayTeamId: Number(state.matchInfo.away_team_id ?? 0),
+      minPlayers:
+        frame?.minPlayers ??
+        initial?.minPlayers ??
+        frame?.noPlayers ??
+        initial?.noPlayers,
       playerIdx,
       ...(typeof legIndex === 'number' ? {legIndex} : {}),
       playerId: 0,

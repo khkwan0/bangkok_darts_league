@@ -1,6 +1,6 @@
 import {useStatsScope, type StatsScope} from '@/context/StatsScopeContext'
 import {ThemedText as Text} from '@/components/ThemedText'
-import {useTheme} from 'expo-router/react-navigation'
+import {useIsFocused, useTheme} from 'expo-router/react-navigation'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {Pressable, ScrollView, View} from 'react-native'
@@ -17,17 +17,20 @@ export default function StatsScopeChips({
   hideBoth?: boolean
 } = {}) {
   const {scope, setScope} = useStatsScope()
+  const isFocused = useIsFocused()
   const {colors} = useTheme()
   const {t} = useTranslation()
   const options = hideBoth
     ? OPTIONS.filter(opt => opt.id !== 'both')
     : OPTIONS
 
+  // League standings stays mounted under internal stats and shares this scope.
+  // Only pull "both" back to league while that screen is the one on screen.
   React.useEffect(() => {
-    if (hideBoth && scope === 'both') {
+    if (hideBoth && isFocused && scope === 'both') {
       setScope('league')
     }
-  }, [hideBoth, scope, setScope])
+  }, [hideBoth, isFocused, scope, setScope])
 
   return (
     <View className="mb-3">

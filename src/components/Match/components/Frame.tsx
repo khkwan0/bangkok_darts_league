@@ -4,6 +4,7 @@ import {
   anyPlayerStatFlags,
   resolveScoreSheetStatFlags,
   resolveValuePerLeg,
+  resolvedRowWinnerId,
   seriesWinsNeeded,
 } from '@/lib/matchFormat'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
@@ -125,15 +126,54 @@ export default function Frame({
     let sectionShowHeavy = false
     let sectionShowCloses = false
     let sectionHasSeries = false
-    let i = index - 1
-    while (i >= 0 && state.frameData[i]?.frameNumber !== -1) {
-      const f = state.frameData[i]
-      const init = state.matchInfo.initialFrames?.[i]
+    const frames = state.frameData ?? []
+    const initials = state.matchInfo?.initialFrames ?? []
+    const sectionNo = Number(item.section)
+    const rows: {f: (typeof frames)[number]; i: number}[] = []
+    const tagged = frames.some(
+      (f: {frameNumber?: number; section?: number; type?: string}, i: number) =>
+        Number(f?.frameNumber) !== -1 &&
+        f?.type !== 'section' &&
+        Number(f?.section ?? initials[i]?.section) > 0,
+    )
+    if (tagged && sectionNo > 0) {
+      frames.forEach(
+        (f: {frameNumber?: number; section?: number; type?: string}, i: number) => {
+          if (Number(f?.frameNumber) === -1 || f?.type === 'section') return
+          const sec = Number(f?.section ?? initials[i]?.section)
+          if (sec === sectionNo) rows.push({f, i})
+        },
+      )
+    } else {
+      let i = index - 1
+      while (i >= 0 && Number(frames[i]?.frameNumber) !== -1) {
+        rows.push({f: frames[i], i})
+        i--
+      }
+    }
+    const homeId = Number(homeTeamId)
+    const awayId = Number(awayTeamId)
+    for (const {f, i} of rows) {
+      const init = initials[i]
       const valuePerLeg = resolveValuePerLeg(
         f.valuePerLeg != null ? f : init,
       )
-      if (f.winner === homeTeamId) homeWins += valuePerLeg
-      if (f.winner === awayTeamId) awayWins += valuePerLeg
+      const winnerId = resolvedRowWinnerId(
+        {
+          ...init,
+          ...f,
+          games: f.games ?? init?.games,
+          seriesMode: f.seriesMode ?? init?.seriesMode,
+          minPlayers: f.minPlayers ?? init?.minPlayers,
+          maxPlayers: f.maxPlayers ?? init?.maxPlayers,
+          noPlayers: f.noPlayers ?? init?.noPlayers,
+          type: f.type ?? init?.type,
+        },
+        homeId,
+        awayId,
+      )
+      if (winnerId === homeId && homeId > 0) homeWins += valuePerLeg
+      if (winnerId === awayId && awayId > 0) awayWins += valuePerLeg
       homeTons += Number(f.homeTons ?? 0)
       awayTons += Number(f.awayTons ?? 0)
       homeHeavy += Number(f.homeHeavyTons ?? 0)
@@ -153,7 +193,6 @@ export default function Frame({
       if (fFlags.trackHeavyTons) sectionShowHeavy = true
       if (fFlags.trackCloses) sectionShowCloses = true
       if (Number(f.games ?? init?.games ?? 1) > 1) sectionHasSeries = true
-      i--
     }
     const statsParts: string[] = []
     if (sectionShowTons || homeTons + awayTons > 0) {
@@ -237,20 +276,22 @@ export default function Frame({
   const awayLegs = Number(live.awayScore ?? 0)
   // Prefer explicit winner; series score only counts once the frame is complete
   // (full roster + first-to-N), matching auto-collapse / server win gate.
-  const homeWon =
-    winner === homeTeamId ||
-    (Number(winner ?? 0) <= 0 &&
-      frameDecided &&
-      showSeries &&
-      homeLegs >= need &&
-      homeLegs > awayLegs)
-  const awayWon =
-    winner === awayTeamId ||
-    (Number(winner ?? 0) <= 0 &&
-      frameDecided &&
-      showSeries &&
-      awayLegs >= need &&
-      awayLegs > homeLegs)
+  const decidedWinnerId = resolvedRowWinnerId(
+    {
+      ...initial,
+      ...live,
+      games,
+      seriesMode,
+      minPlayers,
+      maxPlayers,
+      noPlayers: minPlayers,
+      type: frameType,
+    },
+    Number(homeTeamId),
+    Number(awayTeamId),
+  )
+  const homeWon = decidedWinnerId > 0 && decidedWinnerId === Number(homeTeamId)
+  const awayWon = decidedWinnerId > 0 && decidedWinnerId === Number(awayTeamId)
   const seriesLabel =
     seriesMode === 'race_to' ? `Race to ${games}` : `Bo${games}`
   const showClose = !!(item.showClose ?? initial?.showClose)

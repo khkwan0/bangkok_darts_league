@@ -2,7 +2,12 @@ import {ChatMarkdown} from '@/components/ChatMarkdown'
 import {formatForumDate} from '@/components/Forums/formatForumDate'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView as View} from '@/components/ThemedView'
-import {useReleaseNotes, type ReleaseNote} from '@/hooks/useReleaseNotes'
+import {
+  releaseNoteClientScope,
+  releaseNoteSportScope,
+  useReleaseNotes,
+  type ReleaseNote,
+} from '@/hooks/useReleaseNotes'
 import {useLocalSearchParams, useNavigation} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
@@ -64,6 +69,10 @@ export default function ReleaseNoteDetailScreen() {
     <ScrollView className="flex-1 px-4 pt-3" contentContainerClassName="pb-10">
       <Text className="text-xs font-semibold uppercase opacity-60">
         {t(`release_notes_kind_${note.kind}`)}
+        {' · '}
+        {t(`release_notes_sport_${releaseNoteSportScope(note.audiences)}`)}
+        {' · '}
+        {t(`release_notes_client_${releaseNoteClientScope(note.audiences)}`)}
       </Text>
       <Text className="mt-1 text-xl font-semibold">{note.title}</Text>
       <Text className="mt-1 text-xs opacity-50">

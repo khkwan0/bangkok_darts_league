@@ -1,9 +1,23 @@
 import {useNetwork} from '@/hooks/useNetwork'
+import {configuredLeagueId} from '@/lib/leagueRequest'
 import type {
   HighlightCompetition,
   WeeklyHighlights,
 } from '@/types/weeklyHighlights'
 import React from 'react'
+
+/** Drop a pool-league payload so this app never shows pool Player of the Week. */
+function isThisLeague(res: WeeklyHighlights): boolean {
+  if (res.sport === 'pool') return false
+  if (
+    typeof res.leagueId === 'number' &&
+    res.leagueId > 0 &&
+    res.leagueId !== configuredLeagueId()
+  ) {
+    return false
+  }
+  return true
+}
 
 export function useWeeklyHighlights() {
   const network = useNetwork()
@@ -50,7 +64,9 @@ export function useWeeklyHighlights() {
       if (typeof res !== 'object' || !('playerOfTheWeek' in res)) {
         return null
       }
-      return res as WeeklyHighlights
+      const highlights = res as WeeklyHighlights
+      if (!isThisLeague(highlights)) return null
+      return highlights
     },
     [],
   )
