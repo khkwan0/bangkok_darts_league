@@ -27,6 +27,15 @@ type Frame = {
   seriesMode?: 'race_to' | 'best_of' | null
   homeGames?: number
   awayGames?: number
+  trackTons?: boolean
+  trackHeavyTons?: boolean
+  trackCloses?: boolean
+  homeTons?: number
+  awayTons?: number
+  homeHeavyTons?: number
+  awayHeavyTons?: number
+  homeCloseValues?: number[]
+  awayCloseValues?: number[]
   homePlayers: {nickName: string; playerId: number}[]
   awayPlayers: {nickName: string; playerId: number}[]
   /** 1 home won, 0 away won, null not played. */
@@ -131,29 +140,91 @@ function CompletedSide({
   )
 }
 
-function gameTitle(frame: Frame, index: number, t: (key: string) => string) {
-  const gameNo =
-    frame.section != null && frame.frameNo != null && frame.frameNo > 0
-      ? frame.frameNo
-      : index + 1
-  const parts = [`${t('frame')} ${gameNo}`]
-  const label = frame.label?.trim()
-  if (label) parts.push(label)
-  const games = Math.max(1, Math.trunc(Number(frame.games ?? 1)))
-  if (games > 1) {
-    parts.push(
-      frame.seriesMode === 'race_to' ? `Race to ${games}` : `Bo${games}`,
-    )
-  }
-  return parts.join(' · ')
+function gameNumber(frame: Frame, index: number) {
+  return frame.section != null && frame.frameNo != null && frame.frameNo > 0
+    ? frame.frameNo
+    : index + 1
 }
 
-function seriesScore(frame: Frame) {
+function gameTypeName(frame: Frame) {
+  const label = frame.label?.trim() ?? ''
+  const type = frame.type?.trim() ?? ''
+  if (label && label !== 'section') return label
+  if (type && type !== 'section') return type
+  return ''
+}
+
+function seriesLabel(frame: Frame) {
+  const games = Math.max(1, Math.trunc(Number(frame.games ?? 1)))
+  if (games <= 1) return ''
+  return frame.seriesMode === 'race_to' ? `Race to ${games}` : `Bo${games}`
+}
+
+function StatPair({
+  label,
+  home,
+  away,
+}: {
+  label: string
+  home: string | number
+  away: string | number
+}) {
+  const theme = useScoresheetTheme()
+  return (
+    <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+      <Text
+        style={{
+          color: theme.muted,
+          fontSize: 11,
+          fontWeight: '700',
+          textTransform: 'uppercase',
+        }}>
+        {label}
+      </Text>
+      <Text
+        style={{
+          color: theme.home.accent,
+          fontSize: 13,
+          fontWeight: '800',
+          fontVariant: ['tabular-nums'],
+        }}>
+        {home}
+      </Text>
+      <Text style={{color: theme.muted, fontSize: 12}}>/</Text>
+      <Text
+        style={{
+          color: theme.away.accent,
+          fontSize: 13,
+          fontWeight: '800',
+          fontVariant: ['tabular-nums'],
+        }}>
+        {away}
+      </Text>
+    </View>
+  )
+}
+
+function closeText(values: number[] | undefined) {
+  const list = (values ?? []).filter(value => value > 0)
+  return list.length > 0 ? list.join(', ') : '0'
+}
+
+function legScoreText(frame: Frame) {
   const home = Math.max(0, Math.trunc(Number(frame.homeGames ?? 0)))
   const away = Math.max(0, Math.trunc(Number(frame.awayGames ?? 0)))
-  const games = Math.max(1, Math.trunc(Number(frame.games ?? 1)))
-  if (games <= 1 && home + away === 0) return null
+  if (home + away === 0) return null
   return `${home}–${away}`
+}
+
+function matchLegs(frames: Frame[]) {
+  let home = 0
+  let away = 0
+  for (const frame of frames) {
+    if (frame.section) continue
+    home += Math.max(0, Math.trunc(Number(frame.homeGames ?? 0)))
+    away += Math.max(0, Math.trunc(Number(frame.awayGames ?? 0)))
+  }
+  return {home, away}
 }
 
 function FrameRow({frame, index}: {frame: Frame; index: number}) {
@@ -194,7 +265,20 @@ function FrameRow({frame, index}: {frame: Frame; index: number}) {
     )
   }
 
-  const score = seriesScore(frame)
+  const score = legScoreText(frame)
+  const gameType = gameTypeName(frame)
+  const series = seriesLabel(frame)
+  const homeTons = Math.max(0, Math.trunc(Number(frame.homeTons ?? 0)))
+  const awayTons = Math.max(0, Math.trunc(Number(frame.awayTons ?? 0)))
+  const homeHeavy = Math.max(0, Math.trunc(Number(frame.homeHeavyTons ?? 0)))
+  const awayHeavy = Math.max(0, Math.trunc(Number(frame.awayHeavyTons ?? 0)))
+  const showTons = !!frame.trackTons || homeTons + awayTons > 0
+  const showHeavy = !!frame.trackHeavyTons || homeHeavy + awayHeavy > 0
+  const showCloses =
+    !!frame.trackCloses ||
+    (frame.homeCloseValues?.length ?? 0) + (frame.awayCloseValues?.length ?? 0) >
+      0
+  const showStats = showTons || showHeavy || showCloses
 
   function openPlayer(playerId: number) {
     router.replace({
@@ -226,17 +310,40 @@ function FrameRow({frame, index}: {frame: Frame; index: number}) {
           paddingTop: 12,
           paddingBottom: 8,
         }}>
-        <Text
-          style={{
-            flex: 1,
-            color: theme.muted,
-            fontSize: 12,
-            fontWeight: '800',
-            letterSpacing: 0.8,
-            textTransform: 'uppercase',
-          }}>
-          {gameTitle(frame, index, t)}
-        </Text>
+        <View style={{flex: 1, paddingRight: 8}}>
+          <Text
+            style={{
+              color: theme.muted,
+              fontSize: 12,
+              fontWeight: '800',
+              letterSpacing: 0.8,
+              textTransform: 'uppercase',
+            }}>
+            {t('frame')} {gameNumber(frame, index)}
+          </Text>
+          {gameType ? (
+            <Text
+              style={{
+                marginTop: 2,
+                color: theme.text,
+                fontSize: 16,
+                fontWeight: '800',
+              }}>
+              {gameType}
+            </Text>
+          ) : null}
+          {series ? (
+            <Text
+              style={{
+                marginTop: 2,
+                color: theme.muted,
+                fontSize: 12,
+                fontWeight: '700',
+              }}>
+              {series}
+            </Text>
+          ) : null}
+        </View>
         {score || !played ? (
           <Text
             style={{
@@ -249,6 +356,35 @@ function FrameRow({frame, index}: {frame: Frame; index: number}) {
           </Text>
         ) : null}
       </View>
+      {showStats ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 12,
+            alignItems: 'center',
+            paddingHorizontal: 14,
+            paddingBottom: 8,
+          }}>
+          {showTons ? (
+            <StatPair label={t('tons')} home={homeTons} away={awayTons} />
+          ) : null}
+          {showHeavy ? (
+            <StatPair
+              label={t('heavy_tons')}
+              home={homeHeavy}
+              away={awayHeavy}
+            />
+          ) : null}
+          {showCloses ? (
+            <StatPair
+              label={t('closes')}
+              home={closeText(frame.homeCloseValues)}
+              away={closeText(frame.awayCloseValues)}
+            />
+          ) : null}
+        </View>
+      ) : null}
       <View style={{flexDirection: 'row', gap: 8, paddingHorizontal: 10}}>
         <CompletedSide
           players={frame.homePlayers}
@@ -297,7 +433,7 @@ export default function CompletedMatchDetails({
   const router = useRouter()
   const theme = useScoresheetTheme()
   const {t} = useTranslation()
-  const [headerSticky, setHeaderSticky] = React.useState(true)
+  const [headerSticky, setHeaderSticky] = React.useState(false)
 
   React.useEffect(() => {
     let cancelled = false
@@ -409,8 +545,14 @@ export default function CompletedMatchDetails({
 
   const homeFrames = matchMetadata?.home_frames ?? 0
   const awayFrames = matchMetadata?.away_frames ?? 0
-  const tied = homeFrames === awayFrames
-  const total = homeFrames + awayFrames
+  const countedFromLegs = matchDetails.some(
+    frame => frame.homeGames != null || frame.section != null,
+  )
+  const legs = countedFromLegs
+    ? matchLegs(matchDetails)
+    : {home: homeFrames, away: awayFrames}
+  const tied = legs.home === legs.away
+  const total = legs.home + legs.away
   const matchDate =
     matchMetadata?.matchDate || matchMetadata?.date || undefined
   const homeName =
@@ -601,9 +743,9 @@ export default function CompletedMatchDetails({
                 fontWeight: '800',
                 fontVariant: ['tabular-nums'],
                 color:
-                  tied || homeFrames > awayFrames ? theme.home.accent : theme.muted,
+                  tied || legs.home > legs.away ? theme.home.accent : theme.muted,
               }}>
-              {homeFrames}
+              {legs.home}
             </Text>
             <Text
               style={{
@@ -624,11 +766,25 @@ export default function CompletedMatchDetails({
                 fontWeight: '800',
                 fontVariant: ['tabular-nums'],
                 color:
-                  tied || awayFrames > homeFrames ? theme.away.accent : theme.muted,
+                  tied || legs.away > legs.home ? theme.away.accent : theme.muted,
               }}>
-              {awayFrames}
+              {legs.away}
             </Text>
           </View>
+          {countedFromLegs ? (
+            <Text
+              style={{
+                marginTop: 4,
+                textAlign: 'center',
+                color: theme.muted,
+                fontSize: 12,
+                fontWeight: '700',
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+              }}>
+              {t('legs')}
+            </Text>
+          ) : null}
           <View
             style={{
               marginTop: 8,
@@ -642,14 +798,14 @@ export default function CompletedMatchDetails({
               <View style={{flex: 1}} />
             ) : (
               <>
-                {homeFrames > 0 && (
+                {legs.home > 0 && (
                   <View
-                    style={{flex: homeFrames, backgroundColor: theme.home.accent}}
+                    style={{flex: legs.home, backgroundColor: theme.home.accent}}
                   />
                 )}
-                {awayFrames > 0 && (
+                {legs.away > 0 && (
                   <View
-                    style={{flex: awayFrames, backgroundColor: theme.away.accent}}
+                    style={{flex: legs.away, backgroundColor: theme.away.accent}}
                   />
                 )}
               </>
