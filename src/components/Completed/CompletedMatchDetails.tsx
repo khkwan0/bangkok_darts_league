@@ -27,6 +27,8 @@ type Frame = {
   seriesMode?: 'race_to' | 'best_of' | null
   homeGames?: number
   awayGames?: number
+  /** Match-score weight of each leg in this game. Mickey Mouse is 2. */
+  valuePerLeg?: number
   trackTons?: boolean
   trackHeavyTons?: boolean
   trackCloses?: boolean
@@ -221,8 +223,10 @@ function matchLegs(frames: Frame[]) {
   let away = 0
   for (const frame of frames) {
     if (frame.section) continue
-    home += Math.max(0, Math.trunc(Number(frame.homeGames ?? 0)))
-    away += Math.max(0, Math.trunc(Number(frame.awayGames ?? 0)))
+    const weight = Number(frame.valuePerLeg ?? 1)
+    const unit = Number.isFinite(weight) && weight > 0 ? weight : 1
+    home += Math.max(0, Math.trunc(Number(frame.homeGames ?? 0))) * unit
+    away += Math.max(0, Math.trunc(Number(frame.awayGames ?? 0))) * unit
   }
   return {home, away}
 }
