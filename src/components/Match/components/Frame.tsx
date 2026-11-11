@@ -1,4 +1,6 @@
 import {useMatchContext} from '@/context/MatchContext'
+import {useOpenX01Score} from '@/context/X01ScoreContext'
+import {parseX01Start} from '@/lib/x01Score'
 import type {ScoresheetStatsView} from '@/lib/scoresheetStatsView'
 import {
   anyPlayerStatFlags,
@@ -51,6 +53,7 @@ export default function Frame({
     useMatchContext()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
+  const openScore = useOpenX01Score()
   const [focusHome, setFocusHome] = React.useState<number | null>(null)
   const [focusAway, setFocusAway] = React.useState<number | null>(null)
   /** Manual expand for completed / upcoming (auto-collapses when the game is decided). */
@@ -298,6 +301,20 @@ export default function Frame({
   const showClose = !!(item.showClose ?? initial?.showClose)
   const showScore = !!(item.showScore ?? initial?.showScore)
   const showWin = !!(item.showWin ?? initial?.showWin)
+  const canOpenScore = (showClose || showScore) && !locked && openScore != null
+  const scoreStart = showClose ? parseX01Start(frameLabel, frameType) : null
+  const scoreLabel =
+    showScore && !showClose
+      ? t('x01_add_points')
+      : scoreStart != null
+        ? t('x01_score_game', {start: scoreStart})
+        : t('x01_score_game_plain')
+
+  function openSubscreen() {
+    if (!openScore || !canOpenScore) return
+    Haptics.selectionAsync()
+    openScore(index)
+  }
   /**
    * Close game-type toggle: per-leg tons/180s/closes (not inferred from series).
    * Granular trackTons/trackHeavyTons/trackCloses still filter which steppers appear.
@@ -443,11 +460,17 @@ export default function Frame({
           </Text>
         ) : null}
         {canToggle ? (
-          <MCI
-            name={opts?.collapsed ? 'chevron-down' : 'chevron-up'}
-            size={22}
-            color={theme.muted}
-          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={opts?.collapsed ? t('expand') : t('collapse')}
+            hitSlop={10}
+            onPress={toggleExpanded}>
+            <MCI
+              name={opts?.collapsed ? 'chevron-down' : 'chevron-up'}
+              size={22}
+              color={theme.muted}
+            />
+          </Pressable>
         ) : null}
       </View>
     )
@@ -467,6 +490,7 @@ export default function Frame({
       </View>
     )
 
+    if (canOpenScore) return row
     if (canToggle) {
       return (
         <Pressable
@@ -483,40 +507,52 @@ export default function Frame({
   const cardShell = (
     children: React.ReactNode,
     opts?: {showSharedFirstDart?: boolean; collapsed?: boolean},
-  ) => (
-    <View
-      style={[
-        {
-          marginHorizontal: 12,
-          marginVertical: 6,
-          borderRadius: 18,
-          backgroundColor: theme.card,
-          borderWidth: 1,
-          borderColor: homeWon
-            ? theme.home.accent
-            : awayWon
-              ? theme.away.accent
-              : theme.cardBorder,
-        },
-        theme.shadow,
-      ]}>
-      {titleBar({collapsed: opts?.collapsed})}
-      {!opts?.collapsed && opts?.showSharedFirstDart !== false ? (
-        <FirstDart frameIndex={index} />
-      ) : null}
-      {children}
-      {showClose || showScore ? (
-        <X01ScoreButton
-          frameIndex={index}
-          label={frameLabel}
-          type={frameType}
-          showClose={showClose}
-          showScore={showScore}
-          disabled={locked}
-        />
-      ) : null}
-    </View>
-  )
+  ) => {
+    const shellStyle = [
+      {
+        marginHorizontal: 12,
+        marginVertical: 6,
+        borderRadius: 18,
+        backgroundColor: theme.card,
+        borderWidth: 1,
+        borderColor: homeWon
+          ? theme.home.accent
+          : awayWon
+            ? theme.away.accent
+            : theme.cardBorder,
+      },
+      theme.shadow,
+    ]
+    const body = (
+      <>
+        {titleBar({collapsed: opts?.collapsed})}
+        {!opts?.collapsed && opts?.showSharedFirstDart !== false ? (
+          <FirstDart frameIndex={index} />
+        ) : null}
+        {children}
+        {showClose || showScore ? (
+          <X01ScoreButton
+            frameIndex={index}
+            label={frameLabel}
+            type={frameType}
+            showClose={showClose}
+            showScore={showScore}
+            disabled={locked}
+          />
+        ) : null}
+      </>
+    )
+    if (!canOpenScore) return <View style={shellStyle}>{body}</View>
+    return (
+      <Pressable
+        accessible={false}
+        accessibilityLabel={scoreLabel}
+        onPress={openSubscreen}
+        style={shellStyle}>
+        {body}
+      </Pressable>
+    )
+  }
 
   function coloredStatPair(
     label: string,
@@ -594,12 +630,9 @@ export default function Frame({
       gate === 'complete' &&
       (showTons || showHeavy || showClosesSummary || showSeries)
 
-    return cardShell(
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('expand')}
-        onPress={toggleExpanded}
-        style={{paddingHorizontal: 14, paddingBottom: 12, gap: 8}}>
+    const summaryStyle = {paddingHorizontal: 14, paddingBottom: 12, gap: 8}
+    const summaryBody = (
+      <>
         {gate === 'complete' ? (
           <Text
             style={{
@@ -651,7 +684,20 @@ export default function Frame({
               : null}
           </View>
         ) : null}
-      </Pressable>,
+      </>
+    )
+    return cardShell(
+      canOpenScore ? (
+        <View style={summaryStyle}>{summaryBody}</View>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('expand')}
+          onPress={toggleExpanded}
+          style={summaryStyle}>
+          {summaryBody}
+        </Pressable>
+      ),
       {collapsed: true, showSharedFirstDart: false},
     )
   }

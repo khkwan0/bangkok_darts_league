@@ -130,6 +130,17 @@ export type FrameType = {
   awayBoardScore?: number
   /** Team id that throws first dart in this game (darts only). */
   firstDart?: number
+  /** Keypad visits saved on the live frame in Redis (`match_{id}`). */
+  visits?: Array<{
+    side: 'home' | 'away'
+    legIndex: number
+    points: number
+    bust: boolean
+    ton: boolean
+    oneEighty: boolean
+    close: boolean
+    board: boolean
+  }>
   frameIdx?: number
   frameIndex?: number
   goldenBreak?: boolean

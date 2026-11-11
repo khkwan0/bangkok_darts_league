@@ -50,6 +50,8 @@ const KEY_ROWS = [
   ['clear', '0', 'back'],
 ] as const
 
+const KEY_GAP = 10
+
 export function X01ScoreButton({
   frameIndex,
   label,
@@ -117,13 +119,29 @@ export default function X01ScoreScreen({
   embedded?: boolean
   onClose: () => void
 }) {
-  const {state, UpdateFrameStats}: any = useMatchContext()
+  const {state, UpdateFrameStats, RecordThrow}: any = useMatchContext()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
   const bottomInset = useTabContentBottomInset(12)
   const insets = useSafeAreaInsets()
   const {width, height} = useWindowDimensions()
   const landscape = width > height
+  const sideInset = Math.max(12, insets.left) + Math.max(12, insets.right)
+  const keypadColumn = landscape
+    ? (width - sideInset - 12) / 2
+    : width - sideInset
+  const keySize = Math.max(
+    48,
+    Math.min(
+      92,
+      Math.floor((Math.min(360, keypadColumn) - KEY_GAP * 2) / 3),
+    ),
+  )
+  const keypadWidth = keySize * 3 + KEY_GAP * 2
+  const keyFace = theme.isDark ? '#2A3142' : '#FFFFFF'
+  const keyBorder = theme.isDark
+    ? 'rgba(226,232,240,0.22)'
+    : 'rgba(15,23,42,0.12)'
   const frame = state.frameData?.[frameIndex] as FrameType | undefined
   const matchId = Number(state.matchInfo?.match_id ?? 0)
   const homeTeamId = Number(state.matchInfo?.home_team_id ?? 0)
@@ -339,28 +357,27 @@ export default function X01ScoreScreen({
     if (result.type !== 'applied') return
     lock.current = true
     setDigits('')
-    persist(result.board)
+    const visit = {
+      side: liveBoard.active,
+      legIndex: liveBoard.legIndex,
+      points,
+      bust: result.reflected,
+      closed: Boolean(result.closed),
+      board: mode === 'score',
+    }
+    const board = {
+      ...result.board,
+      undo: result.board.undo ? {...result.board.undo, visit} : result.board.undo,
+    }
+    persist(board)
+    RecordThrow?.(frameIndex, visit)
     if (mode === 'score') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-      UpdateFrameStats(
-        frameIndex,
-        liveBoard.active,
-        'boardScore',
-        points,
-      )
       setNote(null)
       return
     }
     if (result.closed && result.close) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-      UpdateFrameStats(
-        frameIndex,
-        result.close.side,
-        'closes',
-        result.close.points,
-        0,
-        result.close.legIndex,
-      )
       setNote({
         text: result.board.done ? t('x01_finished') : t('x01_closed'),
         tone: 'close',
@@ -389,6 +406,10 @@ export default function X01ScoreScreen({
     setDigits('')
     setNote(null)
     persist(undone.board)
+    if (undone.reverseVisit) {
+      RecordThrow?.(frameIndex, {...undone.reverseVisit, undo: true})
+      return
+    }
     if (undone.reverseBoard) {
       UpdateFrameStats(
         frameIndex,
@@ -534,7 +555,7 @@ export default function X01ScoreScreen({
           onUndo={undo}
         />
       ) : (
-      <View style={{flex: 1, gap: 8}}>
+      <View style={{flex: 1}}>
       <View style={{alignItems: 'center', minHeight: 64, justifyContent: 'center'}}>
         <Text
           style={{
@@ -567,9 +588,16 @@ export default function X01ScoreScreen({
                   : (note?.text ?? '')}
         </Text>
       </View>
-      <View style={{flex: 1, gap: 8, opacity: done || !ready ? 0.4 : 1}}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          opacity: done || !ready ? 0.4 : 1,
+        }}>
+        <View style={{width: keypadWidth, gap: KEY_GAP}}>
         {KEY_ROWS.map(row => (
-          <View key={row.join('-')} style={{flex: 1, flexDirection: 'row', gap: 8}}>
+          <View key={row.join('-')} style={{flexDirection: 'row', gap: KEY_GAP}}>
             {row.map(key => (
               <Pressable
                 key={key}
@@ -580,12 +608,13 @@ export default function X01ScoreScreen({
                 disabled={done || !ready}
                 onPress={() => tapKey(key)}
                 style={({pressed}) => ({
-                  flex: 1,
-                  borderRadius: 12,
+                  width: keySize,
+                  height: keySize,
+                  borderRadius: 16,
                   borderCurve: 'continuous',
                   borderWidth: 1,
-                  borderColor: theme.cardBorder,
-                  backgroundColor: pressed ? theme.cardBorder : theme.card,
+                  borderColor: pressed ? theme.text : keyBorder,
+                  backgroundColor: pressed ? theme.cardBorder : keyFace,
                   alignItems: 'center',
                   justifyContent: 'center',
                 })}>
@@ -594,8 +623,9 @@ export default function X01ScoreScreen({
                   adjustsFontSizeToFit
                   style={{
                     color: theme.text,
-                    fontSize: key === 'clear' || key === 'back' ? 16 : 26,
+                    fontSize: key === 'clear' || key === 'back' ? 16 : 28,
                     fontWeight: '800',
+                    paddingHorizontal: 4,
                   }}>
                   {key === 'clear' ? t('clear') : key === 'back' ? '⌫' : key}
                 </Text>
@@ -603,24 +633,33 @@ export default function X01ScoreScreen({
             ))}
           </View>
         ))}
-        <View style={{flex: 1, flexDirection: 'row', gap: 8}}>
+        <View style={{flexDirection: 'row', gap: KEY_GAP}}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('x01_undo')}
             disabled={!liveBoard?.undo || !ready}
             onPress={undo}
             style={({pressed}) => ({
-              flex: 0.7,
-              borderRadius: 12,
+              width: keySize,
+              height: keySize,
+              borderRadius: 16,
               borderCurve: 'continuous',
               borderWidth: 1,
-              borderColor: theme.cardBorder,
-              backgroundColor: pressed ? theme.cardBorder : theme.card,
+              borderColor: pressed ? theme.text : keyBorder,
+              backgroundColor: pressed ? theme.cardBorder : keyFace,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: liveBoard?.undo ? 1 : 0.4,
             })}>
-            <Text style={{color: theme.text, fontSize: 16, fontWeight: '800'}}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={{
+                color: theme.text,
+                fontSize: 16,
+                fontWeight: '800',
+                paddingHorizontal: 4,
+              }}>
               {t('x01_undo')}
             </Text>
           </Pressable>
@@ -630,8 +669,9 @@ export default function X01ScoreScreen({
             disabled={done || !ready || typed <= 0}
             onPress={enter}
             style={({pressed}) => ({
-              flex: 1.4,
-              borderRadius: 12,
+              width: keySize * 2 + KEY_GAP,
+              height: keySize,
+              borderRadius: 16,
               borderCurve: 'continuous',
               backgroundColor: pressed
                 ? theme.home.ink
@@ -646,6 +686,7 @@ export default function X01ScoreScreen({
               {t('x01_enter')}
             </Text>
           </Pressable>
+        </View>
         </View>
       </View>
       </View>

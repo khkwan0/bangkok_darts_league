@@ -471,9 +471,10 @@ export const MatchProvider = (props: any) => {
               awayScore: data.awayScore,
               homeBoardScore: data.homeBoardScore,
               awayBoardScore: data.awayBoardScore,
-              winner: data.winner,
-              games: data.games,
-            },
+                winner: data.winner,
+                games: data.games,
+                visits: data.visits,
+              },
           })
         } else if (data.type === 'firstdart') {
           dispatch({
@@ -808,6 +809,46 @@ export const MatchProvider = (props: any) => {
     }
   }
 
+  function RecordThrow(
+    frameIdx: number,
+    visit: {
+      side: 'home' | 'away'
+      legIndex: number
+      points: number
+      bust: boolean
+      closed: boolean
+      board: boolean
+      undo?: boolean
+    },
+  ) {
+    const frame = state.frameData[frameIdx]
+    const initial = state.matchInfo.initialFrames?.[frameIdx]
+    SocketSend('visit', {
+      matchId: state.matchInfo.match_id,
+      frameIdx,
+      frameNumber: frame?.frameNumber ?? 0,
+      side: visit.side,
+      legIndex: visit.legIndex,
+      points: visit.points,
+      bust: visit.bust,
+      closed: visit.closed,
+      board: visit.board,
+      undo: Boolean(visit.undo),
+      games: frame?.games ?? initial?.games ?? 1,
+      seriesMode: frame?.seriesMode ?? initial?.seriesMode,
+      frameType: frame?.type ?? initial?.type ?? '',
+      mfpp: frame?.mfpp ?? initial?.mfpp ?? 0,
+      homeTeamId: Number(state.matchInfo.home_team_id ?? 0),
+      awayTeamId: Number(state.matchInfo.away_team_id ?? 0),
+      minPlayers:
+        frame?.minPlayers ??
+        initial?.minPlayers ??
+        frame?.noPlayers ??
+        initial?.noPlayers,
+      playerIdx: 0,
+    })
+  }
+
   function ClearFrameWinner(frameIdx: number) {
     const data = {
       frameIdx: frameIdx,
@@ -949,6 +990,7 @@ export const MatchProvider = (props: any) => {
         UpdateFirstDart,
         UpdateFramePlayers,
         UpdateFrameStats,
+        RecordThrow,
         UpdateFrameWin,
         UpdateTeams,
       }}>

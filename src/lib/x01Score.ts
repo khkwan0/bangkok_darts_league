@@ -26,6 +26,15 @@ export type X01Undo = {
   boardDelta: {side: X01Side; points: number} | null
   /** Cricket marks before this visit, when the board was tracking hits. */
   cricket?: CricketBoard | null
+  /** Throw written to match Redis, so undo can reverse the same visit. */
+  visit?: {
+    side: X01Side
+    legIndex: number
+    points: number
+    bust: boolean
+    closed: boolean
+    board: boolean
+  } | null
 }
 
 export type X01Board = {
@@ -205,6 +214,27 @@ function parseBoardDelta(
   }
 }
 
+function parseVisitMark(value: unknown): X01Undo['visit'] {
+  if (!value || typeof value !== 'object') return null
+  const row = value as {
+    side?: unknown
+    legIndex?: unknown
+    points?: unknown
+    bust?: unknown
+    closed?: unknown
+    board?: unknown
+  }
+  if (!isSide(row.side) || !Number.isFinite(Number(row.points))) return null
+  return {
+    side: row.side,
+    legIndex: Math.max(0, Math.trunc(Number(row.legIndex) || 0)),
+    points: Math.max(0, Math.trunc(Number(row.points))),
+    bust: Boolean(row.bust),
+    closed: Boolean(row.closed),
+    board: Boolean(row.board),
+  }
+}
+
 function parseUndo(value: unknown): X01Undo | null {
   if (!value || typeof value !== 'object') return null
   const row = value as X01Undo
@@ -232,6 +262,7 @@ function parseUndo(value: unknown): X01Undo | null {
     done: Boolean(row.done),
     close: parsedClose,
     boardDelta: parseBoardDelta(row.boardDelta),
+    visit: parseVisitMark(row.visit),
     ...('cricket' in row
       ? {cricket: parseCricketBoard(row.cricket) ?? null}
       : {}),
@@ -342,11 +373,13 @@ export function undoX01Visit(board: X01Board): {
   board: X01Board
   reverseClose: {side: X01Side; points: number; legIndex: number} | null
   reverseBoard: {side: X01Side; points: number} | null
+  reverseVisit: NonNullable<X01Undo['visit']> | null
 } | null {
   if (!board.undo) return null
   return {
     reverseClose: board.undo.close,
     reverseBoard: board.undo.boardDelta,
+    reverseVisit: board.undo.visit ?? null,
     board: {
       start: board.start,
       home: board.undo.home,
