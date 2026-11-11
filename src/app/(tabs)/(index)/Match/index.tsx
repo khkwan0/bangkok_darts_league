@@ -13,6 +13,8 @@ import { FrameType } from '@/components/Match/types'
 import { useLeagueContext } from '@/context/LeagueContext'
 import { useMatchContext } from '@/context/MatchContext'
 import {ScoresheetPadProvider} from '@/context/ScoresheetPadContext'
+import {X01ScoreProvider} from '@/context/X01ScoreContext'
+import X01ScoreScreen from '@/components/Match/components/X01ScoreScreen'
 import { useIsRegularLayout } from '@/hooks/useLayoutMode'
 import { useMatch } from '@/hooks/useMatch'
 import { useTabListContentContainerStyle } from '@/hooks/useTabListContentContainerStyle'
@@ -34,10 +36,12 @@ import {
   saveScoresheetStatsView,
   type ScoresheetStatsView,
 } from '@/lib/scoresheetStatsView'
-import { useNavigation } from "expo-router/react-navigation"
+import {useNavigation} from "expo-router/react-navigation"
 import {useLocalSearchParams, useRouter} from 'expo-router'
 import React from 'react'
-import { AppState, FlatList, View } from 'react-native'
+import {useTranslation} from 'react-i18next'
+import {AppState, FlatList, Pressable, Text, View} from 'react-native'
+import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 
 export type ScoreSheetProps = {
   /** When set, show this match in a parent AdaptiveSplit instead of reading the route. */
@@ -51,6 +55,7 @@ export default function ScoreSheet({
   embedded = false,
 }: ScoreSheetProps = {}) {
   const router = useRouter()
+  const {t} = useTranslation()
   const {state, dispatch, SocketConnect, SocketDisconnect, UpdateTeams}: any =
     useMatchContext()
   const {RefreshUpcoming}: any = useLeagueContext()
@@ -90,6 +95,12 @@ export default function ScoreSheet({
   const listRef = React.useRef<FlatList<FrameType>>(null)
   const didScrollToActiveRef = React.useRef(false)
   const [refreshing, setRefreshing] = React.useState(false)
+  const [scoringFrame, setScoringFrame] = React.useState<number | null>(null)
+  const [scoringMatchId, setScoringMatchId] = React.useState(resolvedMatchId)
+  if (scoringMatchId !== resolvedMatchId) {
+    setScoringMatchId(resolvedMatchId)
+    setScoringFrame(null)
+  }
   // Side pad only on a full-screen regular layout — not inside home’s detail pane.
   const useSidePad = isRegular && !embedded
 
@@ -144,14 +155,60 @@ export default function ScoreSheet({
     saveScoresheetStatsView(view, isRegular)
   }
 
+  const didCustomizeHeader = React.useRef(false)
+
   React.useEffect(() => {
     if (embedded) return
     if (resolvedMatchId) {
-      navigation.setOptions({title: '#' + resolvedMatchId})
+      const scoring =
+        scoringFrame != null ? state.frameData?.[scoringFrame] : null
+      const scoringTitle = scoring?.label || scoring?.type
+      const options: {
+        title: string
+        gestureEnabled: boolean
+        headerLeft?: () => React.ReactNode
+      } = {
+        title: scoringTitle ? String(scoringTitle) : '#' + resolvedMatchId,
+        gestureEnabled: scoringFrame == null,
+      }
+      if (scoringFrame != null) {
+        didCustomizeHeader.current = true
+        options.headerLeft = () => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('x01_scoresheet')}
+            onPress={() => setScoringFrame(null)}
+            hitSlop={8}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingRight: 8,
+            }}>
+            <MCI name="chevron-left" size={26} color={theme.text} />
+            <Text style={{color: theme.text, fontSize: 17, fontWeight: '600'}}>
+              {t('x01_scoresheet')}
+            </Text>
+          </Pressable>
+        )
+      } else if (didCustomizeHeader.current) {
+        didCustomizeHeader.current = false
+        options.headerLeft = undefined
+      }
+      navigation.setOptions(options)
     } else if (!state?.matchInfo?.match_id) {
       router.back()
     }
-  }, [resolvedMatchId, embedded, navigation, state?.matchInfo?.match_id])
+  }, [
+    resolvedMatchId,
+    embedded,
+    navigation,
+    router,
+    state?.matchInfo?.match_id,
+    scoringFrame,
+    state.frameData,
+    t,
+    theme.text,
+  ])
 
   // Keep the scoresheet template ref aligned with live firstDart (and other
   // frame fields) so AppState → GetFrames merges don't wipe optimistic UI.
@@ -516,8 +573,18 @@ export default function ScoreSheet({
   )
 
   return (
-    <ScoresheetPadProvider useSidePad={useSidePad}>
-      <ScoresheetLayout framesList={framesList} />
-    </ScoresheetPadProvider>
+    <X01ScoreProvider onOpen={setScoringFrame}>
+      {scoringFrame != null ? (
+        <X01ScoreScreen
+          frameIndex={scoringFrame}
+          embedded={embedded}
+          onClose={() => setScoringFrame(null)}
+        />
+      ) : (
+        <ScoresheetPadProvider useSidePad={useSidePad}>
+          <ScoresheetLayout framesList={framesList} />
+        </ScoresheetPadProvider>
+      )}
+    </X01ScoreProvider>
   )
 }

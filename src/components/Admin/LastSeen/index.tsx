@@ -4,6 +4,7 @@ import {
   useAdminLastSeen,
   type AdminLastSeenRow,
   type LastSeenRedisUsage,
+  type LastSeenSnapshotSummary,
 } from '@/hooks/useAdminLastSeen'
 import {usePreferredTimeZone} from '@/hooks/usePreferredTimeZone'
 import {formatPreferredDateTime} from '@/lib/bangkokTime'
@@ -18,6 +19,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   TextInput,
   useColorScheme,
   View,
@@ -108,7 +110,7 @@ export default function AdminLastSeen() {
   const {t} = useTranslation()
   const navigation = useNavigation()
   const timeZone = usePreferredTimeZone()
-  const {listLastSeen, flushLastSeen} = useAdminLastSeen()
+  const {listLastSeen, getLastSeenSnapshot, flushLastSeen} = useAdminLastSeen()
   const isDark = (useColorScheme() ?? 'light') === 'dark'
   const muted = isDark ? '#94A3B8' : '#64748B'
 
@@ -122,6 +124,9 @@ export default function AdminLastSeen() {
   const [usage, setUsage] = React.useState<LastSeenRedisUsage | null>(null)
   const [canFlush, setCanFlush] = React.useState(false)
   const [flushing, setFlushing] = React.useState(false)
+  const [snapshots, setSnapshots] = React.useState<LastSeenSnapshotSummary[]>([])
+  const [archiveId, setArchiveId] = React.useState<number | null>(null)
+  const archiveIdRef = React.useRef<number | null>(null)
   const trie = React.useRef(
     new TrieSearch<SearchableRow>(
       ['nickname', 'firstname', 'lastname', 'player_id_str'],
@@ -161,13 +166,28 @@ export default function AdminLastSeen() {
             rebuildTrie([])
             setUsage(null)
             setCanFlush(false)
+            setSnapshots([])
           }
+          return
+        }
+        setSnapshots(res.snapshots)
+        setUsage(res.usage)
+        setCanFlush(res.canFlush)
+        const viewing = archiveIdRef.current
+        if (viewing != null) {
+          const archived = await getLastSeenSnapshot(viewing)
+          if (archived.error) {
+            setError(t('admin_last_seen_archives_load_failed'))
+            setRows([])
+            rebuildTrie([])
+            return
+          }
+          setRows(archived.data)
+          rebuildTrie(archived.data)
           return
         }
         setRows(res.data)
         rebuildTrie(res.data)
-        setUsage(res.usage)
-        setCanFlush(res.canFlush)
       } catch {
         setError(t('admin_last_seen_load_failed'))
       } finally {
@@ -175,8 +195,15 @@ export default function AdminLastSeen() {
         setRefreshing(false)
       }
     },
-    [listLastSeen, rebuildTrie, t],
+    [getLastSeenSnapshot, listLastSeen, rebuildTrie, t],
   )
+
+  function selectArchive(id: number | null) {
+    archiveIdRef.current = id
+    setArchiveId(id)
+    setQuery('')
+    void load()
+  }
 
   function confirmFlush() {
     Alert.alert(
@@ -201,10 +228,22 @@ export default function AdminLastSeen() {
                   )
                   return
                 }
+                archiveIdRef.current = null
+                setArchiveId(null)
                 setRows([])
                 rebuildTrie([])
                 setUsage(res.usage)
-                Alert.alert(t('admin_last_seen_flush_ok'))
+                if (res.snapshot) {
+                  setSnapshots(current => [
+                    res.snapshot!,
+                    ...current.filter(row => row.id !== res.snapshot!.id),
+                  ])
+                }
+                Alert.alert(
+                  t('admin_last_seen_flush_ok_saved', {
+                    count: res.snapshot?.player_count ?? 0,
+                  }),
+                )
               } catch {
                 Alert.alert(t('error'), t('admin_last_seen_flush_failed'))
               } finally {
@@ -299,6 +338,52 @@ export default function AdminLastSeen() {
             </View>
           ) : null}
         </View>
+        <Text className="mb-2 text-xs font-semibold uppercase" style={{color: muted}}>
+          {t('admin_last_seen_archives')}
+        </Text>
+        <Text className="mb-2 text-xs" style={{color: muted}}>
+          {t('admin_last_seen_archives_help')}
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="mb-3"
+          contentContainerClassName="gap-2">
+          <Pressable
+            onPress={() => selectArchive(null)}
+            className={`rounded-full px-3 py-1.5 ${
+              archiveId == null ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+            }`}>
+            <Text
+              className={`text-sm font-medium ${archiveId == null ? 'text-white' : ''}`}>
+              {t('admin_last_seen_archives_live')}
+            </Text>
+          </Pressable>
+          {snapshots.map(snapshot => {
+            const active = archiveId === snapshot.id
+            return (
+              <Pressable
+                key={snapshot.id}
+                onPress={() => selectArchive(snapshot.id)}
+                className={`rounded-full px-3 py-1.5 ${
+                  active ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+                }`}>
+                <Text className={`text-sm font-medium ${active ? 'text-white' : ''}`}>
+                  {formatPreferredDateTime(snapshot.created_at, timeZone)}
+                  {' · '}
+                  {t('admin_last_seen_archives_players', {
+                    count: snapshot.player_count,
+                  })}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </ScrollView>
+        {snapshots.length === 0 ? (
+          <Text className="mb-3 text-xs" style={{color: muted}}>
+            {t('admin_last_seen_archives_empty')}
+          </Text>
+        ) : null}
         <View className="mb-3 flex-row items-center rounded-xl bg-gray-100 px-3 py-2 dark:bg-gray-800">
           <MCI name="magnify" size={20} color={muted} />
           <TextInput
@@ -347,7 +432,9 @@ export default function AdminLastSeen() {
             <Text className="mt-3 text-center" style={{color: muted}}>
               {query.trim()
                 ? t('admin_last_seen_empty_search')
-                : t('admin_last_seen_empty')}
+                : archiveId != null
+                  ? t('admin_last_seen_archives_empty_rows')
+                  : t('admin_last_seen_empty')}
             </Text>
           </View>
         }

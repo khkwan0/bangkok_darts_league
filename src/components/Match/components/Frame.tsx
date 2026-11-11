@@ -25,6 +25,7 @@ import Player from './Player'
 import {useScoresheetTheme} from './scoresheetTheme'
 import StatValueInput from './StatValueInput'
 import WinButton from './WinButton'
+import {X01ScoreButton} from './X01ScoreScreen'
 
 function frameKindLabel(
   noPlayers: number | undefined,
@@ -504,6 +505,16 @@ export default function Frame({
         <FirstDart frameIndex={index} />
       ) : null}
       {children}
+      {showClose || showScore ? (
+        <X01ScoreButton
+          frameIndex={index}
+          label={frameLabel}
+          type={frameType}
+          showClose={showClose}
+          showScore={showScore}
+          disabled={locked}
+        />
+      ) : null}
     </View>
   )
 
