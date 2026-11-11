@@ -39,7 +39,8 @@ import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import * as Haptics from 'expo-haptics'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
-import {Pressable, Text, View} from 'react-native'
+import {Pressable, Text, useWindowDimensions, View} from 'react-native'
+import {useSafeAreaInsets} from 'react-native-safe-area-context'
 import {useScoresheetTheme} from './scoresheetTheme'
 
 const KEY_ROWS = [
@@ -120,6 +121,9 @@ export default function X01ScoreScreen({
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
   const bottomInset = useTabContentBottomInset(12)
+  const insets = useSafeAreaInsets()
+  const {width, height} = useWindowDimensions()
+  const landscape = width > height
   const frame = state.frameData?.[frameIndex] as FrameType | undefined
   const matchId = Number(state.matchInfo?.match_id ?? 0)
   const homeTeamId = Number(state.matchInfo?.home_team_id ?? 0)
@@ -451,32 +455,9 @@ export default function X01ScoreScreen({
     frame.awayPlayerIds,
   )
 
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: theme.canvas,
-        paddingTop: 8,
-        paddingBottom: bottomInset,
-        paddingHorizontal: 12,
-        gap: 8,
-      }}>
-      {embedded ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={onClose}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-            minHeight: 36,
-          }}>
-          <MCI name="chevron-left" size={22} color={theme.text} />
-          <Text style={{color: theme.text, fontSize: 16, fontWeight: '700'}}>
-            {t('x01_scoresheet')}
-          </Text>
-        </Pressable>
-      ) : null}
+  const cricketBoard = liveBoard?.cricket ?? emptyCricketBoard()
+  const scores = (
+    <View style={{flex: landscape ? 1 : undefined, gap: 8}}>
       <Text
         style={{
           color: theme.muted,
@@ -489,7 +470,12 @@ export default function X01ScoreScreen({
           ? t('x01_running')
           : `${t('x01_leg', {n: (liveBoard?.legIndex ?? 0) + 1})} · ${start}`}
       </Text>
-      <View style={{flexDirection: 'row', gap: 8}}>
+      <View
+        style={{
+          flexDirection: 'row',
+          flex: landscape && !(mode === 'score' && hitEntry) ? 1 : undefined,
+          gap: 8,
+        }}>
         <SideScore
           side="home"
           name={state.matchInfo?.home_team_short_name || t('home')}
@@ -513,6 +499,13 @@ export default function X01ScoreScreen({
           onPress={() => chooseSide('away')}
         />
       </View>
+      {landscape && mode === 'score' && hitEntry ? (
+        <CricketMarks board={cricketBoard} layout="column" />
+      ) : null}
+    </View>
+  )
+  const controls = (
+    <View style={{flex: 1, gap: 8}}>
       {mode === 'score' ? (
         <View style={{flexDirection: 'row', gap: 8}}>
           <ModeChip
@@ -529,7 +522,8 @@ export default function X01ScoreScreen({
       ) : null}
       {mode === 'score' && hitEntry ? (
         <CricketHits
-          board={liveBoard?.cricket ?? emptyCricketBoard()}
+          board={cricketBoard}
+          showMarks={!landscape}
           disabled={done || !ready}
           canUndo={Boolean(liveBoard?.undo) && ready}
           dartNumber={(liveBoard?.cricket?.dartsThrown ?? 0) + 1}
@@ -658,6 +652,47 @@ export default function X01ScoreScreen({
       )}
     </View>
   )
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: theme.canvas,
+        paddingTop: 8,
+        paddingBottom: bottomInset,
+        paddingLeft: Math.max(12, insets.left),
+        paddingRight: Math.max(12, insets.right),
+        gap: 8,
+      }}>
+      {embedded ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onClose}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            minHeight: 36,
+          }}>
+          <MCI name="chevron-left" size={22} color={theme.text} />
+          <Text style={{color: theme.text, fontSize: 16, fontWeight: '700'}}>
+            {t('x01_scoresheet')}
+          </Text>
+        </Pressable>
+      ) : null}
+      {landscape ? (
+        <View style={{flex: 1, flexDirection: 'row', gap: 12}}>
+          {scores}
+          {controls}
+        </View>
+      ) : (
+        <>
+          {scores}
+          {controls}
+        </>
+      )}
+    </View>
+  )
 }
 
 function ModeChip({
@@ -698,8 +733,72 @@ function markSlashes(count: number) {
   return n === 0 ? '·' : '/'.repeat(n)
 }
 
+function CricketMarks({
+  board,
+  layout,
+}: {
+  board: ReturnType<typeof emptyCricketBoard>
+  layout: 'row' | 'column'
+}) {
+  const {t} = useTranslation()
+  const theme = useScoresheetTheme()
+  if (layout === 'row') {
+    return (
+      <View style={{flexDirection: 'row', gap: 4}}>
+        {CRICKET_TARGETS.map(target => (
+          <View key={target.id} style={{flex: 1, alignItems: 'center', gap: 1}}>
+            <Text style={{color: theme.muted, fontSize: 11, fontWeight: '800'}}>
+              {target.id === '25' ? t('x01_bull') : target.label}
+            </Text>
+            <Text style={{color: theme.home.accent, fontSize: 12, fontWeight: '800'}}>
+              {markSlashes(board.home[target.id])}
+            </Text>
+            <Text style={{color: theme.away.accent, fontSize: 12, fontWeight: '800'}}>
+              {markSlashes(board.away[target.id])}
+            </Text>
+          </View>
+        ))}
+      </View>
+    )
+  }
+  return (
+    <View style={{gap: 2}}>
+      {CRICKET_TARGETS.map(target => (
+        <View
+          key={target.id}
+          style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+          <Text style={{flex: 1, color: theme.muted, fontSize: 13, fontWeight: '800'}}>
+            {target.id === '25' ? t('x01_bull') : target.label}
+          </Text>
+          <Text
+            style={{
+              width: 28,
+              textAlign: 'center',
+              color: theme.home.accent,
+              fontSize: 14,
+              fontWeight: '800',
+            }}>
+            {markSlashes(board.home[target.id])}
+          </Text>
+          <Text
+            style={{
+              width: 28,
+              textAlign: 'center',
+              color: theme.away.accent,
+              fontSize: 14,
+              fontWeight: '800',
+            }}>
+            {markSlashes(board.away[target.id])}
+          </Text>
+        </View>
+      ))}
+    </View>
+  )
+}
+
 function CricketHits({
   board,
+  showMarks = true,
   disabled,
   canUndo,
   dartNumber,
@@ -710,6 +809,7 @@ function CricketHits({
   onUndo,
 }: {
   board: ReturnType<typeof emptyCricketBoard>
+  showMarks?: boolean
   disabled: boolean
   canUndo: boolean
   dartNumber: number
@@ -736,21 +836,7 @@ function CricketHits({
         {t('x01_dart', {n: dartNumber})}
         {note ? ` · ${note}` : ''}
       </Text>
-      <View style={{flexDirection: 'row', gap: 4}}>
-        {CRICKET_TARGETS.map(target => (
-          <View key={target.id} style={{flex: 1, alignItems: 'center', gap: 1}}>
-            <Text style={{color: theme.muted, fontSize: 11, fontWeight: '800'}}>
-              {target.id === '25' ? t('x01_bull') : target.label}
-            </Text>
-            <Text style={{color: theme.home.accent, fontSize: 12, fontWeight: '800'}}>
-              {markSlashes(board.home[target.id])}
-            </Text>
-            <Text style={{color: theme.away.accent, fontSize: 12, fontWeight: '800'}}>
-              {markSlashes(board.away[target.id])}
-            </Text>
-          </View>
-        ))}
-      </View>
+      {showMarks ? <CricketMarks board={board} layout="row" /> : null}
       <View style={{flexDirection: 'row', gap: 8}}>
         {([1, 2, 3] as const).map(multiplier => (
           <Pressable
