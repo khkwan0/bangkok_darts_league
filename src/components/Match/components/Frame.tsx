@@ -32,7 +32,7 @@ import {
   resolveFrameGate,
 } from './frameCollapse'
 import LegLines from './LegLines'
-import Player from './Player'
+import Player, {scoresheetChildHandledPress} from './Player'
 import {useScoresheetTheme} from './scoresheetTheme'
 import StatValueInput from './StatValueInput'
 import WinButton from './WinButton'
@@ -72,6 +72,7 @@ export default function Frame({
   const x01Board = useX01BoardSnapshot(index)
   const [focusHome, setFocusHome] = React.useState<number | null>(null)
   const [focusAway, setFocusAway] = React.useState<number | null>(null)
+  const [manualStats, setManualStats] = React.useState(false)
   /** Manual expand for completed / upcoming (auto-collapses when the game is decided). */
   const [userExpanded, setUserExpanded] = React.useState(preferExpanded)
   const livePreview = state.frameData?.[index] ?? item
@@ -431,16 +432,16 @@ export default function Frame({
     Haptics.selectionAsync()
     openScore(index)
   }
-  /**
-   * Close game-type toggle: per-leg tons/180s/closes (not inferred from series).
-   * Granular trackTons/trackHeavyTons/trackCloses still filter which steppers appear.
-   */
   const showLegTallies =
     showClose &&
     (trackStats ||
       !hasConfiguredFlags ||
       configuredFlags.trackStats !== false)
-  const hidePlayerStats = showLegTallies
+  const canAdjustStats =
+    showLegTallies ||
+    statFlags.trackTons ||
+    statFlags.trackHeavyTons ||
+    statFlags.trackCloses
 
   const gate = resolveFrameGate(state.frameData, index)
   // PreferExpanded / becoming active opens the card (see effects above), but the
@@ -470,9 +471,6 @@ export default function Frame({
     const throwing = x01Board?.active === side && !x01Board.done
     // Legs are derived from closes / Win — no manual +/- counter.
     if (!showScore && !showClose && !showSeries && !showLegTallies) return null
-    const tallyTons = trackStats ? statFlags.trackTons : true
-    const tallyHeavy = trackStats ? statFlags.trackHeavyTons : true
-    const tallyCloses = trackStats ? statFlags.trackCloses : true
     return (
       <View
         style={{
@@ -505,15 +503,15 @@ export default function Frame({
             </Text>
           </View>
         ) : null}
-        {showLegTallies ? (
+        {showLegTallies && manualStats ? (
           <LegLines
             frameIndex={index}
             side={side}
             games={games}
             seriesMode={seriesMode}
-            trackTons={tallyTons}
-            trackHeavyTons={tallyHeavy}
-            trackCloses={tallyCloses}
+            trackTons={trackStats ? statFlags.trackTons : true}
+            trackHeavyTons={trackStats ? statFlags.trackHeavyTons : true}
+            trackCloses={trackStats ? statFlags.trackCloses : true}
             locked={locked}
           />
         ) : null}
@@ -706,6 +704,49 @@ export default function Frame({
             disabled={locked || !hasFirstDart || !hasPlayers}
           />
         ) : null}
+        {!opts?.collapsed && canAdjustStats ? (
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{checked: manualStats}}
+            onPress={() => {
+              Haptics.selectionAsync()
+              setManualStats(on => !on)
+            }}
+            style={{
+              alignSelf: 'flex-end',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              marginRight: 14,
+              marginBottom: 4,
+              minHeight: 32,
+            }}>
+            <Text style={{color: theme.muted, fontSize: 12, fontWeight: '800'}}>
+              {t('x01_adjust_stats')}
+            </Text>
+            <View
+              style={{
+                width: 36,
+                height: 20,
+                borderRadius: 10,
+                padding: 2,
+                backgroundColor: manualStats ? theme.home.button : theme.faint,
+                borderWidth: 1,
+                borderColor: manualStats ? theme.home.button : theme.cardBorder,
+                alignItems: manualStats ? 'flex-end' : 'flex-start',
+                justifyContent: 'center',
+              }}>
+              <View
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: 7,
+                  backgroundColor: '#fff',
+                }}
+              />
+            </View>
+          </Pressable>
+        ) : null}
         {!opts?.collapsed && opts?.showSharedFirstDart !== false ? (
           <FirstDart frameIndex={index} />
         ) : null}
@@ -717,7 +758,10 @@ export default function Frame({
       <Pressable
         accessible={false}
         accessibilityLabel={scoreLabel}
-        onPress={openSubscreen}
+        onPress={() => {
+          if (scoresheetChildHandledPress()) return
+          openSubscreen()
+        }}
         style={shellStyle}>
         {body}
       </Pressable>
@@ -923,7 +967,8 @@ export default function Frame({
             trackTons={statFlags.trackTons}
             trackHeavyTons={statFlags.trackHeavyTons}
             trackCloses={statFlags.trackCloses}
-            hideStats={hidePlayerStats}
+            manualStats={manualStats}
+            hideStats={showLegTallies}
             layout="ledger"
             refreshing={refreshing}
             ink={theme.home.ink}
@@ -979,7 +1024,8 @@ export default function Frame({
             trackTons={statFlags.trackTons}
             trackHeavyTons={statFlags.trackHeavyTons}
             trackCloses={statFlags.trackCloses}
-            hideStats={hidePlayerStats}
+            manualStats={manualStats}
+            hideStats={showLegTallies}
             layout="ledger"
             refreshing={refreshing}
             ink={theme.away.ink}
@@ -1041,7 +1087,8 @@ export default function Frame({
             trackTons={statFlags.trackTons}
             trackHeavyTons={statFlags.trackHeavyTons}
             trackCloses={statFlags.trackCloses}
-            hideStats={hidePlayerStats}
+            manualStats={manualStats}
+            hideStats={showLegTallies}
             layout="chips"
             focusedSlot={focusHome}
             onFocusSlot={setFocusHome}
@@ -1114,7 +1161,8 @@ export default function Frame({
             trackTons={statFlags.trackTons}
             trackHeavyTons={statFlags.trackHeavyTons}
             trackCloses={statFlags.trackCloses}
-            hideStats={hidePlayerStats}
+            manualStats={manualStats}
+            hideStats={showLegTallies}
             layout="chips"
             focusedSlot={focusAway}
             onFocusSlot={setFocusAway}
@@ -1180,7 +1228,8 @@ export default function Frame({
           trackTons={statFlags.trackTons}
           trackHeavyTons={statFlags.trackHeavyTons}
           trackCloses={statFlags.trackCloses}
-          hideStats={hidePlayerStats}
+          manualStats={manualStats}
+          hideStats={showLegTallies}
           layout="panel"
           refreshing={refreshing}
           ink={theme.home.ink}
@@ -1204,7 +1253,8 @@ export default function Frame({
           trackTons={statFlags.trackTons}
           trackHeavyTons={statFlags.trackHeavyTons}
           trackCloses={statFlags.trackCloses}
-          hideStats={hidePlayerStats}
+          manualStats={manualStats}
+          hideStats={showLegTallies}
           layout="panel"
           refreshing={refreshing}
           ink={theme.away.ink}

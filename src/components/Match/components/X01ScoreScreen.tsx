@@ -29,6 +29,7 @@ import {
   x01StorageKey,
   x01ThrowerName,
   x01ThrowerPlayerIdx,
+  x01ThrowerSlot,
   x01WinsNeeded,
   commitCountUpVisit,
   otherX01Side,
@@ -50,6 +51,7 @@ import React from 'react'
 import {useTranslation} from 'react-i18next'
 import {
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -102,6 +104,33 @@ function mapFrameVisits(
   }))
 }
 
+/** Keypad chips saved on the local undo stack, used when the live frame has not echoed them yet. */
+function visitsFromUndo(board: X01Board | null | undefined): VisitLogEntry[] {
+  if (!board?.undoStack?.length) return []
+  const entries: VisitLogEntry[] = []
+  board.undoStack.forEach((entry, i) => {
+    const visit = entry.visit
+    if (!visit) return
+    entries.push({
+      id: `undo-${i}-${visit.legIndex}-${visit.side}-${visit.points}-${visit.bust ? 1 : 0}-${visit.closed ? 1 : 0}-${visit.playerIdx}`,
+      side: visit.side,
+      legIndex: visit.legIndex,
+      points: visit.points,
+      bust: visit.bust,
+      closed: visit.closed,
+      playerIdx: visit.playerIdx,
+    })
+  })
+  return entries
+}
+
+function preferVisitLog(
+  remote: VisitLogEntry[],
+  fromUndo: VisitLogEntry[],
+): VisitLogEntry[] {
+  return remote.length >= fromUndo.length ? remote : fromUndo
+}
+
 function rosterNameAtSlot(
   nicknames: string[],
   playerIds: Array<number | null | undefined> | undefined,
@@ -125,6 +154,9 @@ const KEY_ROWS = [
 ] as const
 
 const KEY_GAP = 10
+/** Saira Extra Condensed Bold: ascender 1135 + descender 439, units per em 1000. Cap center sits on that line-box center. */
+const KEY_LINE = 1574 / 1000
+const KEY_CAP = 688 / 1000
 const KEY_FACE = '#2563EB'
 const KEY_FACE_PRESSED = '#93C5FD'
 const KEY_BORDER = 'rgba(255,255,255,0.25)'
@@ -158,6 +190,8 @@ function KeyCell({
         borderWidth: 1,
         borderColor: pressed ? '#FFFFFF' : KEY_BORDER,
         overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}>
       <Pressable
         accessibilityRole="button"
@@ -167,23 +201,31 @@ function KeyCell({
         onPressIn={() => setPressed(true)}
         onPressOut={() => setPressed(false)}
         style={{
-          width: '100%',
-          height: '100%',
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
           alignItems: 'center',
           justifyContent: 'center',
         }}>
         <TrekText
           numberOfLines={1}
-          adjustsFontSizeToFit
           style={{
-            width: '100%',
             textAlign: 'center',
             color: '#FFFFFF',
             fontSize,
-            lineHeight: fontSize,
-            fontWeight: '800',
+            lineHeight: Math.ceil(fontSize * KEY_LINE),
             includeFontPadding: false,
             textAlignVertical: 'center',
+            // Words already sit on the visual center. iOS draws the digits a little lower in this font.
+            transform: [
+              {
+                translateY: -Math.round(
+                  fontSize * (Platform.OS === 'ios' && /^[0-9]$/.test(label) ? 0.2 : 0.12),
+                ),
+              },
+            ],
           }}>
           {label}
         </TrekText>
@@ -318,8 +360,10 @@ export default function X01ScoreScreen({
   const {width, height} = useWindowDimensions()
   const landscape = width > height
   const keypadHeight = Math.round(height * (3 / 8))
-  const keyDigitSize = Math.max(28, Math.round(keypadHeight / 12))
-  const keyLabelSize = Math.max(15, Math.round(keyDigitSize * 0.55))
+  const keyRowHeight = (keypadHeight - KEY_GAP * 4) / 5
+  const keyDigitSize = Math.max(12, Math.floor((keyRowHeight * 0.58) / KEY_CAP))
+  const keyLabelSize = Math.max(11, Math.floor(keyDigitSize * 0.58))
+  const keyDeleteSize = Math.max(keyLabelSize + 4, Math.round(keyDigitSize * 0.9))
   const frame = state.frameData?.[frameIndex] as FrameType | undefined
   const matchId = Number(state.matchInfo?.match_id ?? 0)
   const homeTeamId = Number(state.matchInfo?.home_team_id ?? 0)
@@ -344,6 +388,7 @@ export default function X01ScoreScreen({
   const [tonAnvilPoints, setTonAnvilPoints] = React.useState(100)
   const [closeDoorKey, setCloseDoorKey] = React.useState(0)
   const [closeDoorFinished, setCloseDoorFinished] = React.useState(false)
+  const [badgeName, setBadgeName] = React.useState('')
   const [visitLog, setVisitLog] = React.useState<VisitLogEntry[]>([])
   const ready = board != null
   const lock = React.useRef(false)
@@ -383,11 +428,12 @@ export default function X01ScoreScreen({
     if (visitSeedKey.current !== key) {
       visitSeedKey.current = key
       skipRemoteVisitSync.current = false
-      setVisitLog(remote)
+      setVisitLog(prev => preferVisitLog(remote, prev))
       return
     }
     if (skipRemoteVisitSync.current) return
     setVisitLog(prev => {
+      if (remote.length === 0 && prev.length > 0) return prev
       if (remote.length === prev.length) {
         const same = remote.every(
           (r, i) =>
@@ -508,6 +554,12 @@ export default function X01ScoreScreen({
         scoringMode,
       )
       setBoard(initial)
+      setVisitLog(prev =>
+        preferVisitLog(
+          preferVisitLog(mapFrameVisits(snapshot.visits), visitsFromUndo(initial)),
+          prev,
+        ),
+      )
       const snap: X01BoardSnapshot = {
         mode: scoringMode,
         start: initial.start,
@@ -584,21 +636,23 @@ export default function X01ScoreScreen({
       ) {
         return prev
       }
-      if (storageKey) saveX01Board(storageKey, {...next, cricket: prev?.cricket ?? next.cricket})
-      return {
+      // Opening the screen has no previous board yet. Saving here would
+      // replace the stored undo stack before the local board finishes loading.
+      if (!prev) return next
+      const keepHistory =
+        prev.home === next.home &&
+        prev.away === next.away &&
+        prev.legIndex === next.legIndex &&
+        prev.start === next.start
+      const merged: X01Board = {
         ...next,
-        cricket: prev?.cricket ?? next.cricket,
-        homeThrower: prev?.homeThrower ?? 0,
-        awayThrower: prev?.awayThrower ?? 0,
-        undoStack:
-          prev &&
-          prev.home === next.home &&
-          prev.away === next.away &&
-          prev.active === next.active &&
-          prev.legIndex === next.legIndex
-            ? prev.undoStack
-            : [],
+        cricket: prev.cricket ?? next.cricket,
+        homeThrower: keepHistory ? prev.homeThrower : 0,
+        awayThrower: keepHistory ? prev.awayThrower : 0,
+        undoStack: keepHistory ? prev.undoStack : [],
       }
+      if (storageKey) saveX01Board(storageKey, merged)
+      return merged
     })
     x01Score?.publishBoard(frameIndex, {
       mode,
@@ -888,13 +942,16 @@ export default function X01ScoreScreen({
       points >= X01_TON_MIN &&
       points < MAX_X01_VISIT
     if (isMaxVisit) {
+      setBadgeName(throwerName?.trim() ?? '')
       setFireworksKey(n => n + 1)
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
     } else if (isClose) {
+      setBadgeName(throwerName?.trim() ?? '')
       setCloseDoorFinished(Boolean(result.board.done))
       setCloseDoorKey(n => n + 1)
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
     } else if (isTon) {
+      setBadgeName(throwerName?.trim() ?? '')
       setTonAnvilPoints(points)
       setTonAnvilKey(n => n + 1)
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
@@ -1070,9 +1127,10 @@ export default function X01ScoreScreen({
       </TrekText>
       {activeThrower && !done ? (
         <TrekText
+          numberOfLines={1}
           style={{
             color: active === 'home' ? theme.home.accent : theme.away.accent,
-            fontSize: 15,
+            fontSize: 26,
             fontWeight: '800',
             textAlign: 'center',
           }}>
@@ -1081,15 +1139,18 @@ export default function X01ScoreScreen({
       ) : null}
       <View
         style={{
-          flexDirection: 'row',
+          flexDirection: landscape ? 'column' : 'row',
           flex: landscape && !(mode === 'score' && hitEntry) ? 1 : undefined,
           gap: 8,
         }}>
         <SideScore
           side="home"
           name={state.matchInfo?.home_team_short_name || t('home')}
-          players={homeNames.join(' · ')}
+          playerNames={homeNames}
           thrower={homeThrower}
+          throwerIndex={
+            liveBoard ? x01ThrowerSlot(liveBoard, 'home', homeNames.length) : -1
+          }
           score={liveBoard?.home ?? start}
           legs={Number(frame.homeScore ?? 0)}
           active={active === 'home'}
@@ -1100,8 +1161,11 @@ export default function X01ScoreScreen({
         <SideScore
           side="away"
           name={state.matchInfo?.away_team_short_name || t('away')}
-          players={awayNames.join(' · ')}
+          playerNames={awayNames}
           thrower={awayThrower}
+          throwerIndex={
+            liveBoard ? x01ThrowerSlot(liveBoard, 'away', awayNames.length) : -1
+          }
           score={liveBoard?.away ?? start}
           legs={Number(frame.awayScore ?? 0)}
           active={active === 'away'}
@@ -1218,9 +1282,11 @@ export default function X01ScoreScreen({
                 disabled={done || !ready}
                 onPress={() => tapKey(key)}
                 fontSize={
-                  key === 'clear' || key === 'back'
-                    ? keyLabelSize
-                    : keyDigitSize
+                  key === 'back'
+                    ? keyDeleteSize
+                    : key === 'clear'
+                      ? keyLabelSize
+                      : keyDigitSize
                 }
               />
             ))}
@@ -1291,16 +1357,19 @@ export default function X01ScoreScreen({
       )}
       <X01Fireworks
         playKey={fireworksKey}
+        name={badgeName}
         onDone={() => setFireworksKey(0)}
       />
       <X01TonAnvil
         playKey={tonAnvilKey}
         points={tonAnvilPoints}
+        name={badgeName}
         onDone={() => setTonAnvilKey(0)}
       />
       <X01CloseDoor
         playKey={closeDoorKey}
         finished={closeDoorFinished}
+        name={badgeName}
         onDone={() => setCloseDoorKey(0)}
       />
     </View>
@@ -1679,8 +1748,9 @@ function CricketHits({
 function SideScore({
   side,
   name,
-  players,
+  playerNames,
   thrower,
+  throwerIndex,
   score,
   legs,
   active,
@@ -1690,8 +1760,9 @@ function SideScore({
 }: {
   side: X01Side
   name: string
-  players: string
+  playerNames: string[]
   thrower: string | null
+  throwerIndex: number
   score: number
   legs: number
   active: boolean
@@ -1741,10 +1812,43 @@ function SideScore({
         }}>
         {name}
       </TrekText>
-      {players ? (
-        <TrekText numberOfLines={1} style={{color: theme.muted, fontSize: 11, fontWeight: '600'}}>
-          {players}
-        </TrekText>
+      {playerNames.length > 0 ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            alignItems: 'center',
+            alignSelf: 'stretch',
+            gap: 4,
+          }}>
+          {playerNames.map((player, index) => {
+            const throwing = active && !done && index === throwerIndex
+            return (
+              <View
+                key={`${player}-${index}`}
+                style={
+                  throwing
+                    ? {
+                        backgroundColor: palette.button,
+                        borderRadius: 8,
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                      }
+                    : undefined
+                }>
+                <TrekText
+                  style={{
+                    color: throwing ? palette.onButton : theme.muted,
+                    fontSize: throwing ? 16 : 11,
+                    fontWeight: throwing ? '800' : '600',
+                  }}>
+                  {player}
+                </TrekText>
+              </View>
+            )
+          })}
+        </View>
       ) : null}
       <TrekText
         style={{
@@ -1759,7 +1863,7 @@ function SideScore({
         numberOfLines={1}
         style={{
           color: active && !done ? palette.accent : theme.muted,
-          fontSize: 11,
+          fontSize: active && !done ? 20 : 11,
           fontWeight: '800',
           textAlign: 'center',
         }}>
@@ -1799,6 +1903,15 @@ function resolveInitialBoard(
     Number.isFinite(remote.away)
   ) {
     const legIndex = Math.max(0, Math.trunc(Number(remote.legIndex) || 0))
+    const kept =
+      saved != null &&
+      saved.start === remote.start &&
+      saved.home === remote.home &&
+      saved.away === remote.away &&
+      saved.legIndex === legIndex &&
+      saved.done === remote.done
+        ? saved
+        : null
     const draft = {
       start: remote.start,
       legIndex,
@@ -1806,10 +1919,11 @@ function resolveInitialBoard(
       away: remote.away,
       active: remote.active,
       done: remote.done,
-      homeThrower: 0,
-      awayThrower: 0,
-      undoStack: [] as X01Board['undoStack'],
-      cricket: mode === 'score' ? emptyCricketBoard() : undefined,
+      homeThrower: kept?.homeThrower ?? 0,
+      awayThrower: kept?.awayThrower ?? 0,
+      undoStack: kept?.undoStack ?? ([] as X01Board['undoStack']),
+      cricket:
+        kept?.cricket ?? (mode === 'score' ? emptyCricketBoard() : undefined),
     }
     if (hasNoRecordedThrows(draft, mode, frame.visits)) {
       draft.active = x01ActiveForLeg(starter, legIndex)

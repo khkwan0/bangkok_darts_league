@@ -2,6 +2,7 @@ import {FrameType, MatchInfoDataType} from '@/components/Match/types'
 import {useMatch, useTeams} from '@/hooks'
 import i18n from '@/i18n'
 import {hydrateFrameLegs} from '@/lib/hydrateFrameLegs'
+import {applyScoresheetThrow, reconcileFrameThrowTallies} from '@/lib/scoresheetThrow'
 import {
   saveShowScoresheetTips,
   showScoresheetGateDialog,
@@ -194,10 +195,12 @@ const MatchReducer = (state: StateType, action: any) => {
       for (const [k, v] of Object.entries(stats)) {
         if (v !== undefined) next[k] = v
       }
-      const frame = hydrateFrameLegs({
-        ...state.frameData[frameIndex],
-        ...next,
-      } as FrameType)
+      const frame = reconcileFrameThrowTallies(
+        hydrateFrameLegs({
+          ...state.frameData[frameIndex],
+          ...next,
+        } as FrameType),
+      )
       const _frameData = [...state.frameData]
       _frameData[frameIndex] = frame
       return {
@@ -237,7 +240,11 @@ const MatchReducer = (state: StateType, action: any) => {
     }
     case 'SET_FRAMES': {
       const frames = Array.isArray(action.payload)
-        ? action.payload.map((f: FrameType) => hydrateFrameLegs(f))
+        ? action.payload.map((f: FrameType) =>
+            f?.type === 'section'
+              ? f
+              : reconcileFrameThrowTallies(hydrateFrameLegs(f)),
+          )
         : action.payload
       return {
         ...state,
@@ -280,6 +287,22 @@ const MatchReducer = (state: StateType, action: any) => {
         finalizeBusy: false,
         finalizeRejectedAt: Number(action.payload) || Date.now(),
       }
+    }
+    case 'APPLY_THROW': {
+      const {frameIndex, visit} = action.payload
+      const current = state.frameData?.[frameIndex]
+      if (!current || current.type === 'section') return state
+      const next = reconcileFrameThrowTallies(
+        hydrateFrameLegs(
+          applyScoresheetThrow(current, visit, {
+            homeTeamId: Number(state.matchInfo?.home_team_id ?? 0),
+            awayTeamId: Number(state.matchInfo?.away_team_id ?? 0),
+          }),
+        ),
+      )
+      const frameData = [...state.frameData]
+      frameData[frameIndex] = next
+      return {...state, frameData}
     }
     default:
       return state
@@ -382,10 +405,17 @@ export const MatchProvider = (props: any) => {
               'already_completed',
               'finalize_busy',
               'missing_player_or_team',
+              'finalize_close_not_closed',
+              'finalize_close_legs_incomplete',
             ].includes(reason)
-              ? `finalize_error_${reason}`
+              ? reason.startsWith('finalize_close')
+                ? reason
+                : `finalize_error_${reason}`
               : 'finalize_error'
-            Alert.alert(i18n.t('error'), i18n.t(msgKey))
+            Alert.alert(
+              i18n.t('error'),
+              i18n.t(msgKey, {games: String(data?.data?.games ?? '')}),
+            )
           }
         }
       }
@@ -791,23 +821,6 @@ export const MatchProvider = (props: any) => {
       newPlayer: false,
     }
     SocketSend('framestats', data)
-
-    // A 180 is also a ton — mirror 180 adjustments onto tons.
-    if (field === 'heavyTons') {
-      if (delta < 0) {
-        const statsKey = side === 'home' ? 'homePlayerStats' : 'awayPlayerStats'
-        const tonsFromLeg =
-          typeof legIndex === 'number'
-            ? Number(frame?.legs?.[legIndex]?.[statsKey]?.[playerIdx]?.tons ?? 0)
-            : null
-        const tons =
-          tonsFromLeg != null
-            ? tonsFromLeg
-            : Number(frame?.[statsKey]?.[playerIdx]?.tons ?? 0)
-        if (tons <= 0) return
-      }
-      SocketSend('framestats', {...data, field: 'tons'})
-    }
   }
 
   function RecordThrow(
@@ -834,6 +847,10 @@ export const MatchProvider = (props: any) => {
   ) {
     const frame = state.frameData[frameIdx]
     const initial = state.matchInfo.initialFrames?.[frameIdx]
+    dispatch({
+      type: 'APPLY_THROW',
+      payload: {frameIndex: frameIdx, visit},
+    })
     SocketSend('visit', {
       matchId: state.matchInfo.match_id,
       frameIdx,

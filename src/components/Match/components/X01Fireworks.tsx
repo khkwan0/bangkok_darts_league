@@ -381,9 +381,11 @@ function SkyDim({playKey, reduced}: {playKey: number; reduced: boolean}) {
 
 function OneEightyBadge({
   playKey,
+  name,
   reduced,
 }: {
   playKey: number
+  name: string
   reduced: boolean
 }) {
   const progress = useSharedValue(0)
@@ -419,6 +421,11 @@ function OneEightyBadge({
   return (
     <Animated.View style={[styles.badge, style]}>
       <Text style={styles.badgeText}>180</Text>
+      {name ? (
+        <Text numberOfLines={1} style={styles.badgeName}>
+          {name}
+        </Text>
+      ) : null}
     </Animated.View>
   )
 }
@@ -430,9 +437,11 @@ function OneEightyBadge({
  */
 export default function X01Fireworks({
   playKey,
+  name = '',
   onDone,
 }: {
   playKey: number
+  name?: string
   onDone?: () => void
 }) {
   const reduced = Boolean(useReducedMotion())
@@ -496,7 +505,7 @@ export default function X01Fireworks({
             />
           ))
         : null}
-      <OneEightyBadge playKey={activeKey} reduced={reduced} />
+      <OneEightyBadge playKey={activeKey} name={name} reduced={reduced} />
     </View>
   )
 
@@ -551,5 +560,15 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(251, 191, 36, 0.55)',
     textShadowOffset: {width: 0, height: 0},
     textShadowRadius: 16,
+  },
+  badgeName: {
+    marginTop: 2,
+    maxWidth: 220,
+    color: '#FFF7ED',
+    fontFamily: 'SairaExtraCondensed',
+    fontSize: 22,
+    fontWeight: 'normal',
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
 })

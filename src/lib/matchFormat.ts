@@ -3,6 +3,8 @@
  * Mirrors bkkleague_backend/web/src/lib/match-format-json.ts race/best-of logic.
  */
 
+import {closeGamesBlockReason} from '@/lib/closeGameFinalize'
+
 export type MatchPlayMode = 'full_play' | 'race_to' | 'best_of'
 
 export type DivisionFormatLite = {
@@ -604,6 +606,10 @@ type FinalizeFrame = {
   awayScore?: number
   homePlayerIds?: number[]
   awayPlayerIds?: number[]
+  label?: string
+  showClose?: boolean
+  showScore?: boolean
+  visits?: Array<{side?: string; points?: number}>
   /** Team id that throws first dart in this game. */
   firstDart?: number
 }
@@ -647,6 +653,11 @@ export function getFinalizeBlockReason(
       key: 'finalize_missing_first_dart',
       params: {games: missingFirstDart.join(', ')},
     }
+  }
+
+  const closeBlock = closeGamesBlockReason(playable, formatRaw)
+  if (closeBlock) {
+    return {key: closeBlock.key, params: {games: closeBlock.games}}
   }
 
   const missingWinner: number[] = []

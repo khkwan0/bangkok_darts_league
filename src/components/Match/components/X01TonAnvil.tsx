@@ -153,10 +153,12 @@ function FallingAnvil({playKey}: {playKey: number}) {
 function TonBadge({
   playKey,
   label,
+  name,
   reduced,
 }: {
   playKey: number
   label: string
+  name: string
   reduced: boolean
 }) {
   const progress = useSharedValue(0)
@@ -202,6 +204,11 @@ function TonBadge({
     <Animated.View style={[styles.badge, style]}>
       <Text style={styles.badgeText}>TON</Text>
       <Text style={styles.badgeScore}>{label}</Text>
+      {name ? (
+        <Text numberOfLines={1} style={styles.badgeName}>
+          {name}
+        </Text>
+      ) : null}
     </Animated.View>
   )
 }
@@ -213,10 +220,12 @@ function TonBadge({
 export default function X01TonAnvil({
   playKey,
   points,
+  name = '',
   onDone,
 }: {
   playKey: number
   points: number
+  name?: string
   onDone?: () => void
 }) {
   const reduced = Boolean(useReducedMotion())
@@ -263,7 +272,12 @@ export default function X01TonAnvil({
         <View style={styles.sky} />
         {!reduced ? <FallingAnvil playKey={activeKey} /> : null}
         <View style={styles.groundHint} />
-        <TonBadge playKey={activeKey} label={label} reduced={reduced} />
+        <TonBadge
+          playKey={activeKey}
+          label={label}
+          name={name}
+          reduced={reduced}
+        />
       </View>
     </Modal>
   )
@@ -427,5 +441,15 @@ const styles = StyleSheet.create({
     fontWeight: 'normal',
     fontVariant: ['tabular-nums'],
     letterSpacing: 1,
+  },
+  badgeName: {
+    marginTop: 2,
+    maxWidth: 220,
+    color: '#FFF7ED',
+    fontFamily: 'SairaExtraCondensed',
+    fontSize: 22,
+    fontWeight: 'normal',
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
 })

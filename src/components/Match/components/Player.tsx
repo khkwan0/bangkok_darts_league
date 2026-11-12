@@ -10,6 +10,25 @@ import {useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {Alert, Pressable, Text, View} from 'react-native'
 import {useScoresheetTheme} from './scoresheetTheme'
+
+/** Ignore a second roster open from the same tap (the scoresheet card is also pressable). */
+let childPressAt = 0
+let choosePlayerNavAt = 0
+
+export function noteScoresheetChildPress() {
+  childPressAt = Date.now()
+}
+
+export function scoresheetChildHandledPress() {
+  return Date.now() - childPressAt < 700
+}
+
+function claimChoosePlayerNav() {
+  const now = Date.now()
+  if (now - choosePlayerNavAt < 700) return false
+  choosePlayerNavAt = now
+  return true
+}
 import {
   isValidDartCheckout,
   MAX_DART_CHECKOUT,
@@ -42,8 +61,10 @@ interface PlayerProps {
   /** Focus layout: which slot is expanded for stats */
   focusedSlot?: number | null
   onFocusSlot?: (slot: number | null) => void
+  /** When true, show the manual ton / 180 / close editors instead of the table. */
+  manualStats?: boolean
   /**
-   * Series games show tons/180s/closes on per-leg rows instead of beside names.
+   * Close games keep manual tallies on the per-leg rows, not beside names.
    */
   hideStats?: boolean
 }
@@ -62,6 +83,133 @@ function PlayerSkeleton({ink}: {ink: string}) {
   )
 }
 
+function PlayerStatTable({
+  slots,
+  showTons,
+  showHeavyTons,
+  showCloses,
+  ink,
+  accent,
+  pressedSlot,
+  onPressSlot,
+  onLongPressSlot,
+  onPressIn,
+  onPressOut,
+}: {
+  slots: Array<{
+    slot: number
+    nickname?: string
+    filled: boolean
+    tons: number
+    heavyTons: number
+    closes: number
+  }>
+  showTons: boolean
+  showHeavyTons: boolean
+  showCloses: boolean
+  ink: string
+  accent: string
+  pressedSlot: number | null
+  onPressSlot: (slot: number) => void
+  onLongPressSlot: (slot: number) => void
+  onPressIn: (slot: number) => void
+  onPressOut: () => void
+}) {
+  const {t} = useTranslation()
+  const theme = useScoresheetTheme()
+  const columns = [
+    showTons ? {key: 'tons', label: t('stat_abbr_tons')} : null,
+    showHeavyTons ? {key: 'heavy', label: t('stat_abbr_heavy')} : null,
+    showCloses ? {key: 'closes', label: t('stat_abbr_closes')} : null,
+  ].filter((col): col is {key: string; label: string} => col != null)
+  return (
+    <View style={{width: '100%', maxWidth: '100%', gap: 1}}>
+      <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+        <View style={{flex: 1}} />
+        {columns.map(col => (
+          <Text
+            key={col.key}
+            style={{
+              width: 36,
+              textAlign: 'center',
+              color: theme.muted,
+              fontSize: 10,
+              fontWeight: '800',
+              letterSpacing: 0.3,
+            }}>
+            {col.label}
+          </Text>
+        ))}
+      </View>
+      {slots.map(row => {
+        const pressed = pressedSlot === row.slot
+        const values = {
+          tons: row.tons,
+          heavy: row.heavyTons,
+          closes: row.closes,
+        }
+        return (
+          <Pressable
+            key={row.slot}
+            onPress={() => onPressSlot(row.slot)}
+            onLongPress={
+              row.filled ? () => onLongPressSlot(row.slot) : undefined
+            }
+            onPressIn={() => {
+              noteScoresheetChildPress()
+              onPressIn(row.slot)
+            }}
+            onPressOut={onPressOut}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+              minHeight: 28,
+              paddingVertical: 2,
+            }}>
+            <View style={{flex: 1, minWidth: 0, justifyContent: 'center'}}>
+              {row.filled ? (
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: pressed ? accent : ink,
+                    fontSize: 14,
+                    fontWeight: '800',
+                  }}>
+                  {row.nickname}
+                </Text>
+              ) : (
+                <Row alignItems="center" style={{gap: 4}}>
+                  <MCI name="plus" size={14} color={ink} />
+                  <Text style={{color: ink, fontSize: 13, fontWeight: '700'}}>
+                    {t('player')}
+                  </Text>
+                </Row>
+              )}
+            </View>
+            {row.filled
+              ? columns.map(col => (
+                  <Text
+                    key={col.key}
+                    style={{
+                      width: 36,
+                      textAlign: 'center',
+                      color: ink,
+                      fontSize: 14,
+                      fontWeight: '800',
+                      fontVariant: ['tabular-nums'],
+                    }}>
+                    {values[col.key as 'tons' | 'heavy' | 'closes']}
+                  </Text>
+                ))
+              : null}
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+}
+
 function StatsBlock({
   size,
   tons,
@@ -75,7 +223,6 @@ function StatsBlock({
   locked,
   onDelta,
   horizontal,
-  /** Stack full-width rows — used in classic half-width panels. */
   stacked,
 }: {
   size: 'default' | 'compact'
@@ -231,6 +378,7 @@ export default function Player({
   mark,
   focusedSlot = null,
   onFocusSlot,
+  manualStats = false,
   hideStats = false,
 }: PlayerProps) {
   const router = useRouter()
@@ -251,11 +399,15 @@ export default function Player({
   const slotCount = isFlexible
     ? Math.min(maxCount, assigned.length + 1)
     : maxCount
-  const locked = !!(state.finalizedHome && state.finalizedAway)
-  const showTons = !hideStats && (trackTons ?? trackStats)
-  const showHeavyTons = !hideStats && (trackHeavyTons ?? trackStats)
-  const showCloses = !hideStats && (trackCloses ?? trackStats)
+  const trackedTons = Boolean(trackTons ?? trackStats)
+  const trackedHeavy = Boolean(trackHeavyTons ?? trackStats)
+  const trackedCloses = Boolean(trackCloses ?? trackStats)
+  const showAnyTracked = trackedTons || trackedHeavy || trackedCloses
+  const showTons = manualStats && !hideStats && trackedTons
+  const showHeavyTons = manualStats && !hideStats && trackedHeavy
+  const showCloses = manualStats && !hideStats && trackedCloses
   const showAnyPlayerStats = showTons || showHeavyTons || showCloses
+  const locked = !!(state.finalizedHome && state.finalizedAway)
   const statsKey = side === 'home' ? 'homePlayerStats' : 'awayPlayerStats'
   const playerStats = state.frameData?.[frameIndex]?.[statsKey] ?? []
   const accent = side === 'home' ? theme.home.button : theme.away.button
@@ -282,6 +434,7 @@ export default function Player({
   }
 
   const openChoosePlayer = (slot: number) => {
+    if (!claimChoosePlayerNav()) return
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
     if (state.finalizedHome && state.finalizedAway) {
       Alert.alert(t('match_completed'))
@@ -353,7 +506,40 @@ export default function Player({
     const playerId = playerIds[slot]
     const nickname = state?.teams?.[teamId]?.[playerId]?.nickname
     const filled = typeof playerId !== 'undefined' && !!nickname
-    const slotStat = playerStats[slot] ?? {tons: 0, heavyTons: 0, closes: 0}
+    const frame = state.frameData?.[frameIndex]
+    const legKey = side === 'home' ? 'homePlayerStats' : 'awayPlayerStats'
+    const legs = Array.isArray(frame?.legs) ? frame.legs : []
+    const fromLegs = legs.some(
+      (leg: any) => Array.isArray(leg?.[legKey]) && leg[legKey].length > 0,
+    )
+    const slotStat = fromLegs
+      ? {
+          tons: Math.max(
+            Number(playerStats[slot]?.tons ?? 0),
+            legs.reduce(
+              (sum: number, leg: any) =>
+                sum + Number(leg?.[legKey]?.[slot]?.tons ?? 0),
+              0,
+            ),
+          ),
+          heavyTons: Math.max(
+            Number(playerStats[slot]?.heavyTons ?? 0),
+            legs.reduce(
+              (sum: number, leg: any) =>
+                sum + Number(leg?.[legKey]?.[slot]?.heavyTons ?? 0),
+              0,
+            ),
+          ),
+          closes: Math.max(
+            Number(playerStats[slot]?.closes ?? 0),
+            legs.reduce(
+              (sum: number, leg: any) =>
+                sum + Number(leg?.[legKey]?.[slot]?.closes ?? 0),
+              0,
+            ),
+          ),
+        }
+      : (playerStats[slot] ?? {tons: 0, heavyTons: 0, closes: 0})
     return {playerId, nickname, filled, slotStat}
   }
 
@@ -363,6 +549,58 @@ export default function Player({
         {Array.from({length: Math.min(slotCount, 4)}, (_, slot) => (
           <PlayerSkeleton key={slot} ink={ink} />
         ))}
+      </View>
+    )
+  }
+
+  if (showAnyTracked && !manualStats) {
+    const rows = Array.from({length: slotCount}, (_, slot) => {
+      const meta = slotMeta(slot)
+      return {
+        slot,
+        nickname: meta.nickname,
+        filled: meta.filled,
+        tons: Number(meta.slotStat.tons ?? 0),
+        heavyTons: Number(meta.slotStat.heavyTons ?? 0),
+        closes: Number(meta.slotStat.closes ?? 0),
+      }
+    })
+    return (
+      <View style={{width: '100%', maxWidth: '100%', minWidth: 0}}>
+        <PlayerStatTable
+          slots={rows}
+          showTons={trackedTons}
+          showHeavyTons={trackedHeavy}
+          showCloses={trackedCloses}
+          ink={ink}
+          accent={accent}
+          pressedSlot={pressedSlot}
+          onPressSlot={openChoosePlayer}
+          onLongPressSlot={handleRemovePlayer}
+          onPressIn={setPressedSlot}
+          onPressOut={() => setPressedSlot(null)}
+        />
+        {hasBreak ? (
+          <View style={{alignItems: 'flex-start', marginTop: 6}}>
+            <View
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                borderRadius: 999,
+                backgroundColor: mark,
+              }}>
+              <Text
+                style={{
+                  color: '#FFFFFF',
+                  fontSize: 10,
+                  fontWeight: '800',
+                  letterSpacing: 0.6,
+                }}>
+                {t('first_break').toUpperCase()}
+              </Text>
+            </View>
+          </View>
+        ) : null}
       </View>
     )
   }
@@ -384,7 +622,9 @@ export default function Player({
             return (
               <Pressable
                 key={slot}
+                onPressIn={noteScoresheetChildPress}
                 onPress={() => {
+                  noteScoresheetChildPress()
                   if (!filled) {
                     openChoosePlayer(slot)
                     return
@@ -491,13 +731,6 @@ export default function Player({
                 UpdateFrameStats(frameIndex, side, field, d, activeFocus)
               }
             />
-            <Pressable
-              onPress={() => openChoosePlayer(activeFocus)}
-              style={{marginTop: 10, alignItems: 'center'}}>
-              <Text style={{color: accent, fontWeight: '700', fontSize: 12}}>
-                {t('change_player')}
-              </Text>
-            </Pressable>
           </View>
         ) : showAnyPlayerStats ? (
           <Text
@@ -542,7 +775,10 @@ export default function Player({
                 onLongPress={
                   filled ? () => handleRemovePlayer(slot) : undefined
                 }
-                onPressIn={() => setPressedSlot(slot)}
+                onPressIn={() => {
+                  noteScoresheetChildPress()
+                  setPressedSlot(slot)
+                }}
                 onPressOut={() => setPressedSlot(null)}
                 style={{flex: 1, minWidth: 0, justifyContent: 'center'}}>
                 {filled ? (
@@ -646,7 +882,10 @@ export default function Player({
               onLongPress={
                 filled ? () => handleRemovePlayer(slot) : undefined
               }
-              onPressIn={() => setPressedSlot(slot)}
+              onPressIn={() => {
+                noteScoresheetChildPress()
+                setPressedSlot(slot)
+              }}
               onPressOut={() => setPressedSlot(null)}
               style={{
                 paddingVertical: filled ? 2 : 14,

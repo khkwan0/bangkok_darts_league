@@ -31,6 +31,7 @@ import {
   resolveScoresheetControlFlags,
 } from '@/lib/matchFormat'
 import {hydrateFrameLegs} from '@/lib/hydrateFrameLegs'
+import {restoreThrowTallies} from '@/lib/scoresheetThrow'
 import {
   defaultScoresheetStatsView,
   loadScoresheetStatsView,
@@ -97,6 +98,7 @@ export default function ScoreSheet({
   const didScrollToActiveRef = React.useRef(false)
   const [refreshing, setRefreshing] = React.useState(false)
   const [scoringFrame, setScoringFrame] = React.useState<number | null>(null)
+  const sawScoringFrame = React.useRef(false)
   const [scoringMatchId, setScoringMatchId] = React.useState(resolvedMatchId)
   const {setHidden: setTabBarHidden} = useTabBarVisibility()
   if (scoringMatchId !== resolvedMatchId) {
@@ -111,6 +113,26 @@ export default function ScoreSheet({
     setTabBarHidden(scoringFrame != null)
     return () => setTabBarHidden(false)
   }, [embedded, scoringFrame, setTabBarHidden])
+
+  React.useEffect(() => {
+    if (scoringFrame != null) {
+      sawScoringFrame.current = true
+      return
+    }
+    if (!sawScoringFrame.current) return
+    const matchId = Number(matchInfo?.match_id)
+    const current = state.frameData
+    if (!matchId || !Array.isArray(current) || current.length === 0) return
+    let cancelled = false
+    ;(async () => {
+      const restored = await restoreThrowTallies(current, matchId)
+      if (cancelled || restored === current) return
+      dispatch({type: 'SET_FRAMES', payload: restored})
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [scoringFrame])
   // Side pad only on a full-screen regular layout — not inside home’s detail pane.
   const useSidePad = isRegular && !embedded
 
@@ -446,6 +468,13 @@ export default function ScoreSheet({
               })(),
             })
           }
+        })
+      }
+      const matchId = Number(matchInfo.match_id)
+      const restored = await restoreThrowTallies(__frames, matchId)
+      if (restored !== __frames) {
+        restored.forEach((frame, index) => {
+          __frames[index] = frame
         })
       }
       frames.current = __frames

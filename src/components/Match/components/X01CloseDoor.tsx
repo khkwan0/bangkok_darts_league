@@ -203,10 +203,12 @@ function SlammingDoor({playKey}: {playKey: number}) {
 function CloseBadge({
   playKey,
   label,
+  name,
   reduced,
 }: {
   playKey: number
   label: string
+  name: string
   reduced: boolean
 }) {
   const progress = useSharedValue(0)
@@ -247,6 +249,11 @@ function CloseBadge({
   return (
     <Animated.View style={[styles.badge, style]}>
       <Text style={styles.badgeText}>{label}</Text>
+      {name ? (
+        <Text numberOfLines={1} style={styles.badgeName}>
+          {name}
+        </Text>
+      ) : null}
     </Animated.View>
   )
 }
@@ -258,11 +265,13 @@ function CloseBadge({
 export default function X01CloseDoor({
   playKey,
   finished,
+  name = '',
   onDone,
 }: {
   playKey: number
   /** True when the close also finishes the match/game set. */
   finished?: boolean
+  name?: string
   onDone?: () => void
 }) {
   const reduced = Boolean(useReducedMotion())
@@ -311,6 +320,7 @@ export default function X01CloseDoor({
           <CloseBadge
             playKey={activeKey}
             label={label}
+            name={name}
             reduced={reduced}
           />
           {!reduced ? <SlammingDoor playKey={activeKey} /> : null}
@@ -517,5 +527,15 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(251, 191, 36, 0.4)',
     textShadowOffset: {width: 0, height: 0},
     textShadowRadius: 12,
+  },
+  badgeName: {
+    marginTop: 2,
+    maxWidth: 220,
+    color: '#FFF7ED',
+    fontFamily: 'SairaExtraCondensed',
+    fontSize: 22,
+    fontWeight: 'normal',
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
 })
