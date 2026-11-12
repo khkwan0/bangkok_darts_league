@@ -1,5 +1,9 @@
 import {useLeagueContext} from '@/context/LeagueContext'
 import config from '@/config'
+import {
+  type LiveCardScore,
+  parseLiveCardScoreEvent,
+} from '@/lib/liveCardScore'
 import {SOCKET_PING_INTERVAL_MS, SOCKET_PING_TIMEOUT_MS} from '@/lib/socketAuth'
 import {io, type Socket} from 'socket.io-client'
 import React, {
@@ -13,7 +17,7 @@ import {AppState, Platform} from 'react-native'
 
 const ROOM = 'livescores:cards'
 
-export type LiveCardScore = {home: number; away: number}
+export type {LiveCardScore}
 
 export type LiveCardConnection = 'connecting' | 'live' | 'offline'
 
@@ -25,32 +29,6 @@ type LiveCardScoresValue = {
 }
 
 const LiveCardScoresContext = createContext<LiveCardScoresValue | null>(null)
-
-function asScore(value: unknown): number | null {
-  const n = typeof value === 'number' ? value : Number(value)
-  if (!Number.isFinite(n) || n < 0) return null
-  return Math.trunc(n)
-}
-
-function eventFromPayload(payload: unknown): {
-  matchId: number
-  score: LiveCardScore | null
-} | null {
-  if (!payload || typeof payload !== 'object') return null
-  const row = payload as {
-    matchId?: unknown
-    home?: unknown
-    away?: unknown
-    clear?: unknown
-  }
-  const matchId = asScore(row.matchId)
-  if (matchId == null || matchId <= 0) return null
-  if (row.clear === true) return {matchId, score: null}
-  const home = asScore(row.home)
-  const away = asScore(row.away)
-  if (home == null || away == null) return null
-  return {matchId, score: {home, away}}
-}
 
 /**
  * Stays in the live-card room while the app is in the foreground.
@@ -108,7 +86,7 @@ export function LiveCardScoresProvider({children}: {children: React.ReactNode}) 
         if (!stopped) setConnection('connecting')
       })
       socket.on(ROOM, (payload: unknown) => {
-        const event = eventFromPayload(payload)
+        const event = parseLiveCardScoreEvent(payload)
         if (!event) return
         setScores(prev => ({
           ...prev,

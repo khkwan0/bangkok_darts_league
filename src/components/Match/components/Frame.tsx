@@ -1,6 +1,15 @@
 import {useMatchContext} from '@/context/MatchContext'
-import {useOpenX01Score} from '@/context/X01ScoreContext'
-import {parseX01Start} from '@/lib/x01Score'
+import {
+  useOpenX01Score,
+  useX01BoardSnapshot,
+  useX01Score,
+} from '@/context/X01ScoreContext'
+import {
+  loadX01Board,
+  parseX01Start,
+  scoresheetScoringMode,
+  x01StorageKey,
+} from '@/lib/x01Score'
 import type {ScoresheetStatsView} from '@/lib/scoresheetStatsView'
 import {
   anyPlayerStatFlags,
@@ -13,7 +22,7 @@ import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import * as Haptics from 'expo-haptics'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
-import {Pressable, Text, View} from 'react-native'
+import {Alert, Pressable, Text, View} from 'react-native'
 import {FrameProps} from '../types'
 import FirstDart from './FirstDart'
 import {
@@ -49,11 +58,18 @@ export default function Frame({
   statsView = 'full',
   preferExpanded = false,
 }: FrameProps) {
-  const {state, UpdateFrameWin, ClearFrameWinner, UpdateFrameStats}: any =
-    useMatchContext()
+  const {
+    state,
+    UpdateFrameWin,
+    ClearFrameWinner,
+    UpdateFrameStats,
+    SyncX01Board,
+  }: any = useMatchContext()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
   const openScore = useOpenX01Score()
+  const x01Score = useX01Score()
+  const x01Board = useX01BoardSnapshot(index)
   const [focusHome, setFocusHome] = React.useState<number | null>(null)
   const [focusAway, setFocusAway] = React.useState<number | null>(null)
   /** Manual expand for completed / upcoming (auto-collapses when the game is decided). */
@@ -301,8 +317,14 @@ export default function Frame({
   const showClose = !!(item.showClose ?? initial?.showClose)
   const showScore = !!(item.showScore ?? initial?.showScore)
   const showWin = !!(item.showWin ?? initial?.showWin)
+  const scoringMode = scoresheetScoringMode({showClose, showScore})
   const canOpenScore = (showClose || showScore) && !locked && openScore != null
+  const hasFirstDart = Number(item.firstDart ?? 0) > 0
+  // TEMP: allow X01 without a full roster so scoring can be tested first.
+  // Restore `frameHasCompleteRosters(...)` gate before release.
+  const hasPlayers = true
   const scoreStart = showClose ? parseX01Start(frameLabel, frameType) : null
+  const matchId = Number(state.matchInfo?.match_id ?? 0)
   const scoreLabel =
     showScore && !showClose
       ? t('x01_add_points')
@@ -310,8 +332,102 @@ export default function Frame({
         ? t('x01_score_game', {start: scoreStart})
         : t('x01_score_game_plain')
 
+  React.useEffect(() => {
+    const remote = livePreview?.x01
+    if (!scoringMode || !x01Score || !remote || remote.mode !== scoringMode) {
+      return
+    }
+    x01Score.publishBoard(index, {
+      mode: scoringMode,
+      start: remote.start,
+      home: remote.home,
+      away: remote.away,
+      active: remote.active,
+      legIndex: remote.legIndex,
+      done: remote.done,
+    })
+  }, [
+    scoringMode,
+    x01Score,
+    index,
+    livePreview?.x01?.mode,
+    livePreview?.x01?.start,
+    livePreview?.x01?.home,
+    livePreview?.x01?.away,
+    livePreview?.x01?.active,
+    livePreview?.x01?.legIndex,
+    livePreview?.x01?.done,
+  ])
+
+  React.useEffect(() => {
+    if (!scoringMode || !x01Score || matchId <= 0 || x01Board != null) return
+    const remote = livePreview?.x01
+    if (remote && remote.mode === scoringMode) {
+      x01Score.publishBoard(index, {
+        mode: scoringMode,
+        start: remote.start,
+        home: remote.home,
+        away: remote.away,
+        active: remote.active,
+        legIndex: remote.legIndex,
+        done: remote.done,
+      })
+      return
+    }
+    let cancelled = false
+    const key = x01StorageKey(matchId, index, scoringMode)
+    const start =
+      scoringMode === 'score'
+        ? 0
+        : (scoreStart ?? parseX01Start(frameLabel, frameType) ?? 501)
+    ;(async () => {
+      const saved = await loadX01Board(key)
+      if (cancelled || !saved) {
+        if (!cancelled && scoringMode === 'close') {
+          x01Score.publishBoard(index, {
+            mode: scoringMode,
+            start,
+            home: start,
+            away: start,
+            active: 'home',
+            legIndex: 0,
+            done: false,
+          })
+        }
+        return
+      }
+      x01Score.publishBoard(index, {
+        mode: scoringMode,
+        start: saved.start,
+        home: saved.home,
+        away: saved.away,
+        active: saved.active,
+        legIndex: saved.legIndex,
+        done: saved.done,
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    scoringMode,
+    x01Score,
+    matchId,
+    index,
+    x01Board,
+    scoreStart,
+    frameLabel,
+    frameType,
+    livePreview?.x01,
+  ])
+
   function openSubscreen() {
     if (!openScore || !canOpenScore) return
+    // TEMP: players gate disabled — see hasPlayers above.
+    if (!hasFirstDart) {
+      Alert.alert(t('x01_need_first_dart_title'), t('x01_need_first_dart_body'))
+      return
+    }
     Haptics.selectionAsync()
     openScore(index)
   }
@@ -341,9 +457,19 @@ export default function Frame({
   function sideMetaExtras(side: 'home' | 'away') {
     const palette = side === 'home' ? theme.home : theme.away
     const legs = side === 'home' ? live.homeScore : live.awayScore
-    const board = side === 'home' ? live.homeBoardScore : live.awayBoardScore
+    const serverBoard =
+      side === 'home' ? live.homeBoardScore : live.awayBoardScore
+    const liveTotal =
+      x01Board != null
+        ? side === 'home'
+          ? x01Board.home
+          : x01Board.away
+        : showClose
+          ? (scoreStart ?? 501)
+          : Number(serverBoard ?? 0)
+    const throwing = x01Board?.active === side && !x01Board.done
     // Legs are derived from closes / Win — no manual +/- counter.
-    if (!showScore && !showSeries && !showLegTallies) return null
+    if (!showScore && !showClose && !showSeries && !showLegTallies) return null
     const tallyTons = trackStats ? statFlags.trackTons : true
     const tallyHeavy = trackStats ? statFlags.trackHeavyTons : true
     const tallyCloses = trackStats ? statFlags.trackCloses : true
@@ -353,8 +479,32 @@ export default function Frame({
           marginTop: 8,
           gap: 8,
           width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
           alignItems: 'center',
         }}>
+        {showClose ? (
+          <View style={{alignItems: 'center', gap: 2, maxWidth: '100%'}}>
+            <Text
+              style={{
+                color: palette.ink,
+                fontSize: 28,
+                fontWeight: '800',
+                fontVariant: ['tabular-nums'],
+              }}>
+              {liveTotal}
+            </Text>
+            <Text
+              style={{
+                color: throwing ? theme.gold : theme.muted,
+                fontSize: 11,
+                fontWeight: '700',
+                textTransform: 'uppercase',
+              }}>
+              {throwing ? t('x01_throwing') : t('x01_remaining')}
+            </Text>
+          </View>
+        ) : null}
         {showLegTallies ? (
           <LegLines
             frameIndex={index}
@@ -378,18 +528,35 @@ export default function Frame({
           {showScore ? (
             <StatValueInput
               label={t('score')}
-              value={Number(board ?? 0)}
+              value={Number(
+                x01Board != null
+                  ? side === 'home'
+                    ? x01Board.home
+                    : x01Board.away
+                  : (serverBoard ?? 0),
+              )}
               ink={palette.ink}
               accent={palette.button}
               disabled={locked}
-              onChange={next =>
-                UpdateFrameStats(
-                  index,
-                  side,
-                  'boardScore',
-                  next - Number(board ?? 0),
+              onChange={next => {
+                const current = Number(
+                  x01Board != null
+                    ? side === 'home'
+                      ? x01Board.home
+                      : x01Board.away
+                    : (serverBoard ?? 0),
                 )
-              }
+                UpdateFrameStats(index, side, 'boardScore', next - current)
+                if (x01Board && x01Score) {
+                  const snap = {
+                    ...x01Board,
+                    home: side === 'home' ? next : x01Board.home,
+                    away: side === 'away' ? next : x01Board.away,
+                  }
+                  x01Score.publishBoard(index, snap)
+                  SyncX01Board?.(index, snap)
+                }
+              }}
             />
           ) : null}
           {showSeries ? (
@@ -520,26 +687,29 @@ export default function Frame({
           : awayWon
             ? theme.away.accent
             : theme.cardBorder,
+        alignSelf: 'stretch' as const,
+        maxWidth: '100%' as const,
+        overflow: 'hidden' as const,
       },
       theme.shadow,
     ]
     const body = (
       <>
         {titleBar({collapsed: opts?.collapsed})}
-        {!opts?.collapsed && opts?.showSharedFirstDart !== false ? (
-          <FirstDart frameIndex={index} />
-        ) : null}
-        {children}
-        {showClose || showScore ? (
+        {!opts?.collapsed && (showClose || showScore) ? (
           <X01ScoreButton
             frameIndex={index}
             label={frameLabel}
             type={frameType}
             showClose={showClose}
             showScore={showScore}
-            disabled={locked}
+            disabled={locked || !hasFirstDart || !hasPlayers}
           />
         ) : null}
+        {!opts?.collapsed && opts?.showSharedFirstDart !== false ? (
+          <FirstDart frameIndex={index} />
+        ) : null}
+        {children}
       </>
     )
     if (!canOpenScore) return <View style={shellStyle}>{body}</View>
@@ -966,12 +1136,17 @@ export default function Frame({
     const won = side === 'home' ? homeWon : awayWon
     const lost = !!winner && !won
     return {
-      flex: 1,
+      flexGrow: 1,
+      flexShrink: 1,
+      flexBasis: 0,
+      minWidth: 0,
+      maxWidth: '100%' as const,
+      overflow: 'hidden' as const,
       flexDirection: 'column' as const,
       justifyContent: 'space-between' as const,
       borderRadius: 14,
       paddingVertical: 12,
-      paddingHorizontal: 8,
+      paddingHorizontal: 6,
       backgroundColor: won ? palette.panelWinner : palette.panel,
       borderWidth: won ? 1.5 : 1,
       borderColor: won ? palette.accent : palette.border,
@@ -984,8 +1159,10 @@ export default function Frame({
       style={{
         flexDirection: 'row',
         alignItems: 'stretch',
-        gap: 8,
-        paddingHorizontal: 10,
+        alignSelf: 'stretch',
+        width: '100%',
+        gap: 6,
+        paddingHorizontal: 8,
         paddingBottom: 10,
       }}>
       <View style={panel('home')}>

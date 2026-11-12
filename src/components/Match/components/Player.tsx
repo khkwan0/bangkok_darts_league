@@ -75,6 +75,8 @@ function StatsBlock({
   locked,
   onDelta,
   horizontal,
+  /** Stack full-width rows — used in classic half-width panels. */
+  stacked,
 }: {
   size: 'default' | 'compact'
   tons: number
@@ -88,10 +90,64 @@ function StatsBlock({
   locked: boolean
   onDelta: (field: 'tons' | 'heavyTons' | 'closes', delta: number) => void
   horizontal?: boolean
+  stacked?: boolean
 }) {
   const {t} = useTranslation()
-  const abbrev = size === 'compact'
+  const abbrev = size === 'compact' || stacked
   if (!showTons && !showHeavyTons && !showCloses) return null
+  if (stacked) {
+    return (
+      <View
+        style={{
+          gap: 6,
+          width: '100%',
+          maxWidth: '100%',
+          marginTop: 6,
+          alignSelf: 'stretch',
+        }}>
+        {showTons ? (
+          <StatStepper
+            layout="inline"
+            size={size}
+            label={abbrev ? t('stat_abbr_tons') : t('tons')}
+            value={tons}
+            ink={ink}
+            accent={accent}
+            disabled={locked}
+            onDelta={d => onDelta('tons', d)}
+          />
+        ) : null}
+        {showHeavyTons ? (
+          <StatStepper
+            layout="inline"
+            size={size}
+            label={abbrev ? t('stat_abbr_heavy') : t('heavy')}
+            value={heavyTons}
+            ink={ink}
+            accent={accent}
+            disabled={locked}
+            onDelta={d => onDelta('heavyTons', d)}
+          />
+        ) : null}
+        {showCloses ? (
+          <StatValueInput
+            layout="inline"
+            size={size}
+            label={abbrev ? t('stat_abbr_closes') : t('closes')}
+            value={closes}
+            ink={ink}
+            accent={accent}
+            disabled={locked}
+            max={MAX_DART_CHECKOUT}
+            isValid={isValidDartCheckout}
+            invalidTitle={t('invalid_checkout_title')}
+            invalidMessage={t('invalid_checkout_message')}
+            onChange={next => onDelta('closes', next - closes)}
+          />
+        ) : null}
+      </View>
+    )
+  }
   return (
     <View
       style={{
@@ -101,6 +157,7 @@ function StatsBlock({
         alignItems: 'center',
         gap: horizontal ? 12 : size === 'compact' ? 4 : 8,
         marginTop: horizontal ? 0 : size === 'compact' ? 4 : 6,
+        maxWidth: '100%',
       }}>
       {showTons ? (
         <StatStepper
@@ -340,7 +397,8 @@ export default function Player({
                 }
                 style={{
                   paddingHorizontal: 12,
-                  paddingVertical: 8,
+                  paddingVertical: filled ? 8 : 14,
+                  minHeight: filled ? undefined : 44,
                   borderRadius: 999,
                   borderWidth: selected ? 2 : 1,
                   borderColor: selected ? accent : theme.cardBorder,
@@ -351,6 +409,7 @@ export default function Player({
                     : theme.faint,
                   minWidth: 72,
                   alignItems: 'center',
+                  justifyContent: 'center',
                 }}>
                 {filled ? (
                   <Text
@@ -470,7 +529,8 @@ export default function Player({
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 8,
-                paddingVertical: 6,
+                paddingVertical: filled ? 6 : 12,
+                minHeight: filled ? undefined : 48,
                 paddingHorizontal: 8,
                 borderRadius: 10,
                 backgroundColor: theme.faint,
@@ -484,7 +544,7 @@ export default function Player({
                 }
                 onPressIn={() => setPressedSlot(slot)}
                 onPressOut={() => setPressedSlot(null)}
-                style={{flex: 1, minWidth: 0}}>
+                style={{flex: 1, minWidth: 0, justifyContent: 'center'}}>
                 {filled ? (
                   <Text
                     numberOfLines={1}
@@ -551,7 +611,13 @@ export default function Player({
 
   // —— Full panel: stacked name + large steppers (2-col parent) ——
   return (
-    <View style={{alignItems: 'center', width: '100%'}}>
+    <View
+      style={{
+        alignItems: 'center',
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+      }}>
       {Array.from({length: slotCount}, (_, slot) => {
         const {nickname, filled, slotStat} = slotMeta(slot)
         const pressed = pressedSlot === slot
@@ -561,8 +627,19 @@ export default function Player({
             key={slot}
             style={
               slot > 0
-                ? {marginTop: 10, alignItems: 'center', width: '100%'}
-                : {alignItems: 'center', width: '100%'}
+                ? {
+                    marginTop: 10,
+                    alignItems: 'center',
+                    width: '100%',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                  }
+                : {
+                    alignItems: 'center',
+                    width: '100%',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                  }
             }>
             <Pressable
               onPress={() => openChoosePlayer(slot)}
@@ -571,7 +648,13 @@ export default function Player({
               }
               onPressIn={() => setPressedSlot(slot)}
               onPressOut={() => setPressedSlot(null)}
-              style={{paddingVertical: 2}}>
+              style={{
+                paddingVertical: filled ? 2 : 14,
+                minHeight: filled ? undefined : 48,
+                justifyContent: 'center',
+                alignSelf: 'stretch',
+                maxWidth: '100%',
+              }}>
               {filled ? (
                 <Text
                   numberOfLines={2}
@@ -599,6 +682,7 @@ export default function Player({
             {showAnyPlayerStats && filled ? (
               <StatsBlock
                 size="default"
+                stacked
                 tons={Number(slotStat.tons ?? 0)}
                 heavyTons={Number(slotStat.heavyTons ?? 0)}
                 closes={Number(slotStat.closes ?? 0)}

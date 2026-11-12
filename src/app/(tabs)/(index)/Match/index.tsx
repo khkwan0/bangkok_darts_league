@@ -13,6 +13,7 @@ import { FrameType } from '@/components/Match/types'
 import { useLeagueContext } from '@/context/LeagueContext'
 import { useMatchContext } from '@/context/MatchContext'
 import {ScoresheetPadProvider} from '@/context/ScoresheetPadContext'
+import {useTabBarVisibility} from '@/context/TabBarVisibilityContext'
 import {X01ScoreProvider} from '@/context/X01ScoreContext'
 import X01ScoreScreen from '@/components/Match/components/X01ScoreScreen'
 import { useIsRegularLayout } from '@/hooks/useLayoutMode'
@@ -97,10 +98,19 @@ export default function ScoreSheet({
   const [refreshing, setRefreshing] = React.useState(false)
   const [scoringFrame, setScoringFrame] = React.useState<number | null>(null)
   const [scoringMatchId, setScoringMatchId] = React.useState(resolvedMatchId)
+  const {setHidden: setTabBarHidden} = useTabBarVisibility()
   if (scoringMatchId !== resolvedMatchId) {
     setScoringMatchId(resolvedMatchId)
     setScoringFrame(null)
   }
+  React.useEffect(() => {
+    if (embedded) {
+      setTabBarHidden(false)
+      return
+    }
+    setTabBarHidden(scoringFrame != null)
+    return () => setTabBarHidden(false)
+  }, [embedded, scoringFrame, setTabBarHidden])
   // Side pad only on a full-screen regular layout — not inside home’s detail pane.
   const useSidePad = isRegular && !embedded
 

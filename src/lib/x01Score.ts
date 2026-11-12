@@ -20,10 +20,17 @@ export type X01Undo = {
   active: X01Side
   legIndex: number
   done: boolean
+  homeThrower: number
+  awayThrower: number
   /** Set when that visit recorded a checkout. */
-  close: {side: X01Side; points: number; legIndex: number} | null
+  close: {
+    side: X01Side
+    points: number
+    legIndex: number
+    playerIdx: number
+  } | null
   /** Set when that visit was added to a Score-type total. */
-  boardDelta: {side: X01Side; points: number} | null
+  boardDelta: {side: X01Side; points: number; playerIdx?: number} | null
   /** Cricket marks before this visit, when the board was tracking hits. */
   cricket?: CricketBoard | null
   /** Throw written to match Redis, so undo can reverse the same visit. */
@@ -34,6 +41,7 @@ export type X01Undo = {
     bust: boolean
     closed: boolean
     board: boolean
+    playerIdx: number
   } | null
 }
 
@@ -44,9 +52,20 @@ export type X01Board = {
   away: number
   active: X01Side
   done: boolean
-  undo: X01Undo | null
+  /** Next thrower slot for home (entry order); modulo roster length when shown. */
+  homeThrower: number
+  /** Next thrower slot for away (entry order); modulo roster length when shown. */
+  awayThrower: number
+  /** Prior board snapshots; newest last. Supports multi-step undo. */
+  undoStack: X01Undo[]
   /** Present on Score games when hits are being tracked. */
   cricket?: CricketBoard | null
+}
+
+export function canUndoX01(
+  board: Pick<X01Board, 'undoStack'> | null | undefined,
+): boolean {
+  return Boolean(board?.undoStack?.length)
 }
 
 const memory = new Map<string, X01Board>()
@@ -90,6 +109,88 @@ export function parseX01Start(
 
 export function otherX01Side(side: X01Side): X01Side {
   return side === 'home' ? 'away' : 'home'
+}
+
+export function x01RosterNames(nicknames: string[]): string[] {
+  return nicknames.filter(n => String(n ?? '').trim() !== '')
+}
+
+/** Slot for the side that throws next (wraps with roster length). */
+export function x01ThrowerSlot(
+  board: Pick<X01Board, 'homeThrower' | 'awayThrower'>,
+  side: X01Side,
+  rosterLength: number,
+): number {
+  if (rosterLength <= 0) return 0
+  const raw = side === 'home' ? board.homeThrower : board.awayThrower
+  return ((Math.trunc(Number(raw) || 0) % rosterLength) + rosterLength) % rosterLength
+}
+
+/**
+ * Scoresheet `playerIds` indices with a real player (thrower roster order).
+ * Thrower slots index this list, not sparse `playerIds` holes.
+ */
+export function x01FilledPlayerSlots(
+  playerIds: Array<number | null | undefined> | undefined,
+): number[] {
+  if (!Array.isArray(playerIds)) return []
+  const out: number[] = []
+  for (let i = 0; i < playerIds.length; i++) {
+    if (Number(playerIds[i]) > 0) out.push(i)
+  }
+  return out
+}
+
+/** Scoresheet playerIdx for the active thrower on a side. */
+export function x01ThrowerPlayerIdx(
+  board: Pick<X01Board, 'homeThrower' | 'awayThrower'>,
+  side: X01Side,
+  playerIds: Array<number | null | undefined> | undefined,
+): number {
+  const slots = x01FilledPlayerSlots(playerIds)
+  if (slots.length === 0) return 0
+  return slots[x01ThrowerSlot(board, side, slots.length)] ?? 0
+}
+
+/** Who throws next for a side from the board’s thrower slot. */
+export function x01ThrowerName(
+  nicknames: string[],
+  board: Pick<X01Board, 'homeThrower' | 'awayThrower'>,
+  side: X01Side,
+): string | null {
+  const roster = x01RosterNames(nicknames)
+  if (roster.length === 0) return null
+  return roster[x01ThrowerSlot(board, side, roster.length)] ?? null
+}
+
+/** Manual pick — next auto advance continues from this person. */
+export function setX01Thrower(
+  board: X01Board,
+  side: X01Side,
+  slot: number,
+  rosterLength: number,
+): X01Board {
+  if (rosterLength <= 0) return board
+  const next =
+    ((Math.trunc(Number(slot) || 0) % rosterLength) + rosterLength) %
+    rosterLength
+  return side === 'home'
+    ? {...board, homeThrower: next}
+    : {...board, awayThrower: next}
+}
+
+/** After a visit, move that side’s slot to the next roster player. */
+export function advanceX01Thrower(
+  board: X01Board,
+  side: X01Side,
+  rosterLength: number,
+): X01Board {
+  if (rosterLength <= 0) return board
+  const cur = x01ThrowerSlot(board, side, rosterLength)
+  const next = (cur + 1) % rosterLength
+  return side === 'home'
+    ? {...board, homeThrower: next}
+    : {...board, awayThrower: next}
 }
 
 /** Who throws first in leg 0. Unknown first dart starts with home. */
@@ -143,8 +244,9 @@ export function x01LegWins(frame: FrameType): {home: number; away: number} {
 }
 
 /**
- * Subtract a visit from the remaining total.
- * Exactly 0 closes. A negative result flips to a positive remainder.
+ * Subtract a visit from the remaining total (classic X01).
+ * Exactly 0 closes. Going under 0 is a bust: remaining stays put.
+ * (`reflected` means bust — kept for call-site compatibility.)
  */
 export function applyX01Visit(
   remaining: number,
@@ -155,7 +257,7 @@ export function applyX01Visit(
   if (hit <= 0) return {remaining: left, closed: false, reflected: false}
   const next = left - hit
   if (next === 0) return {remaining: 0, closed: true, reflected: false}
-  if (next < 0) return {remaining: -next, closed: false, reflected: true}
+  if (next < 0) return {remaining: left, closed: false, reflected: true}
   return {remaining: next, closed: false, reflected: false}
 }
 
@@ -194,7 +296,9 @@ export function freshX01Board(args: {
     away: start,
     active: args.active,
     done: Boolean(args.done),
-    undo: null,
+    homeThrower: 0,
+    awayThrower: 0,
+    undoStack: [],
   }
 }
 
@@ -204,13 +308,15 @@ function isSide(value: unknown): value is X01Side {
 
 function parseBoardDelta(
   value: unknown,
-): {side: X01Side; points: number} | null {
+): {side: X01Side; points: number; playerIdx?: number} | null {
   if (!value || typeof value !== 'object') return null
-  const row = value as {side?: unknown; points?: unknown}
+  const row = value as {side?: unknown; points?: unknown; playerIdx?: unknown}
   if (!isSide(row.side) || !Number.isFinite(Number(row.points))) return null
+  const playerIdx = Math.max(0, Math.trunc(Number(row.playerIdx) || 0))
   return {
     side: row.side,
     points: Math.max(0, Math.trunc(Number(row.points))),
+    ...(Number.isFinite(Number(row.playerIdx)) ? {playerIdx} : {}),
   }
 }
 
@@ -223,6 +329,7 @@ function parseVisitMark(value: unknown): X01Undo['visit'] {
     bust?: unknown
     closed?: unknown
     board?: unknown
+    playerIdx?: unknown
   }
   if (!isSide(row.side) || !Number.isFinite(Number(row.points))) return null
   return {
@@ -232,6 +339,7 @@ function parseVisitMark(value: unknown): X01Undo['visit'] {
     bust: Boolean(row.bust),
     closed: Boolean(row.closed),
     board: Boolean(row.board),
+    playerIdx: Math.max(0, Math.trunc(Number(row.playerIdx) || 0)),
   }
 }
 
@@ -252,6 +360,7 @@ function parseUndo(value: unknown): X01Undo | null {
           side: close.side,
           points: Math.max(0, Math.trunc(Number(close.points))),
           legIndex: Math.max(0, Math.trunc(Number(close.legIndex))),
+          playerIdx: Math.max(0, Math.trunc(Number(close.playerIdx) || 0)),
         }
       : null
   return {
@@ -260,6 +369,8 @@ function parseUndo(value: unknown): X01Undo | null {
     active: row.active,
     legIndex: Math.max(0, Math.trunc(Number(row.legIndex ?? 0))),
     done: Boolean(row.done),
+    homeThrower: Math.max(0, Math.trunc(Number(row.homeThrower ?? 0))),
+    awayThrower: Math.max(0, Math.trunc(Number(row.awayThrower ?? 0))),
     close: parsedClose,
     boardDelta: parseBoardDelta(row.boardDelta),
     visit: parseVisitMark(row.visit),
@@ -269,9 +380,20 @@ function parseUndo(value: unknown): X01Undo | null {
   }
 }
 
+function parseUndoStack(row: Record<string, unknown>): X01Undo[] {
+  if (Array.isArray(row.undoStack)) {
+    return row.undoStack
+      .map(parseUndo)
+      .filter((entry): entry is X01Undo => entry != null)
+  }
+  // Legacy single-snapshot boards.
+  const single = parseUndo(row.undo)
+  return single ? [single] : []
+}
+
 export function parseX01Board(raw: unknown): X01Board | null {
   if (!raw || typeof raw !== 'object') return null
-  const row = raw as X01Board
+  const row = raw as X01Board & Record<string, unknown>
   if (!isSide(row.active)) return null
   const start = Math.trunc(Number(row.start))
   const home = Math.trunc(Number(row.home))
@@ -286,7 +408,9 @@ export function parseX01Board(raw: unknown): X01Board | null {
     away: Math.max(0, away),
     active: row.active,
     done: Boolean(row.done),
-    undo: parseUndo(row.undo),
+    homeThrower: Math.max(0, Math.trunc(Number(row.homeThrower ?? 0))),
+    awayThrower: Math.max(0, Math.trunc(Number(row.awayThrower ?? 0))),
+    undoStack: parseUndoStack(row as Record<string, unknown>),
     ...('cricket' in row
       ? {cricket: parseCricketBoard(row.cricket) ?? null}
       : {}),
@@ -301,7 +425,12 @@ export type X01CommitResult =
       reflected: boolean
       closed: boolean
       /** Checkout to send. Null when the visit did not finish. */
-      close: {side: X01Side; points: number; legIndex: number} | null
+      close: {
+        side: X01Side
+        points: number
+        legIndex: number
+        playerIdx: number
+      } | null
       nextRemaining: number
     }
 
@@ -315,16 +444,23 @@ export function commitX01Visit(
   points: number,
   legWins: {home: number; away: number},
   need: number,
+  playerIdx = 0,
 ): X01CommitResult {
   const hit = Math.trunc(Number(points) || 0)
   if (board.done || hit <= 0 || hit > MAX_X01_VISIT) return {type: 'ignore'}
   const side = board.active
+  const throwerIdx = Math.max(0, Math.trunc(Number(playerIdx) || 0))
   const current = side === 'home' ? board.home : board.away
   const applied = applyX01Visit(current, hit)
   let home = side === 'home' ? applied.remaining : board.home
   let away = side === 'away' ? applied.remaining : board.away
   const close = applied.closed
-    ? {side, points: hit, legIndex: board.legIndex}
+    ? {
+        side,
+        points: hit,
+        legIndex: board.legIndex,
+        playerIdx: throwerIdx,
+      }
     : null
   const homeWins = legWins.home + (close?.side === 'home' ? 1 : 0)
   const awayWins = legWins.away + (close?.side === 'away' ? 1 : 0)
@@ -333,13 +469,33 @@ export function commitX01Visit(
   let legIndex = board.legIndex
   let active = otherX01Side(side)
   let done = false
+  let homeThrower = board.homeThrower
+  let awayThrower = board.awayThrower
   if (close && !finishes) {
     home = board.start
     away = board.start
     legIndex = board.legIndex + 1
+    homeThrower = 0
+    awayThrower = 0
   } else if (finishes) {
     active = side
     done = true
+  } else if (side === 'home') {
+    homeThrower = board.homeThrower + 1
+  } else {
+    awayThrower = board.awayThrower + 1
+  }
+  const undoEntry: X01Undo = {
+    home: board.home,
+    away: board.away,
+    active: board.active,
+    legIndex: board.legIndex,
+    done: board.done,
+    homeThrower: board.homeThrower,
+    awayThrower: board.awayThrower,
+    close,
+    boardDelta: null,
+    ...(board.cricket !== undefined ? {cricket: board.cricket} : {}),
   }
   return {
     type: 'applied',
@@ -354,16 +510,9 @@ export function commitX01Visit(
       away,
       active,
       done,
-      undo: {
-        home: board.home,
-        away: board.away,
-        active: board.active,
-        legIndex: board.legIndex,
-        done: board.done,
-        close,
-        boardDelta: null,
-        ...(board.cricket !== undefined ? {cricket: board.cricket} : {}),
-      },
+      homeThrower,
+      awayThrower,
+      undoStack: [...board.undoStack, undoEntry],
       ...(board.cricket !== undefined ? {cricket: board.cricket} : {}),
     },
   }
@@ -371,25 +520,34 @@ export function commitX01Visit(
 
 export function undoX01Visit(board: X01Board): {
   board: X01Board
-  reverseClose: {side: X01Side; points: number; legIndex: number} | null
-  reverseBoard: {side: X01Side; points: number} | null
+  reverseClose: {
+    side: X01Side
+    points: number
+    legIndex: number
+    playerIdx: number
+  } | null
+  reverseBoard: {side: X01Side; points: number; playerIdx?: number} | null
   reverseVisit: NonNullable<X01Undo['visit']> | null
 } | null {
-  if (!board.undo) return null
+  if (!board.undoStack.length) return null
+  const top = board.undoStack[board.undoStack.length - 1]
+  const rest = board.undoStack.slice(0, -1)
   return {
-    reverseClose: board.undo.close,
-    reverseBoard: board.undo.boardDelta,
-    reverseVisit: board.undo.visit ?? null,
+    reverseClose: top.close,
+    reverseBoard: top.boardDelta,
+    reverseVisit: top.visit ?? null,
     board: {
       start: board.start,
-      home: board.undo.home,
-      away: board.undo.away,
-      active: board.undo.active,
-      legIndex: board.undo.legIndex,
-      done: board.undo.done,
-      undo: null,
-      ...(board.undo.cricket !== undefined
-        ? {cricket: board.undo.cricket}
+      home: top.home,
+      away: top.away,
+      active: top.active,
+      legIndex: top.legIndex,
+      done: top.done,
+      homeThrower: top.homeThrower,
+      awayThrower: top.awayThrower,
+      undoStack: rest,
+      ...(top.cricket !== undefined
+        ? {cricket: top.cricket}
         : board.cricket !== undefined
           ? {cricket: board.cricket}
           : {}),
@@ -408,6 +566,18 @@ export function commitCountUpVisit(
   const home = side === 'home' ? board.home + hit : board.home
   const away = side === 'away' ? board.away + hit : board.away
   const total = side === 'home' ? home : away
+  const undoEntry: X01Undo = {
+    home: board.home,
+    away: board.away,
+    active: board.active,
+    legIndex: board.legIndex,
+    done: board.done,
+    homeThrower: board.homeThrower,
+    awayThrower: board.awayThrower,
+    close: null,
+    boardDelta: {side, points: hit},
+    ...(board.cricket !== undefined ? {cricket: board.cricket} : {}),
+  }
   return {
     type: 'applied',
     reflected: false,
@@ -421,19 +591,14 @@ export function commitCountUpVisit(
       away,
       active: otherX01Side(side),
       done: false,
+      homeThrower:
+        side === 'home' ? board.homeThrower + 1 : board.homeThrower,
+      awayThrower:
+        side === 'away' ? board.awayThrower + 1 : board.awayThrower,
       cricket: board.cricket
         ? {...board.cricket, dartsThrown: 0, home: {...board.cricket.home}, away: {...board.cricket.away}}
         : board.cricket,
-      undo: {
-        home: board.home,
-        away: board.away,
-        active: board.active,
-        legIndex: board.legIndex,
-        done: board.done,
-        close: null,
-        boardDelta: {side, points: hit},
-        ...(board.cricket !== undefined ? {cricket: board.cricket} : {}),
-      },
+      undoStack: [...board.undoStack, undoEntry],
     },
   }
 }

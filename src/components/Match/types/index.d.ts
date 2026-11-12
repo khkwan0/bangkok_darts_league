@@ -28,6 +28,8 @@ export type MatchInfoDataType = {
   /** Present only while the scoresheet is in progress. */
   live_home_score?: number
   live_away_score?: number
+  /** True after finalize — show scores without the LIVE label. */
+  live_score_final?: boolean
   team_role_id: number
   player_team_id: number
   home_logo?: string
@@ -130,6 +132,16 @@ export type FrameType = {
   awayBoardScore?: number
   /** Team id that throws first dart in this game (darts only). */
   firstDart?: number
+  /** Live X01 board snapshot shared via the match socket room. */
+  x01?: {
+    mode: 'close' | 'score'
+    start: number
+    home: number
+    away: number
+    active: 'home' | 'away'
+    legIndex: number
+    done: boolean
+  }
   /** Keypad visits saved on the live frame in Redis (`match_{id}`). */
   visits?: Array<{
     side: 'home' | 'away'
@@ -140,6 +152,8 @@ export type FrameType = {
     oneEighty: boolean
     close: boolean
     board: boolean
+    /** Scoresheet roster slot for the thrower. */
+    playerIdx?: number
   }>
   frameIdx?: number
   frameIndex?: number

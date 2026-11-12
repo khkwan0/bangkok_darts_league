@@ -7,6 +7,10 @@ import {CompetitionValidator} from '@/components/navigation/CompetitionValidator
 import {LiveScoresBottomAccessory} from '@/components/navigation/LiveScoresBottomAccessory'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {LiveScoresProvider} from '@/context/LiveScoresContext'
+import {
+  TabBarVisibilityProvider,
+  useTabBarVisibility,
+} from '@/context/TabBarVisibilityContext'
 import {useForumActivitySync} from '@/hooks/useForumActivity'
 import {useIsRegularLayout} from '@/hooks/useLayoutMode'
 import {useShowLiveScoresAccessory} from '@/hooks/useShowLiveScoresAccessory'
@@ -577,28 +581,30 @@ export default function TabLayout() {
 
   return (
     <LiveScoresProvider>
-      <CompetitionValidator />
-      <CompetitionPickerModal />
-      <AnnouncementDialog
-        announcement={unreadAnnouncement}
-        visible={showAnnouncementDialog && !showLanguageOption}
-        submitting={markingAnnouncementRead}
-        onDismiss={handleAnnouncementDismiss}
-      />
-      <TimezoneMismatchDialog />
-      {showLanguageOption ? (
-        <View className="flex-1 justify-center mx-4">
-          <LanguageOption handleLanguageOption={handleLanguageOption} />
-        </View>
-      ) : (
-        <TabsWithLiveScoresAccessory
-          tintColor={tintColor}
-          messageBadge={messageBadge}
-          showMoreBadge={showMoreBadge}
-          t={t}
-          showCompetitionAccessory={!isCanonicalCompetition(state.competition)}
+      <TabBarVisibilityProvider>
+        <CompetitionValidator />
+        <CompetitionPickerModal />
+        <AnnouncementDialog
+          announcement={unreadAnnouncement}
+          visible={showAnnouncementDialog && !showLanguageOption}
+          submitting={markingAnnouncementRead}
+          onDismiss={handleAnnouncementDismiss}
         />
-      )}
+        <TimezoneMismatchDialog />
+        {showLanguageOption ? (
+          <View className="flex-1 justify-center mx-4">
+            <LanguageOption handleLanguageOption={handleLanguageOption} />
+          </View>
+        ) : (
+          <TabsWithLiveScoresAccessory
+            tintColor={tintColor}
+            messageBadge={messageBadge}
+            showMoreBadge={showMoreBadge}
+            t={t}
+            showCompetitionAccessory={!isCanonicalCompetition(state.competition)}
+          />
+        )}
+      </TabBarVisibilityProvider>
     </LiveScoresProvider>
   )
 }
@@ -622,15 +628,19 @@ function TabsWithLiveScoresAccessory({
   const showLiveAccessory = useShowLiveScoresAccessory()
   // Trigger order stays static — reordering NativeTabs children remounts/crashes the host.
   const isRegular = useIsRegularLayout()
+  const {hidden: tabBarHidden} = useTabBarVisibility()
 
   return (
-    <NativeTabs tintColor={tintColor} minimizeBehavior="onScrollDown">
+    <NativeTabs
+      tintColor={tintColor}
+      minimizeBehavior="onScrollDown"
+      hidden={tabBarHidden}>
       {/* Empty BottomAccessory reserves a blank bar — only mount with content. */}
-      {showLiveAccessory ? (
+      {showLiveAccessory && !tabBarHidden ? (
         <NativeTabs.BottomAccessory>
           <LiveScoresBottomAccessory />
         </NativeTabs.BottomAccessory>
-      ) : showCompetitionAccessory ? (
+      ) : showCompetitionAccessory && !tabBarHidden ? (
         <NativeTabs.BottomAccessory>
           <CompetitionBottomAccessory />
         </NativeTabs.BottomAccessory>

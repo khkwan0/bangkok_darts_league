@@ -93,6 +93,7 @@ function RootLayout() {
   const colorScheme = useColorScheme()
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SairaExtraCondensed: require('../assets/fonts/SairaExtraCondensed-Bold.ttf'),
   })
   useAdaptiveOrientationLock()
 

@@ -471,10 +471,11 @@ export const MatchProvider = (props: any) => {
               awayScore: data.awayScore,
               homeBoardScore: data.homeBoardScore,
               awayBoardScore: data.awayBoardScore,
-                winner: data.winner,
-                games: data.games,
-                visits: data.visits,
-              },
+              winner: data.winner,
+              games: data.games,
+              visits: data.visits,
+              x01: data.x01,
+            },
           })
         } else if (data.type === 'firstdart') {
           dispatch({
@@ -818,7 +819,17 @@ export const MatchProvider = (props: any) => {
       bust: boolean
       closed: boolean
       board: boolean
+      playerIdx?: number
       undo?: boolean
+      x01?: {
+        mode: 'close' | 'score'
+        start: number
+        home: number
+        away: number
+        active: 'home' | 'away'
+        legIndex: number
+        done: boolean
+      }
     },
   ) {
     const frame = state.frameData[frameIdx]
@@ -834,6 +845,43 @@ export const MatchProvider = (props: any) => {
       closed: visit.closed,
       board: visit.board,
       undo: Boolean(visit.undo),
+      x01: visit.x01,
+      games: frame?.games ?? initial?.games ?? 1,
+      seriesMode: frame?.seriesMode ?? initial?.seriesMode,
+      frameType: frame?.type ?? initial?.type ?? '',
+      mfpp: frame?.mfpp ?? initial?.mfpp ?? 0,
+      homeTeamId: Number(state.matchInfo.home_team_id ?? 0),
+      awayTeamId: Number(state.matchInfo.away_team_id ?? 0),
+      minPlayers:
+        frame?.minPlayers ??
+        initial?.minPlayers ??
+        frame?.noPlayers ??
+        initial?.noPlayers,
+      playerIdx: Math.max(0, Math.trunc(Number(visit.playerIdx) || 0)),
+    })
+  }
+
+  function SyncX01Board(
+    frameIdx: number,
+    x01: {
+      mode: 'close' | 'score'
+      start: number
+      home: number
+      away: number
+      active: 'home' | 'away'
+      legIndex: number
+      done: boolean
+    },
+    opts?: {clearVisits?: boolean},
+  ) {
+    const frame = state.frameData[frameIdx]
+    const initial = state.matchInfo.initialFrames?.[frameIdx]
+    SocketSend('x01', {
+      matchId: state.matchInfo.match_id,
+      frameIdx,
+      frameNumber: frame?.frameNumber ?? 0,
+      x01,
+      clearVisits: Boolean(opts?.clearVisits),
       games: frame?.games ?? initial?.games ?? 1,
       seriesMode: frame?.seriesMode ?? initial?.seriesMode,
       frameType: frame?.type ?? initial?.type ?? '',
@@ -846,6 +894,7 @@ export const MatchProvider = (props: any) => {
         frame?.noPlayers ??
         initial?.noPlayers,
       playerIdx: 0,
+      side: x01.active,
     })
   }
 
@@ -991,6 +1040,7 @@ export const MatchProvider = (props: any) => {
         UpdateFramePlayers,
         UpdateFrameStats,
         RecordThrow,
+        SyncX01Board,
         UpdateFrameWin,
         UpdateTeams,
       }}>
