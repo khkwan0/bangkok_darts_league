@@ -36,7 +36,7 @@ import Player, {scoresheetChildHandledPress} from './Player'
 import {useScoresheetTheme} from './scoresheetTheme'
 import StatValueInput from './StatValueInput'
 import WinButton from './WinButton'
-import {X01ScoreButton} from './X01ScoreScreen'
+import {GameScoreButton} from './GameScoreScreen'
 
 function frameKindLabel(
   noPlayers: number | undefined,
@@ -328,7 +328,7 @@ export default function Frame({
   const matchId = Number(state.matchInfo?.match_id ?? 0)
   const scoreLabel =
     showScore && !showClose
-      ? t('x01_add_points')
+      ? t('score_open')
       : scoreStart != null
         ? t('x01_score_game', {start: scoreStart})
         : t('x01_score_game_plain')
@@ -628,11 +628,32 @@ export default function Frame({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={opts?.collapsed ? t('expand') : t('collapse')}
-            hitSlop={10}
-            onPress={toggleExpanded}>
+            hitSlop={8}
+            onPress={toggleExpanded}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 2,
+              borderRadius: 999,
+              paddingLeft: 10,
+              paddingRight: 6,
+              paddingVertical: 4,
+              backgroundColor: theme.faint,
+              borderWidth: 1,
+              borderColor: theme.divider,
+            }}>
+            <Text
+              style={{
+                color: theme.muted,
+                fontSize: 11,
+                fontWeight: '800',
+                letterSpacing: 0.3,
+              }}>
+              {opts?.collapsed ? t('expand') : t('collapse')}
+            </Text>
             <MCI
               name={opts?.collapsed ? 'chevron-down' : 'chevron-up'}
-              size={22}
+              size={16}
               color={theme.muted}
             />
           </Pressable>
@@ -695,7 +716,7 @@ export default function Frame({
       <>
         {titleBar({collapsed: opts?.collapsed})}
         {!opts?.collapsed && (showClose || showScore) ? (
-          <X01ScoreButton
+          <GameScoreButton
             frameIndex={index}
             label={frameLabel}
             type={frameType}
@@ -722,7 +743,7 @@ export default function Frame({
               minHeight: 32,
             }}>
             <Text style={{color: theme.muted, fontSize: 12, fontWeight: '800'}}>
-              {t('x01_adjust_stats')}
+              {showScore && !showClose ? t('score_adjust') : t('x01_adjust_stats')}
             </Text>
             <View
               style={{

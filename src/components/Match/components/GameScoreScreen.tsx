@@ -87,6 +87,8 @@ type VisitLogEntry = {
   closed: boolean
   playerIdx: number
   throwerName?: string | null
+  /** Score-game dart, such as T20, D25, or 0. Checkout chips leave this empty. */
+  label?: string | null
 }
 
 function mapFrameVisits(
@@ -124,6 +126,33 @@ function visitsFromUndo(board: X01Board | null | undefined): VisitLogEntry[] {
   return entries
 }
 
+function dartFace(targetId: string, multiplier: 1 | 2 | 3, bull: string): string {
+  if (targetId === '25') return Math.min(2, multiplier) === 2 ? `D${bull}` : bull
+  const prefix = multiplier === 3 ? 'T' : multiplier === 2 ? 'D' : ''
+  return `${prefix}${targetId}`
+}
+
+function scoreThrowHistory(
+  board: X01Board | null | undefined,
+  homeNames: string[],
+  awayNames: string[],
+): VisitLogEntry[] {
+  if (!board?.undoStack?.length) return []
+  return board.undoStack.map((entry, i) => {
+    const names = entry.active === 'home' ? homeNames : awayNames
+    return {
+      id: `dart-${i}-${entry.label ?? entry.boardDelta?.points ?? 0}`,
+      side: entry.active,
+      legIndex: entry.legIndex,
+      points: Math.max(0, Math.trunc(Number(entry.boardDelta?.points) || 0)),
+      bust: false,
+      closed: false,
+      playerIdx: entry.boardDelta?.playerIdx ?? 0,
+      label: entry.label?.trim() || null,
+      throwerName: x01ThrowerName(names, entry, entry.active),
+    }
+  })
+}
 function preferVisitLog(
   remote: VisitLogEntry[],
   fromUndo: VisitLogEntry[],
@@ -169,6 +198,7 @@ function KeyCell({
   flex = 1,
   fontSize,
   opacity = 1,
+  selected = false,
 }: {
   label: string
   accessibilityLabel: string
@@ -177,6 +207,7 @@ function KeyCell({
   flex?: number
   fontSize: number
   opacity?: number
+  selected?: boolean
 }) {
   const [pressed, setPressed] = React.useState(false)
   return (
@@ -187,8 +218,8 @@ function KeyCell({
         backgroundColor: pressed ? KEY_FACE_PRESSED : KEY_FACE,
         borderRadius: 16,
         borderCurve: 'continuous',
-        borderWidth: 1,
-        borderColor: pressed ? '#FFFFFF' : KEY_BORDER,
+        borderWidth: selected ? 2 : 1,
+        borderColor: pressed || selected ? '#FFFFFF' : KEY_BORDER,
         overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
@@ -196,6 +227,7 @@ function KeyCell({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
+        accessibilityState={{disabled, selected}}
         disabled={disabled}
         onPress={onPress}
         onPressIn={() => setPressed(true)}
@@ -234,7 +266,7 @@ function KeyCell({
   )
 }
 
-export function X01ScoreButton({
+export function GameScoreButton({
   frameIndex,
   label,
   type,
@@ -265,7 +297,7 @@ export function X01ScoreButton({
   const start = mode === 'close' ? parseX01Start(label, type) : null
   const labelText =
     mode === 'score'
-      ? t('x01_add_points')
+      ? t('score_open')
       : start != null
         ? t('x01_score_game', {start})
         : t('x01_score_game_plain')
@@ -273,7 +305,10 @@ export function X01ScoreButton({
   function tryOpen() {
     // TEMP: players gate disabled — see hasPlayers above.
     if (!hasFirstDart) {
-      Alert.alert(t('x01_need_first_dart_title'), t('x01_need_first_dart_body'))
+      Alert.alert(
+        t(mode === 'score' ? 'score_need_first_dart_title' : 'x01_need_first_dart_title'),
+        t(mode === 'score' ? 'score_need_first_dart_body' : 'x01_need_first_dart_body'),
+      )
       return
     }
     if (disabled) return
@@ -341,7 +376,7 @@ export function X01ScoreButton({
   )
 }
 
-export default function X01ScoreScreen({
+export default function GameScoreScreen({
   frameIndex,
   embedded = false,
   onClose,
@@ -361,6 +396,7 @@ export default function X01ScoreScreen({
   const landscape = width > height
   const keypadHeight = Math.round(height * (3 / 8))
   const keyRowHeight = (keypadHeight - KEY_GAP * 4) / 5
+  const scoreKeypadHeight = Math.round(keyRowHeight * 4 + KEY_GAP * 3)
   const keyDigitSize = Math.max(12, Math.floor((keyRowHeight * 0.58) / KEY_CAP))
   const keyLabelSize = Math.max(11, Math.floor(keyDigitSize * 0.58))
   const keyDeleteSize = Math.max(keyLabelSize + 4, Math.round(keyDigitSize * 0.9))
@@ -379,10 +415,9 @@ export default function X01ScoreScreen({
   const [digits, setDigits] = React.useState('')
   const [note, setNote] = React.useState<{
     text: string
-    tone: 'bust' | 'close'
+    tone: 'bust' | 'close' | 'plain'
   } | null>(null)
   const [holdServer, setHoldServer] = React.useState(false)
-  const [hitEntry, setHitEntry] = React.useState(false)
   const [fireworksKey, setFireworksKey] = React.useState(0)
   const [tonAnvilKey, setTonAnvilKey] = React.useState(0)
   const [tonAnvilPoints, setTonAnvilPoints] = React.useState(100)
@@ -499,7 +534,7 @@ export default function X01ScoreScreen({
         : freshX01Board({start, legIndex, active})
     skipRemoteVisitSync.current = true
     setDigits('')
-    setNote({text: t('x01_scores_reset'), tone: 'bust'})
+    setNote({text: t(mode === 'score' ? 'score_reset' : 'x01_scores_reset'), tone: 'bust'})
     setVisitLog([])
     setHoldServer(true)
     persist(next, {syncRemote: true, clearVisits: true})
@@ -755,7 +790,7 @@ export default function X01ScoreScreen({
     })
   }
 
-  function throwDart(targetId: CricketTargetId) {
+  function throwDart(targetId: CricketTargetId, multiplier?: CricketMultiplier) {
     if (!liveBoard || !frame || lock.current || liveBoard.done || mode !== 'score') {
       return
     }
@@ -767,14 +802,10 @@ export default function X01ScoreScreen({
     const hit = scoreCricketHit(
       cricket[side][target.id],
       cricket[opponent][target.id],
-      cricket.multiplier,
+      multiplier ?? cricket.multiplier,
       target.value,
     )
-    if (hit.kind === 'invalid') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
-      setNote({text: t('x01_no_triple_bull'), tone: 'bust'})
-      return
-    }
+    if (hit.kind === 'invalid') return
     lock.current = true
     const thrown = cricket.dartsThrown + 1
     const rotate = thrown >= CRICKET_DARTS_PER_TURN
@@ -786,7 +817,7 @@ export default function X01ScoreScreen({
       home: side === 'home' ? nextMarks : {...cricket.home},
       away: side === 'away' ? nextMarks : {...cricket.away},
       dartsThrown: rotate ? 0 : thrown,
-      multiplier: cricket.multiplier,
+      multiplier: 1,
     }
     const previous = cloneCricketBoard(cricket)
     const afterHit: X01Board = {
@@ -808,6 +839,11 @@ export default function X01ScoreScreen({
           close: null,
           boardDelta: hit.points > 0 ? {side, points: hit.points} : null,
           cricket: previous,
+          label: dartFace(
+            target.id,
+            multiplier ?? cricket.multiplier,
+            t('score_bull'),
+          ),
         },
       ],
     }
@@ -826,19 +862,72 @@ export default function X01ScoreScreen({
     if (hit.points > 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       UpdateFrameStats(frameIndex, side, 'boardScore', hit.points)
-      setNote({text: t('x01_plus', {score: hit.points}), tone: 'close'})
+      setNote({text: t('score_plus', {score: hit.points}), tone: 'close'})
       return
     }
     Haptics.selectionAsync()
     setNote({
       text:
         hit.kind === 'closed'
-          ? t('x01_number_closed')
+          ? t('score_number_closed')
           : hit.kind === 'marks'
-            ? t('x01_marks', {n: hit.nextMarks})
-            : t('x01_no_score'),
+            ? t('score_marks', {n: hit.nextMarks})
+            : t('score_miss'),
       tone: hit.kind === 'none' ? 'bust' : 'close',
     })
+  }
+
+  function throwMiss() {
+    if (!liveBoard || !frame || lock.current || liveBoard.done || mode !== 'score') {
+      return
+    }
+    const cricket = liveBoard.cricket ?? emptyCricketBoard()
+    const side = liveBoard.active
+    const opponent = otherX01Side(side)
+    lock.current = true
+    const thrown = cricket.dartsThrown + 1
+    const rotate = thrown >= CRICKET_DARTS_PER_TURN
+    const nextCricket = {
+      home: {...cricket.home},
+      away: {...cricket.away},
+      dartsThrown: rotate ? 0 : thrown,
+      multiplier: cricket.multiplier,
+    }
+    const afterHit: X01Board = {
+      ...liveBoard,
+      active: rotate ? opponent : side,
+      cricket: nextCricket,
+      undoStack: [
+        ...liveBoard.undoStack,
+        {
+          home: liveBoard.home,
+          away: liveBoard.away,
+          active: side,
+          legIndex: liveBoard.legIndex,
+          done: liveBoard.done,
+          homeThrower: liveBoard.homeThrower,
+          awayThrower: liveBoard.awayThrower,
+          close: null,
+          boardDelta: null,
+          cricket: cloneCricketBoard(cricket),
+          label: '0',
+        },
+      ],
+    }
+    const rosterLen =
+      side === 'home'
+        ? x01RosterNames(
+            playerNicknames(state.teams, homeTeamId, frame?.homePlayerIds),
+          ).length
+        : x01RosterNames(
+            playerNicknames(state.teams, awayTeamId, frame?.awayPlayerIds),
+          ).length
+    persist(
+      rotate ? advanceX01Thrower(afterHit, side, rosterLen) : afterHit,
+      {syncRemote: true},
+    )
+    Haptics.selectionAsync()
+    setNote({text: t('score_miss'), tone: 'plain'})
   }
 
   function tapKey(key: string) {
@@ -1039,7 +1128,7 @@ export default function X01ScoreScreen({
           padding: 24,
         }}>
         <TrekText style={{color: theme.text, fontSize: 16, fontWeight: '700'}}>
-          {t('x01_missing_game')}
+          {t(mode === 'score' ? 'score_missing_game' : 'x01_missing_game')}
         </TrekText>
         <Pressable accessibilityRole="button" onPress={onClose}>
           <TrekText style={{color: theme.home.accent, fontSize: 16, fontWeight: '800'}}>
@@ -1075,9 +1164,11 @@ export default function X01ScoreScreen({
 
   const cricketBoard = liveBoard?.cricket ?? emptyCricketBoard()
   const historyVisits = (
-    mode === 'close' && liveBoard
-      ? visitLog.filter(v => v.legIndex === liveBoard.legIndex)
-      : visitLog
+    mode === 'score'
+      ? scoreThrowHistory(liveBoard, homeNames, awayNames)
+      : mode === 'close' && liveBoard
+        ? visitLog.filter(v => v.legIndex === liveBoard.legIndex)
+        : visitLog
   ).map(visit => ({
     ...visit,
     throwerName:
@@ -1112,7 +1203,13 @@ export default function X01ScoreScreen({
   }
 
   const scores = (
-    <View style={{flex: landscape ? 1 : undefined, gap: 8}}>
+    <View
+      style={{
+        flexGrow: landscape ? 1 : 0,
+        flexShrink: mode === 'score' ? 1 : 0,
+        minHeight: mode === 'score' ? 0 : undefined,
+        gap: 8,
+      }}>
       <TrekText
         style={{
           color: theme.muted,
@@ -1122,7 +1219,7 @@ export default function X01ScoreScreen({
           textAlign: 'center',
         }}>
         {mode === 'score'
-          ? t('x01_running')
+          ? t('score_running')
           : `${t('x01_leg', {n: (liveBoard?.legIndex ?? 0) + 1})} · ${start}`}
       </TrekText>
       {activeThrower && !done ? (
@@ -1134,13 +1231,15 @@ export default function X01ScoreScreen({
             fontWeight: '800',
             textAlign: 'center',
           }}>
-          {t('x01_thrower', {name: activeThrower})}
+          {t(mode === 'score' ? 'score_thrower' : 'x01_thrower', {
+            name: activeThrower,
+          })}
         </TrekText>
       ) : null}
       <View
         style={{
           flexDirection: landscape ? 'column' : 'row',
-          flex: landscape && !(mode === 'score' && hitEntry) ? 1 : undefined,
+          flex: landscape && mode !== 'score' ? 1 : undefined,
           gap: 8,
         }}>
         <SideScore
@@ -1156,6 +1255,7 @@ export default function X01ScoreScreen({
           active={active === 'home'}
           done={done}
           markZero={mode === 'close'}
+          scoreGame={mode === 'score'}
           onPress={() => pressSideScore('home')}
         />
         <SideScore
@@ -1171,32 +1271,34 @@ export default function X01ScoreScreen({
           active={active === 'away'}
           done={done}
           markZero={mode === 'close'}
+          scoreGame={mode === 'score'}
           onPress={() => pressSideScore('away')}
         />
       </View>
-      {landscape && mode === 'score' && hitEntry ? (
+      {landscape && mode === 'score' ? (
         <CricketMarks board={cricketBoard} layout="column" />
       ) : null}
     </View>
   )
   const controls = (
-    <View style={{flex: 1, gap: 8}}>
+    <View
+      style={{
+        flexGrow: 1,
+        flexShrink: mode === 'score' ? 0 : 1,
+        flexBasis: mode === 'score' ? 'auto' : 0,
+        minHeight: mode === 'score' ? scoreKeypadHeight : 0,
+        gap: 8,
+      }}>
       {mode === 'score' ? (
-        <View style={{flexDirection: 'row', gap: 8}}>
-          <ModeChip
-            label={t('x01_input_total')}
-            selected={!hitEntry}
-            onPress={() => setHitEntry(false)}
+        <View style={{gap: 8}}>
+          <VisitHistory
+            visits={historyVisits}
+            canUndoLatest={canUndoLatest}
+            onUndoLatest={undo}
+            undoLabel={t('score_undo')}
+            emptyLabel={t('score_history_empty')}
           />
-          <ModeChip
-            label={t('x01_input_hits')}
-            selected={hitEntry}
-            onPress={() => setHitEntry(true)}
-          />
-        </View>
-      ) : null}
-      {mode === 'score' && hitEntry ? (
-        <CricketHits
+          <CricketHits
           board={cricketBoard}
           showMarks={!landscape}
           disabled={done || !ready}
@@ -1204,10 +1306,13 @@ export default function X01ScoreScreen({
           dartNumber={(liveBoard?.cricket?.dartsThrown ?? 0) + 1}
           note={note?.text ?? ''}
           noteTone={note?.tone ?? 'plain'}
+          keypadHeight={scoreKeypadHeight}
           onMultiplier={setHitMultiplier}
           onTarget={throwDart}
+          onZero={throwMiss}
           onUndo={undo}
         />
+        </View>
       ) : (
       <View style={{flex: 1}}>
       <VisitHistory
@@ -1340,7 +1445,7 @@ export default function X01ScoreScreen({
           }}>
           <MCI name="chevron-left" size={22} color={theme.text} />
           <TrekText style={{color: theme.text, fontSize: 16, fontWeight: '700'}}>
-            {t('x01_scoresheet')}
+            {t(mode === 'score' ? 'score_sheet' : 'x01_scoresheet')}
           </TrekText>
         </Pressable>
       ) : null}
@@ -1380,10 +1485,14 @@ function VisitHistory({
   visits,
   canUndoLatest,
   onUndoLatest,
+  undoLabel,
+  emptyLabel,
 }: {
   visits: VisitLogEntry[]
   canUndoLatest: boolean
   onUndoLatest: () => void
+  undoLabel?: string
+  emptyLabel?: string
 }) {
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
@@ -1407,7 +1516,7 @@ function VisitHistory({
           paddingHorizontal: 8,
         }}>
         <TrekText style={{color: theme.muted, fontSize: 12, fontWeight: '600'}}>
-          {t('x01_history_empty')}
+          {emptyLabel ?? t('x01_history_empty')}
         </TrekText>
       </View>
     )
@@ -1418,6 +1527,7 @@ function VisitHistory({
       ref={scrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={{flexGrow: 0, flexShrink: 0}}
       contentContainerStyle={{
         alignItems: 'center',
         gap: 8,
@@ -1468,7 +1578,7 @@ function VisitHistory({
                   fontWeight: '800',
                   fontVariant: ['tabular-nums'],
                 }}>
-                {visit.points}
+                {visit.label?.trim() || visit.points}
                 {mark ? (
                   <TrekText style={{color: visit.bust ? theme.gold : theme.win}}>
                     {mark}
@@ -1479,7 +1589,7 @@ function VisitHistory({
             {latest && canUndoLatest ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={t('x01_undo_latest')}
+                accessibilityLabel={undoLabel ?? t('x01_undo_latest')}
                 onPress={onUndoLatest}
                 hitSlop={8}
                 style={{
@@ -1497,39 +1607,6 @@ function VisitHistory({
         )
       })}
     </ScrollView>
-  )
-}
-
-function ModeChip({
-  label,
-  selected,
-  onPress,
-}: {
-  label: string
-  selected: boolean
-  onPress: () => void
-}) {
-  const theme = useScoresheetTheme()
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{selected}}
-      onPress={onPress}
-      style={{
-        flex: 1,
-        minHeight: 36,
-        borderRadius: 12,
-        borderCurve: 'continuous',
-        borderWidth: 1,
-        borderColor: selected ? theme.text : theme.cardBorder,
-        backgroundColor: selected ? theme.card : theme.faint,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-      <TrekText style={{color: theme.text, fontSize: 14, fontWeight: '800'}}>
-        {label}
-      </TrekText>
-    </Pressable>
   )
 }
 
@@ -1553,7 +1630,7 @@ function CricketMarks({
         {CRICKET_TARGETS.map(target => (
           <View key={target.id} style={{flex: 1, alignItems: 'center', gap: 1}}>
             <TrekText style={{color: theme.muted, fontSize: 11, fontWeight: '800'}}>
-              {target.id === '25' ? t('x01_bull') : target.label}
+              {target.id === '25' ? t('score_bull') : target.label}
             </TrekText>
             <TrekText style={{color: theme.home.accent, fontSize: 12, fontWeight: '800'}}>
               {markSlashes(board.home[target.id])}
@@ -1573,7 +1650,7 @@ function CricketMarks({
           key={target.id}
           style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
           <TrekText style={{flex: 1, color: theme.muted, fontSize: 13, fontWeight: '800'}}>
-            {target.id === '25' ? t('x01_bull') : target.label}
+            {target.id === '25' ? t('score_bull') : target.label}
           </TrekText>
           <TrekText
             style={{
@@ -1609,8 +1686,10 @@ function CricketHits({
   dartNumber,
   note,
   noteTone,
+  keypadHeight,
   onMultiplier,
   onTarget,
+  onZero,
   onUndo,
 }: {
   board: ReturnType<typeof emptyCricketBoard>
@@ -1620,16 +1699,22 @@ function CricketHits({
   dartNumber: number
   note: string
   noteTone: 'bust' | 'close' | 'plain'
+  keypadHeight: number
   onMultiplier: (multiplier: CricketMultiplier) => void
-  onTarget: (target: CricketTargetId) => void
+  onTarget: (target: CricketTargetId, multiplier?: CricketMultiplier) => void
+  onZero: () => void
   onUndo: () => void
 }) {
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
   const numbers = CRICKET_TARGETS.filter(target => target.id !== '25')
   const rows = [numbers.slice(0, 3), numbers.slice(3, 6)]
+  const rowCount = 4
+  const rowHeight = (keypadHeight - KEY_GAP * (rowCount - 1)) / rowCount
+  const digitSize = Math.max(12, Math.floor((rowHeight * 0.58) / KEY_CAP))
+  const labelSize = Math.max(11, Math.floor(digitSize * 0.58))
   return (
-    <View style={{flex: 1, gap: 8, opacity: disabled ? 0.4 : 1}}>
+    <View style={{gap: 8, opacity: disabled ? 0.4 : 1}}>
       <TrekText
         style={{
           textAlign: 'center',
@@ -1638,107 +1723,80 @@ function CricketHits({
           fontWeight: '800',
           minHeight: 18,
         }}>
-        {t('x01_dart', {n: dartNumber})}
+        {t('score_dart', {n: dartNumber})}
         {note ? ` · ${note}` : ''}
       </TrekText>
       {showMarks ? <CricketMarks board={board} layout="row" /> : null}
-      <View style={{flexDirection: 'row', gap: 8}}>
-        {([1, 2, 3] as const).map(multiplier => (
-          <Pressable
-            key={multiplier}
-            accessibilityRole="button"
-            accessibilityState={{selected: board.multiplier === multiplier}}
-            disabled={disabled}
-            onPress={() => onMultiplier(multiplier)}
-            style={{
-              flex: 1,
-              minHeight: 40,
-              borderRadius: 12,
-              borderCurve: 'continuous',
-              borderWidth: board.multiplier === multiplier ? 2 : 1,
-              borderColor:
-                board.multiplier === multiplier ? theme.text : theme.cardBorder,
-              backgroundColor: theme.card,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-            <TrekText style={{color: theme.text, fontSize: 15, fontWeight: '800'}}>
-              {multiplier === 1
-                ? t('x01_single')
-                : multiplier === 2
-                  ? t('x01_double')
-                  : t('x01_triple')}
-            </TrekText>
-          </Pressable>
-        ))}
-      </View>
-      <View style={{flex: 1, gap: 8}}>
+      <View
+        style={{
+          height: keypadHeight,
+          flexShrink: 0,
+          width: '100%',
+          alignSelf: 'center',
+          gap: KEY_GAP,
+        }}>
+        <View style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
+          {([1, 2, 3] as const).map(multiplier => (
+            <KeyCell
+              key={multiplier}
+              label={
+                multiplier === 1
+                  ? t('score_single')
+                  : multiplier === 2
+                    ? t('score_double')
+                    : t('score_triple')
+              }
+              accessibilityLabel={
+                multiplier === 1
+                  ? t('score_single')
+                  : multiplier === 2
+                    ? t('score_double')
+                    : t('score_triple')
+              }
+              disabled={disabled}
+              selected={board.multiplier === multiplier}
+              onPress={() => onMultiplier(multiplier)}
+              fontSize={labelSize}
+            />
+          ))}
+        </View>
         {rows.map(row => (
-          <View key={row[0].id} style={{flex: 1, flexDirection: 'row', gap: 8}}>
+          <View key={row[0].id} style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
             {row.map(target => (
-              <Pressable
+              <KeyCell
                 key={target.id}
-                accessibilityRole="button"
+                label={target.label}
                 accessibilityLabel={target.label}
                 disabled={disabled}
                 onPress={() => onTarget(target.id)}
-                style={({pressed}) => ({
-                  flex: 1,
-                  borderRadius: 12,
-                  borderCurve: 'continuous',
-                  backgroundColor: pressed ? theme.cardBorder : theme.card,
-                  borderWidth: 1,
-                  borderColor: theme.cardBorder,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                })}>
-                <TrekText style={{color: theme.text, fontSize: 28, fontWeight: '800'}}>
-                  {target.label}
-                </TrekText>
-              </Pressable>
+                fontSize={digitSize}
+              />
             ))}
           </View>
         ))}
-        <View style={{flex: 1, flexDirection: 'row', gap: 8}}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('x01_undo')}
+        <View style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
+          <KeyCell
+            label={t('score_undo')}
+            accessibilityLabel={t('score_undo')}
             disabled={disabled || !canUndo}
             onPress={onUndo}
-            style={({pressed}) => ({
-              flex: 0.7,
-              borderRadius: 12,
-              borderCurve: 'continuous',
-              borderWidth: 1,
-              borderColor: theme.cardBorder,
-              backgroundColor: pressed ? theme.cardBorder : theme.card,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: canUndo ? 1 : 0.4,
-            })}>
-            <TrekText style={{color: theme.text, fontSize: 16, fontWeight: '800'}}>
-              {t('x01_undo')}
-            </TrekText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('x01_bull')}
+            fontSize={labelSize}
+            opacity={canUndo ? 1 : 0.4}
+          />
+          <KeyCell
+            label="0"
+            accessibilityLabel="0"
+            disabled={disabled}
+            onPress={onZero}
+            fontSize={digitSize}
+          />
+          <KeyCell
+            label={t('score_bull')}
+            accessibilityLabel={t('score_bull')}
             disabled={disabled}
             onPress={() => onTarget('25')}
-            style={({pressed}) => ({
-              flex: 1.4,
-              borderRadius: 12,
-              borderCurve: 'continuous',
-              backgroundColor: pressed ? theme.cardBorder : theme.card,
-              borderWidth: 1,
-              borderColor: theme.cardBorder,
-              alignItems: 'center',
-              justifyContent: 'center',
-            })}>
-            <TrekText style={{color: theme.text, fontSize: 22, fontWeight: '800'}}>
-              {t('x01_bull')}
-            </TrekText>
-          </Pressable>
+            fontSize={labelSize}
+          />
         </View>
       </View>
     </View>
@@ -1756,6 +1814,7 @@ function SideScore({
   active,
   done,
   markZero,
+  scoreGame,
   onPress,
 }: {
   side: X01Side
@@ -1768,6 +1827,7 @@ function SideScore({
   active: boolean
   done: boolean
   markZero?: boolean
+  scoreGame?: boolean
   onPress: () => void
 }) {
   const {t} = useTranslation()
@@ -1776,9 +1836,11 @@ function SideScore({
   const status =
     active && !done
       ? thrower
-        ? t('x01_thrower', {name: thrower})
-        : t('x01_throwing')
-      : `${t('legs')} ${legs}`
+        ? t(scoreGame ? 'score_thrower' : 'x01_thrower', {name: thrower})
+        : t(scoreGame ? 'score_throwing' : 'x01_throwing')
+      : scoreGame
+        ? ''
+        : `${t('legs')} ${legs}`
   return (
     <Pressable
       accessibilityRole="button"
@@ -1859,16 +1921,18 @@ function SideScore({
         }}>
         {score}
       </TrekText>
-      <TrekText
-        numberOfLines={1}
-        style={{
-          color: active && !done ? palette.accent : theme.muted,
-          fontSize: active && !done ? 20 : 11,
-          fontWeight: '800',
-          textAlign: 'center',
-        }}>
-        {status}
-      </TrekText>
+      {status ? (
+        <TrekText
+          numberOfLines={1}
+          style={{
+            color: active && !done ? palette.accent : theme.muted,
+            fontSize: active && !done ? 20 : 11,
+            fontWeight: '800',
+            textAlign: 'center',
+          }}>
+          {status}
+        </TrekText>
+      ) : null}
     </Pressable>
   )
 }

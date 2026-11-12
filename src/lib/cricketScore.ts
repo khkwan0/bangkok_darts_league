@@ -1,4 +1,4 @@
-/** Standard cricket numbers. Bull is 25. There is no triple bull. */
+/** Standard cricket numbers. Bull is 25. A triple bull counts as a double bull. */
 export const CRICKET_TARGETS = [
   {id: '20', value: 20, label: '20'},
   {id: '19', value: 19, label: '19'},
@@ -65,9 +65,6 @@ export function scoreCricketHit(
   multiplier: CricketMultiplier,
   value: number,
 ): {nextMarks: number; points: number; kind: CricketHitKind} {
-  if (value === 25 && multiplier === 3) {
-    return {nextMarks: ownMarks, points: 0, kind: 'invalid'}
-  }
   const hits = value === 25 ? Math.min(2, multiplier) : multiplier
   const before = Math.min(
     CRICKET_MARKS_TO_CLOSE,

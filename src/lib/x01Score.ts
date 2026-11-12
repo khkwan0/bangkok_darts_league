@@ -33,6 +33,8 @@ export type X01Undo = {
   boardDelta: {side: X01Side; points: number; playerIdx?: number} | null
   /** Cricket marks before this visit, when the board was tracking hits. */
   cricket?: CricketBoard | null
+  /** Dart shown in the score-game history, such as T20 or 0. */
+  label?: string | null
   /** Throw written to match Redis, so undo can reverse the same visit. */
   visit?: {
     side: X01Side
@@ -374,6 +376,10 @@ function parseUndo(value: unknown): X01Undo | null {
     close: parsedClose,
     boardDelta: parseBoardDelta(row.boardDelta),
     visit: parseVisitMark(row.visit),
+    label:
+      typeof row.label === 'string' && row.label.trim() !== ''
+        ? row.label.trim()
+        : null,
     ...('cricket' in row
       ? {cricket: parseCricketBoard(row.cricket) ?? null}
       : {}),

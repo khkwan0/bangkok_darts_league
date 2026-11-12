@@ -15,7 +15,7 @@ import { useMatchContext } from '@/context/MatchContext'
 import {ScoresheetPadProvider} from '@/context/ScoresheetPadContext'
 import {useTabBarVisibility} from '@/context/TabBarVisibilityContext'
 import {X01ScoreProvider} from '@/context/X01ScoreContext'
-import X01ScoreScreen from '@/components/Match/components/X01ScoreScreen'
+import GameScoreScreen from '@/components/Match/components/GameScoreScreen'
 import { useIsRegularLayout } from '@/hooks/useLayoutMode'
 import { useMatch } from '@/hooks/useMatch'
 import { useTabListContentContainerStyle } from '@/hooks/useTabListContentContainerStyle'
@@ -32,6 +32,7 @@ import {
 } from '@/lib/matchFormat'
 import {hydrateFrameLegs} from '@/lib/hydrateFrameLegs'
 import {restoreThrowTallies} from '@/lib/scoresheetThrow'
+import {scoresheetScoringMode} from '@/lib/x01Score'
 import {
   defaultScoresheetStatsView,
   loadScoresheetStatsView,
@@ -205,10 +206,15 @@ export default function ScoreSheet({
       }
       if (scoringFrame != null) {
         didCustomizeHeader.current = true
+        const backLabel = t(
+          scoresheetScoringMode(scoring) === 'score'
+            ? 'score_sheet'
+            : 'x01_scoresheet',
+        )
         options.headerLeft = () => (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={t('x01_scoresheet')}
+            accessibilityLabel={backLabel}
             onPress={() => setScoringFrame(null)}
             hitSlop={8}
             style={{
@@ -218,7 +224,7 @@ export default function ScoreSheet({
             }}>
             <MCI name="chevron-left" size={26} color={theme.text} />
             <Text style={{color: theme.text, fontSize: 17, fontWeight: '600'}}>
-              {t('x01_scoresheet')}
+              {backLabel}
             </Text>
           </Pressable>
         )
@@ -614,7 +620,7 @@ export default function ScoreSheet({
   return (
     <X01ScoreProvider onOpen={setScoringFrame}>
       {scoringFrame != null ? (
-        <X01ScoreScreen
+        <GameScoreScreen
           frameIndex={scoringFrame}
           embedded={embedded}
           onClose={() => setScoringFrame(null)}
