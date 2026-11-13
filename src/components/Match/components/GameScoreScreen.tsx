@@ -422,12 +422,19 @@ export default function GameScoreScreen({
   const insets = useSafeAreaInsets()
   const {width, height} = useWindowDimensions()
   const landscape = width > height
-  const keypadHeight = Math.round(height * (3 / 8))
-  const keyRowHeight = (keypadHeight - KEY_GAP * 4) / 5
-  const scoreKeypadHeight = Math.round(height * 0.4)
-  const keyDigitSize = Math.max(12, Math.floor((keyRowHeight * 0.58) / KEY_CAP))
+  const keypadHeight = Math.round(height * 0.4)
+  const [closePadFit, setClosePadFit] = React.useState<number | null>(null)
+  const closePadHeight = Math.min(keypadHeight, closePadFit ?? keypadHeight)
+  const closeRowHeight = (closePadHeight - KEY_GAP * 4) / 5
+  const keyDigitSize = Math.max(
+    12,
+    Math.floor((closeRowHeight * 0.58) / KEY_CAP),
+  )
   const keyLabelSize = Math.max(11, Math.floor(keyDigitSize * 0.58))
-  const keyDeleteSize = Math.max(keyLabelSize + 4, Math.round(keyDigitSize * 0.9))
+  const keyDeleteSize = Math.max(
+    keyLabelSize + 4,
+    Math.round(keyDigitSize * 0.9),
+  )
   const frame = state.frameData?.[frameIndex] as FrameType | undefined
   const matchId = Number(state.matchInfo?.match_id ?? 0)
   const homeTeamId = Number(state.matchInfo?.home_team_id ?? 0)
@@ -1537,7 +1544,7 @@ export default function GameScoreScreen({
           dartNumber={(liveBoard?.cricket?.dartsThrown ?? 0) + 1}
           note={note?.text ?? (done ? wonText : '')}
           noteTone={note?.tone ?? (done ? 'close' : 'plain')}
-          keypadHeight={scoreKeypadHeight}
+          keypadHeight={keypadHeight}
           onMultiplier={setHitMultiplier}
           onTarget={throwDart}
           onZero={throwMiss}
@@ -1545,110 +1552,126 @@ export default function GameScoreScreen({
         />
         </View>
       ) : (
-      <View style={{flex: 1}}>
-      <VisitHistory
-        visits={historyVisits}
-        canUndoLatest={canUndoLatest}
-        onUndoLatest={undo}
-      />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('x01_input_total')}
-        onPress={onValueDisplayPress}
-        style={{alignItems: 'center', minHeight: 64, justifyContent: 'center'}}>
-        <TrekText
-          style={{
-            color: theme.text,
-            fontSize: 40,
-            fontWeight: '800',
-            fontVariant: ['tabular-nums'],
-          }}>
-          {digits === '' ? '0' : digits}
-        </TrekText>
-        <TrekText
-          style={{
-            color: done || preview?.closed || note?.tone === 'close'
-              ? theme.win
-              : preview?.reflected || note?.tone === 'bust'
-                ? theme.gold
-                : theme.muted,
-            fontSize: 13,
-            fontWeight: '700',
-            minHeight: 18,
-          }}>
-          {done
-            ? t('x01_finished')
-            : countTotal != null
-              ? t('x01_adds', {score: countTotal})
-              : preview?.closed
-                ? t('x01_will_close')
-                : preview?.reflected
-                  ? t('x01_bust', {score: preview.remaining})
-                  : preview
-                    ? t('x01_leaves', {score: preview.remaining})
-                    : (note?.text ?? '')}
-        </TrekText>
-      </Pressable>
-      <View
-        style={{
-          height: keypadHeight,
-          width: '100%',
-          marginTop: 'auto',
-          alignSelf: 'center',
-          gap: KEY_GAP,
-          opacity: done || !ready ? 0.4 : 1,
-        }}>
-        {KEY_ROWS.map(row => (
-          <View
-            key={row.join('-')}
-            style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
-            {row.map(key => (
-              <KeyCell
-                key={key}
-                label={
-                  key === 'clear' ? t('clear') : key === 'back' ? '⌫' : key
-                }
-                accessibilityLabel={
-                  key === 'clear'
-                    ? t('clear')
-                    : key === 'back'
-                      ? t('x01_undo_digit')
-                      : key
-                }
-                disabled={done || !ready}
-                onPress={() => tapKey(key)}
-                fontSize={
-                  key === 'back'
-                    ? keyDeleteSize
-                    : key === 'clear'
-                      ? keyLabelSize
-                      : keyDigitSize
-                }
-              />
-            ))}
+        <View style={{flex: 1, gap: 8}}>
+          <VisitHistory
+            visits={historyVisits}
+            canUndoLatest={canUndoLatest}
+            onUndoLatest={undo}
+          />
+          <View style={{flex: 1, gap: 8, justifyContent: 'flex-end'}}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('x01_input_total')}
+              onPress={onValueDisplayPress}
+              style={{
+                alignItems: 'center',
+                minHeight: 64,
+                justifyContent: 'center',
+              }}>
+              <TrekText
+                style={{
+                  color: theme.text,
+                  fontSize: 40,
+                  fontWeight: '800',
+                  fontVariant: ['tabular-nums'],
+                }}>
+                {digits === '' ? '0' : digits}
+              </TrekText>
+              <TrekText
+                style={{
+                  color:
+                    done || preview?.closed || note?.tone === 'close'
+                      ? theme.win
+                      : preview?.reflected || note?.tone === 'bust'
+                        ? theme.gold
+                        : theme.muted,
+                  fontSize: 13,
+                  fontWeight: '700',
+                  minHeight: 18,
+                }}>
+                {done
+                  ? t('x01_finished')
+                  : countTotal != null
+                    ? t('x01_adds', {score: countTotal})
+                    : preview?.closed
+                      ? t('x01_will_close')
+                      : preview?.reflected
+                        ? t('x01_bust', {score: preview.remaining})
+                        : preview
+                          ? t('x01_leaves', {score: preview.remaining})
+                          : (note?.text ?? '')}
+              </TrekText>
+            </Pressable>
+            <View
+              onLayout={e => {
+                const h = Math.round(e.nativeEvent.layout.height)
+                setClosePadFit(prev => (prev === h ? prev : h))
+              }}
+              style={{
+                flex: 1,
+                maxHeight: keypadHeight,
+                minHeight: 5 * 40 + KEY_GAP * 4,
+                width: '100%',
+                alignSelf: 'center',
+                gap: KEY_GAP,
+                opacity: done || !ready ? 0.4 : 1,
+              }}>
+              {KEY_ROWS.map(row => (
+                <View
+                  key={row.join('-')}
+                  style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
+                  {row.map(key => (
+                    <KeyCell
+                      key={key}
+                      label={
+                        key === 'clear'
+                          ? t('clear')
+                          : key === 'back'
+                            ? '⌫'
+                            : key
+                      }
+                      accessibilityLabel={
+                        key === 'clear'
+                          ? t('clear')
+                          : key === 'back'
+                            ? t('x01_undo_digit')
+                            : key
+                      }
+                      disabled={done || !ready}
+                      onPress={() => tapKey(key)}
+                      fontSize={
+                        key === 'back'
+                          ? keyDeleteSize
+                          : key === 'clear'
+                            ? keyLabelSize
+                            : keyDigitSize
+                      }
+                    />
+                  ))}
+                </View>
+              ))}
+              <View style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
+                <KeyCell
+                  label={t('x01_undo')}
+                  accessibilityLabel={t('x01_undo')}
+                  disabled={!canUndoX01(liveBoard) || !ready}
+                  onPress={undo}
+                  fontSize={keyLabelSize}
+                  opacity={canUndoX01(liveBoard) ? 1 : 0.4}
+                />
+                <KeyCell
+                  label={t('x01_enter')}
+                  accessibilityLabel={t('x01_enter')}
+                  disabled={done || !ready || typed <= 0}
+                  onPress={enter}
+                  flex={2}
+                  fontSize={keyLabelSize + 2}
+                  opacity={typed <= 0 ? 0.55 : 1}
+                />
+              </View>
+            </View>
           </View>
-        ))}
-        <View style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
-          <KeyCell
-            label={t('x01_undo')}
-            accessibilityLabel={t('x01_undo')}
-            disabled={!canUndoX01(liveBoard) || !ready}
-            onPress={undo}
-            fontSize={keyLabelSize}
-            opacity={canUndoX01(liveBoard) ? 1 : 0.4}
-          />
-          <KeyCell
-            label={t('x01_enter')}
-            accessibilityLabel={t('x01_enter')}
-            disabled={done || !ready || typed <= 0}
-            onPress={enter}
-            flex={2}
-            fontSize={keyLabelSize + 2}
-            opacity={typed <= 0 ? 0.55 : 1}
-          />
         </View>
-      </View>
-      </View>
       )}
     </View>
   )

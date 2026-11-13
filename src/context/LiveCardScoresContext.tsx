@@ -2,7 +2,9 @@ import {useLeagueContext} from '@/context/LeagueContext'
 import config from '@/config'
 import {
   type LiveCardScore,
+  mergeLiveCardScoreSnapshot,
   parseLiveCardScoreEvent,
+  parseLiveCardScoreSnapshot,
 } from '@/lib/liveCardScore'
 import {SOCKET_PING_INTERVAL_MS, SOCKET_PING_TIMEOUT_MS} from '@/lib/socketAuth'
 import {io, type Socket} from 'socket.io-client'
@@ -30,18 +32,41 @@ type LiveCardScoresValue = {
 
 const LiveCardScoresContext = createContext<LiveCardScoresValue | null>(null)
 
+async function fetchLiveCardScoreSnapshot(
+  apiUrl: string,
+): Promise<Record<string, LiveCardScore> | null> {
+  const base = (apiUrl || config.apiUrl || '').replace(/\/$/, '')
+  if (!base) return null
+  try {
+    const res = await fetch(`${base}/matches/live-card-scores`)
+    if (!res.ok) return null
+    const body = (await res.json()) as {status?: string; data?: unknown}
+    if (body?.status !== 'ok') return null
+    return parseLiveCardScoreSnapshot(body.data)
+  } catch {
+    return null
+  }
+}
+
 /**
  * Stays in the live-card room while the app is in the foreground.
- * A missing provider means cards keep the scores from the matches API.
+ * On resume, pulls a Redis-only snapshot so missed emits are recovered
+ * without reloading the full upcoming-matches list.
  */
 export function LiveCardScoresProvider({children}: {children: React.ReactNode}) {
-  const {webSocketUrl} = useLeagueContext()
+  const {webSocketUrl, apiUrl} = useLeagueContext()
   const [scores, setScores] = useState<ScoreState>({})
   const [connection, setConnection] = useState<LiveCardConnection>('connecting')
 
   useEffect(() => {
     let socket: Socket | null = null
     let stopped = false
+
+    const syncSnapshot = async () => {
+      const snapshot = await fetchLiveCardScoreSnapshot(apiUrl || config.apiUrl)
+      if (stopped || !snapshot) return
+      setScores(prev => mergeLiveCardScoreSnapshot(prev, snapshot))
+    }
 
     const disconnect = () => {
       socket?.removeAllListeners()
@@ -61,6 +86,7 @@ export function LiveCardScoresProvider({children}: {children: React.ReactNode}) 
         return
       }
       setConnection('connecting')
+      void syncSnapshot()
       socket = io(url, {
         autoConnect: false,
         reconnection: true,
@@ -110,7 +136,7 @@ export function LiveCardScoresProvider({children}: {children: React.ReactNode}) 
       sub.remove()
       disconnect()
     }
-  }, [webSocketUrl])
+  }, [webSocketUrl, apiUrl])
 
   const value = useMemo(() => ({scores, connection}), [scores, connection])
   return (

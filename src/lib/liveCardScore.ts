@@ -66,6 +66,43 @@ export function cardScoreShowsLive(score: LiveCardScore | null): boolean {
   return !!(score && !score.final)
 }
 
+/**
+ * Parse GET /api/matches/live-card-scores data into a score map.
+ * Returns null when the payload is unusable.
+ */
+export function parseLiveCardScoreSnapshot(
+  data: unknown,
+): Record<string, LiveCardScore> | null {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null
+  const out: Record<string, LiveCardScore> = {}
+  for (const [key, value] of Object.entries(data)) {
+    const matchId = asScore(key)
+    if (matchId == null || matchId <= 0) continue
+    if (!value || typeof value !== 'object') continue
+    const row = value as {home?: unknown; away?: unknown}
+    const home = asScore(row.home)
+    const away = asScore(row.away)
+    if (home == null || away == null) continue
+    out[String(matchId)] = {home, away}
+  }
+  return out
+}
+
+/**
+ * Apply a Redis snapshot after resume. Snapshot ids win; ids we knew about
+ * that are gone from Redis become null so cards drop stale LIVE scores.
+ */
+export function mergeLiveCardScoreSnapshot(
+  prev: Record<string, LiveCardScore | null>,
+  snapshot: Record<string, LiveCardScore>,
+): Record<string, LiveCardScore | null> {
+  const next: Record<string, LiveCardScore | null> = {...snapshot}
+  for (const id of Object.keys(prev)) {
+    if (!(id in next) && prev[id] != null) next[id] = null
+  }
+  return next
+}
+
 function asScore(value: unknown): number | null {
   if (typeof value === 'boolean' || value == null) return null
   const n = typeof value === 'number' ? value : Number(value)

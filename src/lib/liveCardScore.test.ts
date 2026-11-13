@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import {describe, it} from 'node:test'
 import {
   cardScoreShowsLive,
+  mergeLiveCardScoreSnapshot,
   parseLiveCardScoreEvent,
+  parseLiveCardScoreSnapshot,
   readLiveCardScores,
   resolveCardLiveScore,
 } from './liveCardScore.ts'
@@ -75,5 +77,24 @@ describe('match card live scores during a match', () => {
     assert.deepEqual(cleared, {matchId: 99, score: null})
     assert.equal(resolveCardLiveScore(null, {live_home_score: 2, live_away_score: 1}), null)
     assert.equal(cardScoreShowsLive(null), false)
+  })
+
+  it('merges a Redis snapshot after resume and clears removed matches', () => {
+    const snapshot = parseLiveCardScoreSnapshot({
+      '10886': {home: 1, away: 2},
+      junk: {home: 9, away: 9},
+      '12': {home: 0, away: 0},
+    })
+    assert.deepEqual(snapshot, {
+      '10886': {home: 1, away: 2},
+      '12': {home: 0, away: 0},
+    })
+    const merged = mergeLiveCardScoreSnapshot(
+      {'10886': {home: 1, away: 1}, '55': {home: 3, away: 0}},
+      snapshot!,
+    )
+    assert.deepEqual(merged['10886'], {home: 1, away: 2})
+    assert.equal(merged['55'], null)
+    assert.deepEqual(merged['12'], {home: 0, away: 0})
   })
 })
