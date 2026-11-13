@@ -19,6 +19,7 @@ import {
   reconcileX01Board,
   saveX01Board,
   scoresheetScoringMode,
+  scoreTotalsFromHistory,
   advanceX01Thrower,
   canUndoX01,
   undoX01Visit,
@@ -40,8 +41,10 @@ import {
   CRICKET_DARTS_PER_TURN,
   CRICKET_TARGETS,
   cloneCricketBoard,
+  cricketWinner,
   emptyCricketBoard,
   scoreCricketHit,
+  type CricketBoard,
   type CricketMultiplier,
   type CricketTargetId,
 } from '@/lib/cricketScore'
@@ -385,8 +388,14 @@ export default function GameScoreScreen({
   embedded?: boolean
   onClose: () => void
 }) {
-  const {state, UpdateFrameStats, RecordThrow, SyncX01Board}: any =
-    useMatchContext()
+  const {
+    state,
+    UpdateFrameStats,
+    RecordThrow,
+    SyncX01Board,
+    UpdateFrameWin,
+    ClearFrameWinner,
+  }: any = useMatchContext()
   const x01Score = useX01Score()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
@@ -564,6 +573,14 @@ export default function GameScoreScreen({
       active: next.active,
       legIndex: next.legIndex,
       done: next.done,
+      ...(mode === 'score'
+        ? {
+            cricket: {
+              home: {...(next.cricket ?? emptyCricketBoard()).home},
+              away: {...(next.cricket ?? emptyCricketBoard()).away},
+            },
+          }
+        : {}),
     }
   }
 
@@ -595,16 +612,8 @@ export default function GameScoreScreen({
           prev,
         ),
       )
-      const snap: X01BoardSnapshot = {
-        mode: scoringMode,
-        start: initial.start,
-        home: initial.home,
-        away: initial.away,
-        active: initial.active,
-        legIndex: initial.legIndex,
-        done: initial.done,
-      }
-      x01Score?.publishBoard(frameIndex, snap)
+      const snap = toSnapshot(initial)
+      if (snap) x01Score?.publishBoard(frameIndex, snap)
     })()
     return () => {
       cancelled = true
@@ -627,8 +636,10 @@ export default function GameScoreScreen({
     mode,
   ])
 
-  // Apply board snapshots rebroadcast on the match socket room.
+  // Score games keep their own throw history. A scoresheet echo only has the
+  // running total, which is often still 0, so it must not replace the board.
   React.useEffect(() => {
+    if (mode === 'score') return
     const remote = frame?.x01
     if (!remote || !mode || remote.mode !== mode) return
     const starter = x01Starter(frame?.firstDart, homeTeamId, awayTeamId)
@@ -674,6 +685,15 @@ export default function GameScoreScreen({
       // Opening the screen has no previous board yet. Saving here would
       // replace the stored undo stack before the local board finishes loading.
       if (!prev) return next
+      // A scoresheet echo can arrive with the total from before this dart.
+      // Keep the points already added once a number is scoring.
+      if (
+        mode === 'score' &&
+        prev.undoStack.length > 0 &&
+        (prev.home !== next.home || prev.away !== next.away)
+      ) {
+        return prev
+      }
       const keepHistory =
         prev.home === next.home &&
         prev.away === next.away &&
@@ -689,15 +709,19 @@ export default function GameScoreScreen({
       if (storageKey) saveX01Board(storageKey, merged)
       return merged
     })
-    x01Score?.publishBoard(frameIndex, {
-      mode,
-      start: remote.start,
-      home: remote.home,
-      away: remote.away,
-      active: remoteActive,
-      legIndex,
-      done: remote.done,
-    })
+    if (mode === 'score' && liveBoard && liveBoard.undoStack.length > 0) {
+      publish(liveBoard)
+    } else {
+      x01Score?.publishBoard(frameIndex, {
+        mode,
+        start: remote.start,
+        home: remote.home,
+        away: remote.away,
+        active: remoteActive,
+        legIndex,
+        done: remote.done,
+      })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     frame?.x01?.mode,
@@ -813,7 +837,7 @@ export default function GameScoreScreen({
       ...cricket[side],
       [target.id]: hit.nextMarks,
     }
-    const nextCricket = {
+    const nextCricket: CricketBoard = {
       home: side === 'home' ? nextMarks : {...cricket.home},
       away: side === 'away' ? nextMarks : {...cricket.away},
       dartsThrown: rotate ? 0 : thrown,
@@ -839,6 +863,11 @@ export default function GameScoreScreen({
           close: null,
           boardDelta: hit.points > 0 ? {side, points: hit.points} : null,
           cricket: previous,
+          sector: Number(target.id),
+          multiplier:
+            target.id === '25'
+              ? Math.min(2, multiplier ?? cricket.multiplier)
+              : (multiplier ?? cricket.multiplier),
           label: dartFace(
             target.id,
             multiplier ?? cricket.multiplier,
@@ -855,6 +884,35 @@ export default function GameScoreScreen({
         : x01RosterNames(
             playerNicknames(state.teams, awayTeamId, frame?.awayPlayerIds),
           ).length
+    const totals = scoreTotalsFromHistory(afterHit.undoStack)
+    const winner = cricketWinner(nextCricket, totals, side)
+    if (winner) {
+      persist(
+        {...afterHit, home: totals.home, away: totals.away, active: side, done: true},
+        {syncRemote: true},
+      )
+      if (hit.points > 0) {
+        UpdateFrameStats(frameIndex, side, 'boardScore', hit.points)
+      }
+      UpdateFrameWin?.(
+        side,
+        frameIndex,
+        side === 'home' ? homeTeamId : awayTeamId,
+        false,
+      )
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      setNote({
+        text: t('score_won', {
+          team:
+            (side === 'home'
+              ? state.matchInfo?.home_team_short_name
+              : state.matchInfo?.away_team_short_name) ||
+            t(side === 'home' ? 'home' : 'away'),
+        }),
+        tone: 'close',
+      })
+      return
+    }
     persist(
       rotate ? advanceX01Thrower(afterHit, side, rosterLen) : afterHit,
       {syncRemote: true},
@@ -910,6 +968,8 @@ export default function GameScoreScreen({
           close: null,
           boardDelta: null,
           cricket: cloneCricketBoard(cricket),
+          sector: 0,
+          multiplier: 1,
           label: '0',
         },
       ],
@@ -1088,6 +1148,9 @@ export default function GameScoreScreen({
     setNote(null)
     setVisitLog(prev => (prev.length > 0 ? prev.slice(0, -1) : prev))
     persist(undone.board)
+    if (mode === 'score' && liveBoard.done && !undone.board.done) {
+      ClearFrameWinner?.(frameIndex)
+    }
     if (undone.reverseVisit) {
       RecordThrow?.(frameIndex, {
         ...undone.reverseVisit,
@@ -1163,6 +1226,10 @@ export default function GameScoreScreen({
   )
 
   const cricketBoard = liveBoard?.cricket ?? emptyCricketBoard()
+  const historyTotals =
+    mode === 'score'
+      ? scoreTotalsFromHistory(liveBoard?.undoStack)
+      : {home: 0, away: 0}
   const historyVisits = (
     mode === 'score'
       ? scoreThrowHistory(liveBoard, homeNames, awayNames)
@@ -1186,7 +1253,18 @@ export default function GameScoreScreen({
     ? x01ThrowerName(awayNames, liveBoard, 'away')
     : null
   const activeThrower = active === 'home' ? homeThrower : awayThrower
-  const canUndoLatest = canUndoX01(liveBoard) && ready && !done
+  const canUndoLatest =
+    canUndoX01(liveBoard) && ready && (!done || mode === 'score')
+  const wonText =
+    mode === 'score' && done && liveBoard
+      ? t('score_won', {
+          team:
+            (liveBoard.active === 'home'
+              ? state.matchInfo?.home_team_short_name
+              : state.matchInfo?.away_team_short_name) ||
+            t(liveBoard.active === 'home' ? 'home' : 'away'),
+        })
+      : ''
 
   function pressSideScore(side: X01Side) {
     if (!liveBoard || liveBoard.done) return
@@ -1250,7 +1328,13 @@ export default function GameScoreScreen({
           throwerIndex={
             liveBoard ? x01ThrowerSlot(liveBoard, 'home', homeNames.length) : -1
           }
-          score={liveBoard?.home ?? start}
+          score={
+            mode === 'score'
+              ? (liveBoard?.undoStack.length
+                  ? historyTotals.home
+                  : (liveBoard?.home ?? 0))
+              : (liveBoard?.home ?? start)
+          }
           legs={Number(frame.homeScore ?? 0)}
           active={active === 'home'}
           done={done}
@@ -1266,7 +1350,13 @@ export default function GameScoreScreen({
           throwerIndex={
             liveBoard ? x01ThrowerSlot(liveBoard, 'away', awayNames.length) : -1
           }
-          score={liveBoard?.away ?? start}
+          score={
+            mode === 'score'
+              ? (liveBoard?.undoStack.length
+                  ? historyTotals.away
+                  : (liveBoard?.away ?? 0))
+              : (liveBoard?.away ?? start)
+          }
           legs={Number(frame.awayScore ?? 0)}
           active={active === 'away'}
           done={done}
@@ -1304,8 +1394,8 @@ export default function GameScoreScreen({
           disabled={done || !ready}
           canUndo={canUndoX01(liveBoard) && ready}
           dartNumber={(liveBoard?.cricket?.dartsThrown ?? 0) + 1}
-          note={note?.text ?? ''}
-          noteTone={note?.tone ?? 'plain'}
+          note={note?.text ?? (done ? wonText : '')}
+          noteTone={note?.tone ?? (done ? 'close' : 'plain')}
           keypadHeight={scoreKeypadHeight}
           onMultiplier={setHitMultiplier}
           onTarget={throwDart}
@@ -1714,7 +1804,7 @@ function CricketHits({
   const digitSize = Math.max(12, Math.floor((rowHeight * 0.58) / KEY_CAP))
   const labelSize = Math.max(11, Math.floor(digitSize * 0.58))
   return (
-    <View style={{gap: 8, opacity: disabled ? 0.4 : 1}}>
+    <View style={{gap: 8}}>
       <TrekText
         style={{
           textAlign: 'center',
@@ -1754,6 +1844,7 @@ function CricketHits({
                     : t('score_triple')
               }
               disabled={disabled}
+              opacity={disabled ? 0.4 : 1}
               selected={board.multiplier === multiplier}
               onPress={() => onMultiplier(multiplier)}
               fontSize={labelSize}
@@ -1768,6 +1859,7 @@ function CricketHits({
                 label={target.label}
                 accessibilityLabel={target.label}
                 disabled={disabled}
+                opacity={disabled ? 0.4 : 1}
                 onPress={() => onTarget(target.id)}
                 fontSize={digitSize}
               />
@@ -1778,7 +1870,7 @@ function CricketHits({
           <KeyCell
             label={t('score_undo')}
             accessibilityLabel={t('score_undo')}
-            disabled={disabled || !canUndo}
+            disabled={!canUndo}
             onPress={onUndo}
             fontSize={labelSize}
             opacity={canUndo ? 1 : 0.4}
@@ -1787,6 +1879,7 @@ function CricketHits({
             label="0"
             accessibilityLabel="0"
             disabled={disabled}
+            opacity={disabled ? 0.4 : 1}
             onPress={onZero}
             fontSize={digitSize}
           />
@@ -1794,6 +1887,7 @@ function CricketHits({
             label={t('score_bull')}
             accessibilityLabel={t('score_bull')}
             disabled={disabled}
+            opacity={disabled ? 0.4 : 1}
             onPress={() => onTarget('25')}
             fontSize={labelSize}
           />
@@ -1960,6 +2054,43 @@ function resolveInitialBoard(
 ): X01Board {
   const starter = x01Starter(frame.firstDart, homeTeamId, awayTeamId)
   const remote = frame.x01
+  if (mode === 'score') {
+    const savedScore = saved
+    const history = scoreTotalsFromHistory(savedScore?.undoStack)
+    const fromThrows = (savedScore?.undoStack.length ?? 0) > 0
+    const remoteHome = remote?.mode === 'score' ? remote.home : 0
+    const remoteAway = remote?.mode === 'score' ? remote.away : 0
+    const home = fromThrows
+      ? history.home
+      : Math.max(
+          remoteHome,
+          savedScore?.home ?? 0,
+          Math.max(0, Math.trunc(Number(frame.homeBoardScore) || 0)),
+        )
+    const away = fromThrows
+      ? history.away
+      : Math.max(
+          remoteAway,
+          savedScore?.away ?? 0,
+          Math.max(0, Math.trunc(Number(frame.awayBoardScore) || 0)),
+        )
+    const next: X01Board = {
+      start: 0,
+      legIndex: remote?.mode === 'score' ? remote.legIndex : (savedScore?.legIndex ?? 0),
+      home,
+      away,
+      active: savedScore?.active ?? (remote?.mode === 'score' ? remote.active : starter),
+      done: fromThrows && Boolean(savedScore?.done),
+      homeThrower: savedScore?.homeThrower ?? 0,
+      awayThrower: savedScore?.awayThrower ?? 0,
+      undoStack: savedScore?.undoStack ?? [],
+      cricket: savedScore?.cricket ?? emptyCricketBoard(),
+    }
+    if (hasNoRecordedThrows(next, mode, frame.visits)) {
+      next.active = starter
+    }
+    return next
+  }
   if (
     remote &&
     remote.mode === mode &&

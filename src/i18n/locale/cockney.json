@@ -422,6 +422,7 @@
   "score_number_closed": "Number's shut",
   "score_marks": "{n} marks",
   "score_miss": "Miss",
+  "score_won": "{team} takes it",
   "score_reset": "Scores wiped",
   "score_missing_game": "That game ain't on the sheet.",
   "score_need_first_dart_title": "Who's on first?",

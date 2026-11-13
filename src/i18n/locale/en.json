@@ -428,6 +428,7 @@
   "score_number_closed": "Number closed",
   "score_marks": "{n} marks",
   "score_miss": "Miss",
+  "score_won": "{team} wins",
   "score_reset": "Scores cleared",
   "score_missing_game": "This game is not on the scoresheet.",
   "score_need_first_dart_title": "Choose first dart",

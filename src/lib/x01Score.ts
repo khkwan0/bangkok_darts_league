@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type {FrameType} from '@/components/Match/types'
 import type {CricketBoard} from '@/lib/cricketScore'
-import {parseCricketBoard} from '@/lib/cricketScore'
+import {parseCricketBoard, pointsFromScoreThrows} from '@/lib/cricketScore'
 import {hydrateFrameLegs} from '@/lib/hydrateFrameLegs'
 import {seriesWinsNeeded} from '@/lib/matchFormat'
 
@@ -35,6 +35,10 @@ export type X01Undo = {
   cricket?: CricketBoard | null
   /** Dart shown in the score-game history, such as T20 or 0. */
   label?: string | null
+  /** Number hit: 0 miss, 15–20, or 25 bull. */
+  sector?: number | null
+  /** 1 single, 2 double, 3 triple. A triple bull is stored as 2. */
+  multiplier?: number | null
   /** Throw written to match Redis, so undo can reverse the same visit. */
   visit?: {
     side: X01Side
@@ -62,6 +66,18 @@ export type X01Board = {
   undoStack: X01Undo[]
   /** Present on Score games when hits are being tracked. */
   cricket?: CricketBoard | null
+}
+
+export function scoreTotalsFromHistory(
+  undoStack: Array<{
+    active?: string
+    label?: string | null
+    sector?: number | null
+    multiplier?: number | null
+    boardDelta?: {side?: string; points?: number} | null
+  }> | null | undefined,
+): {home: number; away: number} {
+  return pointsFromScoreThrows(undoStack)
 }
 
 export function canUndoX01(
@@ -380,6 +396,14 @@ function parseUndo(value: unknown): X01Undo | null {
       typeof row.label === 'string' && row.label.trim() !== ''
         ? row.label.trim()
         : null,
+    sector:
+      typeof row.sector === 'number' && Number.isFinite(row.sector)
+        ? Math.trunc(row.sector)
+        : null,
+    multiplier:
+      row.multiplier === 1 || row.multiplier === 2 || row.multiplier === 3
+        ? row.multiplier
+        : null,
     ...('cricket' in row
       ? {cricket: parseCricketBoard(row.cricket) ?? null}
       : {}),
@@ -607,6 +631,11 @@ export function commitCountUpVisit(
       undoStack: [...board.undoStack, undoEntry],
     },
   }
+}
+
+/** Board saved earlier in this session, without waiting on storage. */
+export function peekX01Board(key: string): X01Board | null {
+  return memory.get(key) ?? null
 }
 
 export async function loadX01Board(key: string): Promise<X01Board | null> {

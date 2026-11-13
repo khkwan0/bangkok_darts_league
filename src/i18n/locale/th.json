@@ -465,6 +465,7 @@
   "score_number_closed": "ปิดเลขแล้ว",
   "score_marks": "{n} ครั้ง",
   "score_miss": "พลาด",
+  "score_won": "{team} ชนะ",
   "score_reset": "ล้างคะแนนแล้ว",
   "score_missing_game": "ไม่พบเกมนี้ในใบบันทึกคะแนน",
   "score_need_first_dart_title": "เลือกทีมที่โยนลูกแรก",

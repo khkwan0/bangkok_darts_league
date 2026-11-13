@@ -16,6 +16,21 @@ export type X01BoardSnapshot = {
   active: X01Side
   legIndex: number
   done: boolean
+  /** Score games: marks per number (15–20, 25), 0–3 each. */
+  cricket?: X01CricketMarks | null
+}
+
+export type X01CricketMarks = {
+  home: Record<string, number>
+  away: Record<string, number>
+}
+
+function sameMarks(
+  a: X01CricketMarks | null | undefined,
+  b: X01CricketMarks | null | undefined,
+): boolean {
+  if (!a || !b) return !a && !b
+  return JSON.stringify(a) === JSON.stringify(b)
 }
 
 type X01ScoreContextValue = {
@@ -47,7 +62,8 @@ export function X01ScoreProvider({
           cur.away === board.away &&
           cur.active === board.active &&
           cur.legIndex === board.legIndex &&
-          cur.done === board.done
+          cur.done === board.done &&
+          sameMarks(cur.cricket, board.cricket)
         ) {
           return prev
         }

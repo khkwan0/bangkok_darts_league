@@ -83,6 +83,102 @@ export function scoreCricketHit(
   return {nextMarks, points, kind}
 }
 
+/** True once this side has closed 15–20 and bull. */
+export function cricketAllClosed(marks: CricketMarks): boolean {
+  return TARGET_IDS.every(id => marks[id] >= CRICKET_MARKS_TO_CLOSE)
+}
+
+/**
+ * Cricket win: every number closed and level with or ahead of the other side.
+ * Only the side that just threw can win on that dart.
+ */
+export function cricketWinner(
+  board: CricketBoard,
+  totals: {home: number; away: number},
+  thrower: 'home' | 'away',
+): 'home' | 'away' | null {
+  const other = thrower === 'home' ? 'away' : 'home'
+  if (!cricketAllClosed(board[thrower])) return null
+  return totals[thrower] >= totals[other] ? thrower : null
+}
+
+export type ScoreThrowRecord = {
+  active?: string
+  label?: string | null
+  sector?: number | null
+  multiplier?: number | null
+  boardDelta?: {side?: string; points?: number} | null
+}
+
+function dartFromLabel(
+  text: string,
+): {sector: number; multiplier: CricketMultiplier} | null {
+  if (!text) return null
+  if (text === '0') return {sector: 0, multiplier: 1}
+  const marked = text.match(/^([SDT])(\d+)$/i)
+  if (marked) {
+    const sector = Number(marked[2])
+    const multiplier: CricketMultiplier =
+      marked[1].toUpperCase() === 'T' ? 3 : marked[1].toUpperCase() === 'D' ? 2 : 1
+    if (sector === 25) return {sector: 25, multiplier: multiplier === 3 ? 2 : multiplier}
+    if (sector >= 15 && sector <= 20) return {sector, multiplier}
+  }
+  const plain = text.match(/^(\d+)$/)
+  if (plain) {
+    const sector = Number(plain[1])
+    if (sector === 25 || (sector >= 15 && sector <= 20)) return {sector, multiplier: 1}
+  }
+  if (/^d/i.test(text)) return {sector: 25, multiplier: 2}
+  return {sector: 25, multiplier: 1}
+}
+
+function dartFromRecord(
+  entry: ScoreThrowRecord,
+): {sector: number; multiplier: CricketMultiplier} | null {
+  if (entry.sector != null && Number.isFinite(Number(entry.sector))) {
+    const sector = Math.trunc(Number(entry.sector))
+    const raw = Math.trunc(Number(entry.multiplier) || 1)
+    const multiplier: CricketMultiplier = raw === 2 || raw === 3 ? raw : 1
+    return {sector, multiplier: sector === 25 && multiplier === 3 ? 2 : multiplier}
+  }
+  return dartFromLabel(String(entry.label ?? '').trim())
+}
+
+/** Team totals for a score game, replayed from the throws in order. */
+export function pointsFromScoreThrows(
+  entries: ScoreThrowRecord[] | null | undefined,
+): {home: number; away: number} {
+  let homeMarks = emptyCricketMarks()
+  let awayMarks = emptyCricketMarks()
+  let home = 0
+  let away = 0
+  let deltaHome = 0
+  let deltaAway = 0
+  for (const entry of entries ?? []) {
+    const delta = Math.max(0, Math.trunc(Number(entry.boardDelta?.points) || 0))
+    if (delta > 0) {
+      if (entry.boardDelta?.side === 'away') deltaAway += delta
+      else deltaHome += delta
+    }
+    const dart = dartFromRecord(entry)
+    if (!dart || dart.sector === 0) continue
+    const id = String(dart.sector) as CricketTargetId
+    if (!TARGET_IDS.includes(id)) continue
+    const side = entry.active === 'away' ? 'away' : 'home'
+    const own = side === 'home' ? homeMarks : awayMarks
+    const opp = side === 'home' ? awayMarks : homeMarks
+    const hit = scoreCricketHit(own[id], opp[id], dart.multiplier, dart.sector)
+    if (side === 'home') {
+      homeMarks = {...homeMarks, [id]: hit.nextMarks}
+      home += hit.points
+    } else {
+      awayMarks = {...awayMarks, [id]: hit.nextMarks}
+      away += hit.points
+    }
+  }
+  return {home: Math.max(home, deltaHome), away: Math.max(away, deltaAway)}
+}
+
 function parseMarks(raw: unknown): CricketMarks | null {
   if (!raw || typeof raw !== 'object') return null
   const row = raw as Record<string, unknown>

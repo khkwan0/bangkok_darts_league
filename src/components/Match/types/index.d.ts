@@ -141,6 +141,11 @@ export type FrameType = {
     active: 'home' | 'away'
     legIndex: number
     done: boolean
+    /** Score games: marks per number (15–20, 25), 0–3 each. */
+    cricket?: {
+      home: Record<string, number>
+      away: Record<string, number>
+    } | null
   }
   /** Keypad visits saved on the live frame in Redis (`match_{id}`). */
   visits?: Array<{

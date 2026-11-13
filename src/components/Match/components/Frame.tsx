@@ -7,10 +7,13 @@ import {
 import {
   loadX01Board,
   parseX01Start,
+  peekX01Board,
   scoresheetScoringMode,
+  scoreTotalsFromHistory,
   x01StorageKey,
 } from '@/lib/x01Score'
 import type {ScoresheetStatsView} from '@/lib/scoresheetStatsView'
+import {CRICKET_TARGETS} from '@/lib/cricketScore'
 import {
   anyPlayerStatFlags,
   resolveScoreSheetStatFlags,
@@ -49,6 +52,46 @@ function frameKindLabel(
   if (min === 2) return t('doubles')
   if (min === 1) return t('singles')
   return ''
+}
+
+function ScoreMarks({
+  marks,
+  ink,
+  muted,
+  bullLabel,
+}: {
+  marks: Record<string, number> | null | undefined
+  ink: string
+  muted: string
+  bullLabel: string
+}) {
+  return (
+    <View style={{flexDirection: 'row', gap: 2, width: '100%'}}>
+      {CRICKET_TARGETS.map(target => {
+        const n = Math.min(3, Math.max(0, Math.trunc(Number(marks?.[target.id] ?? 0))))
+        return (
+          <View key={target.id} style={{flex: 1, alignItems: 'center', minWidth: 0}}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={{color: muted, fontSize: 10, fontWeight: '800'}}>
+              {target.id === '25' ? bullLabel : target.label}
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={{
+                color: n >= 3 ? ink : muted,
+                fontSize: 12,
+                fontWeight: '800',
+                opacity: n === 0 ? 0.5 : 1,
+              }}>
+              {n === 0 ? '·' : '/'.repeat(n)}
+            </Text>
+          </View>
+        )
+      })}
+    </View>
+  )
 }
 
 export default function Frame({
@@ -334,6 +377,7 @@ export default function Frame({
         : t('x01_score_game_plain')
 
   React.useEffect(() => {
+    if (scoringMode === 'score') return
     const remote = livePreview?.x01
     if (!scoringMode || !x01Score || !remote || remote.mode !== scoringMode) {
       return
@@ -361,7 +405,7 @@ export default function Frame({
   ])
 
   React.useEffect(() => {
-    if (!scoringMode || !x01Score || matchId <= 0 || x01Board != null) return
+    if (!scoringMode || scoringMode === 'score' || !x01Score || matchId <= 0 || x01Board != null) return
     const remote = livePreview?.x01
     if (remote && remote.mode === scoringMode) {
       x01Score.publishBoard(index, {
@@ -455,19 +499,37 @@ export default function Frame({
     setUserExpanded(v => !v)
   }
 
+  const localScore =
+    scoringMode === 'score' && matchId > 0
+      ? peekX01Board(x01StorageKey(matchId, index, 'score'))
+      : null
+  const historyTotals =
+    localScore && localScore.undoStack.length > 0
+      ? scoreTotalsFromHistory(localScore.undoStack)
+      : null
+
   function sideMetaExtras(side: 'home' | 'away') {
     const palette = side === 'home' ? theme.home : theme.away
     const legs = side === 'home' ? live.homeScore : live.awayScore
     const serverBoard =
       side === 'home' ? live.homeBoardScore : live.awayBoardScore
-    const liveTotal =
+    const fromX01 =
       x01Board != null
         ? side === 'home'
           ? x01Board.home
           : x01Board.away
-        : showClose
-          ? (scoreStart ?? 501)
-          : Number(serverBoard ?? 0)
+        : null
+    const fromHistory =
+      historyTotals == null
+        ? null
+        : side === 'home'
+          ? historyTotals.home
+          : historyTotals.away
+    const liveTotal = showClose
+      ? (fromX01 ?? scoreStart ?? 501)
+      : fromHistory != null
+        ? fromHistory
+        : Math.max(fromX01 ?? 0, Number(serverBoard ?? 0))
     const throwing = x01Board?.active === side && !x01Board.done
     // Legs are derived from closes / Win — no manual +/- counter.
     if (!showScore && !showClose && !showSeries && !showLegTallies) return null
@@ -526,24 +588,12 @@ export default function Frame({
           {showScore ? (
             <StatValueInput
               label={t('score')}
-              value={Number(
-                x01Board != null
-                  ? side === 'home'
-                    ? x01Board.home
-                    : x01Board.away
-                  : (serverBoard ?? 0),
-              )}
+              value={Number(!showClose ? liveTotal : (fromX01 ?? serverBoard ?? 0))}
               ink={palette.ink}
               accent={palette.button}
               disabled={locked}
               onChange={next => {
-                const current = Number(
-                  x01Board != null
-                    ? side === 'home'
-                      ? x01Board.home
-                      : x01Board.away
-                    : (serverBoard ?? 0),
-                )
+                const current = Number(!showClose ? liveTotal : (fromX01 ?? serverBoard ?? 0))
                 UpdateFrameStats(index, side, 'boardScore', next - current)
                 if (x01Board && x01Score) {
                   const snap = {
@@ -570,6 +620,18 @@ export default function Frame({
             </Text>
           ) : null}
         </View>
+        {showScore && !showClose ? (
+          <ScoreMarks
+            marks={
+              (x01Board?.cricket ?? localScore?.cricket ?? live.x01?.cricket)?.[
+                side
+              ] ?? null
+            }
+            ink={palette.ink}
+            muted={theme.muted}
+            bullLabel={t('score_bull')}
+          />
+        ) : null}
       </View>
     )
   }
