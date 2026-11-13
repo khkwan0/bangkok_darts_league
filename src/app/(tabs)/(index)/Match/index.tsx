@@ -43,7 +43,7 @@ import {useNavigation} from "expo-router/react-navigation"
 import {useLocalSearchParams, useRouter} from 'expo-router'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
-import {AppState, FlatList, Pressable, Text, View} from 'react-native'
+import {AppState, FlatList, Platform, Pressable, Text, View} from 'react-native'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 
 export type ScoreSheetProps = {
@@ -107,7 +107,9 @@ export default function ScoreSheet({
     setScoringFrame(null)
   }
   React.useEffect(() => {
-    if (embedded) {
+    // Android NativeTabs swaps the tab content wrapper when the bar hides, which
+    // remounts this screen and drops the open scoring screen.
+    if (embedded || Platform.OS === 'android') {
       setTabBarHidden(false)
       return
     }

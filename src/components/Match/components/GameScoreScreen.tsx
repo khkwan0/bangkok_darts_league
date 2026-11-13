@@ -1,7 +1,8 @@
-import {useMatchContext} from '@/context/MatchContext'
+import {useMatchContext, type SocketStatus} from '@/context/MatchContext'
 import {
   useOpenX01Score,
   useX01Score,
+  type X01Audit,
   type X01BoardSnapshot,
 } from '@/context/X01ScoreContext'
 import {useTabContentBottomInset} from '@/hooks/useTabContentBottomInset'
@@ -18,7 +19,9 @@ import {
   parseX01Start,
   reconcileX01Board,
   saveX01Board,
+  scoreBoardFromSync,
   scoresheetScoringMode,
+  scoreThrowsForSync,
   scoreTotalsFromHistory,
   advanceX01Thrower,
   canUndoX01,
@@ -186,9 +189,12 @@ const KEY_ROWS = [
 ] as const
 
 const KEY_GAP = 10
-/** Saira Extra Condensed Bold: ascender 1135 + descender 439, units per em 1000. Cap center sits on that line-box center. */
+/** Saira Extra Condensed Bold: ascender 1135 + descender 439, cap height 688, units per em 1000. */
 const KEY_LINE = 1574 / 1000
 const KEY_CAP = 688 / 1000
+const KEY_ASCENT = 1135 / 1000
+/** Lowercase words look low when their capitals are centered. */
+const KEY_WORD_LIFT = 0.12
 const KEY_FACE = '#2563EB'
 const KEY_FACE_PRESSED = '#93C5FD'
 const KEY_BORDER = 'rgba(255,255,255,0.25)'
@@ -213,6 +219,12 @@ function KeyCell({
   selected?: boolean
 }) {
   const [pressed, setPressed] = React.useState(false)
+  const [cellHeight, setCellHeight] = React.useState(0)
+  const lineHeight = Math.ceil(fontSize * KEY_LINE)
+  const lift = /^[0-9]+$/.test(label) ? 0 : fontSize * KEY_WORD_LIFT
+  // The line box can be taller than the key. Sized freely, both platforms
+  // clamp it to the key and the digits sink, so give it its full height.
+  const top = cellHeight / 2 - fontSize * (KEY_ASCENT - KEY_CAP / 2) - lift
   return (
     <View
       style={{
@@ -235,35 +247,36 @@ function KeyCell({
         onPress={onPress}
         onPressIn={() => setPressed(true)}
         onPressOut={() => setPressed(false)}
+        onLayout={e => {
+          const h = e.nativeEvent.layout.height
+          setCellHeight(prev => (prev === h ? prev : h))
+        }}
         style={{
           position: 'absolute',
           top: 0,
           right: 0,
           bottom: 0,
           left: 0,
-          alignItems: 'center',
-          justifyContent: 'center',
         }}>
-        <TrekText
-          numberOfLines={1}
-          style={{
-            textAlign: 'center',
-            color: '#FFFFFF',
-            fontSize,
-            lineHeight: Math.ceil(fontSize * KEY_LINE),
-            includeFontPadding: false,
-            textAlignVertical: 'center',
-            // Words already sit on the visual center. iOS draws the digits a little lower in this font.
-            transform: [
-              {
-                translateY: -Math.round(
-                  fontSize * (Platform.OS === 'ios' && /^[0-9]$/.test(label) ? 0.2 : 0.12),
-                ),
-              },
-            ],
-          }}>
-          {label}
-        </TrekText>
+        {cellHeight > 0 ? (
+          <TrekText
+            numberOfLines={1}
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top,
+              height: lineHeight,
+              textAlign: 'center',
+              color: '#FFFFFF',
+              fontSize,
+              lineHeight,
+              includeFontPadding: false,
+              textAlignVertical: 'top',
+            }}>
+            {label}
+          </TrekText>
+        ) : null}
       </Pressable>
     </View>
   )
@@ -395,17 +408,23 @@ export default function GameScoreScreen({
     SyncX01Board,
     UpdateFrameWin,
     ClearFrameWinner,
+    socketStatus,
+    lastSyncAt,
+    canEditScoresheet,
   }: any = useMatchContext()
+  const readOnly = canEditScoresheet === false
   const x01Score = useX01Score()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
-  const bottomInset = useTabContentBottomInset(12)
+  const tabBottomInset = useTabContentBottomInset(12)
+  // Android keeps the tab bar while scoring and lays content out above it.
+  const bottomInset = Platform.OS === 'android' ? 12 : tabBottomInset
   const insets = useSafeAreaInsets()
   const {width, height} = useWindowDimensions()
   const landscape = width > height
   const keypadHeight = Math.round(height * (3 / 8))
   const keyRowHeight = (keypadHeight - KEY_GAP * 4) / 5
-  const scoreKeypadHeight = Math.round(keyRowHeight * 4 + KEY_GAP * 3)
+  const scoreKeypadHeight = Math.round(height * 0.4)
   const keyDigitSize = Math.max(12, Math.floor((keyRowHeight * 0.58) / KEY_CAP))
   const keyLabelSize = Math.max(11, Math.floor(keyDigitSize * 0.58))
   const keyDeleteSize = Math.max(keyLabelSize + 4, Math.round(keyDigitSize * 0.9))
@@ -451,6 +470,22 @@ export default function GameScoreScreen({
     openLeg <= board.legIndex
   ) {
     setHoldServer(false)
+  }
+  // Another device scored on this Score game: take its full board and history.
+  const remoteScore = frame && frame.type !== 'section' ? frame.x01 : null
+  if (
+    mode === 'score' &&
+    board != null &&
+    remoteScore?.mode === 'score' &&
+    Array.isArray(remoteScore.throws) &&
+    (remoteScore.rev ?? 0) > (board.rev ?? 0)
+  ) {
+    setBoard(
+      scoreBoardFromSync(
+        {...remoteScore, throws: remoteScore.throws},
+        board.cricket?.multiplier ?? 1,
+      ),
+    )
   }
   const liveBoard =
     mode === 'close' &&
@@ -546,10 +581,15 @@ export default function GameScoreScreen({
     setNote({text: t(mode === 'score' ? 'score_reset' : 'x01_scores_reset'), tone: 'bust'})
     setVisitLog([])
     setHoldServer(true)
-    persist(next, {syncRemote: true, clearVisits: true})
+    persist(next, {
+      syncRemote: true,
+      clearVisits: true,
+      audit: {action: 'reset', side: active, legIndex},
+    })
   }
 
   function onValueDisplayPress() {
+    if (readOnly) return
     if (!ready || liveBoard?.done) return
     if (valueTapTimer.current) clearTimeout(valueTapTimer.current)
     valueTapCount.current += 1
@@ -573,12 +613,17 @@ export default function GameScoreScreen({
       active: next.active,
       legIndex: next.legIndex,
       done: next.done,
+      rev: next.rev ?? 0,
+      homeThrower: next.homeThrower,
+      awayThrower: next.awayThrower,
       ...(mode === 'score'
         ? {
             cricket: {
               home: {...(next.cricket ?? emptyCricketBoard()).home},
               away: {...(next.cricket ?? emptyCricketBoard()).away},
             },
+            dartsThrown: next.cricket?.dartsThrown ?? 0,
+            throws: scoreThrowsForSync(next),
           }
         : {}),
     }
@@ -627,6 +672,7 @@ export default function GameScoreScreen({
     if (liveBoard) publish(liveBoard)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    liveBoard?.rev,
     liveBoard?.home,
     liveBoard?.away,
     liveBoard?.active,
@@ -636,8 +682,7 @@ export default function GameScoreScreen({
     mode,
   ])
 
-  // Score games keep their own throw history. A scoresheet echo only has the
-  // running total, which is often still 0, so it must not replace the board.
+  // Checkout games: follow the shared board from other devices.
   React.useEffect(() => {
     if (mode === 'score') return
     const remote = frame?.x01
@@ -665,12 +710,16 @@ export default function GameScoreScreen({
       active: remoteActive,
       legIndex,
       done: remote.done,
-      homeThrower: 0,
-      awayThrower: 0,
+      homeThrower: remote.homeThrower ?? 0,
+      awayThrower: remote.awayThrower ?? 0,
       undoStack: [],
       cricket: mode === 'score' ? emptyCricketBoard() : undefined,
+      rev: remote.rev,
     }
     setBoard(prev => {
+      if (prev && remote.rev != null && remote.rev <= (prev.rev ?? 0)) {
+        return prev
+      }
       if (
         prev &&
         prev.start === next.start &&
@@ -678,7 +727,9 @@ export default function GameScoreScreen({
         prev.away === next.away &&
         prev.active === next.active &&
         prev.legIndex === next.legIndex &&
-        prev.done === next.done
+        prev.done === next.done &&
+        (remote.homeThrower == null || prev.homeThrower === next.homeThrower) &&
+        (remote.awayThrower == null || prev.awayThrower === next.awayThrower)
       ) {
         return prev
       }
@@ -702,8 +753,8 @@ export default function GameScoreScreen({
       const merged: X01Board = {
         ...next,
         cricket: prev.cricket ?? next.cricket,
-        homeThrower: keepHistory ? prev.homeThrower : 0,
-        awayThrower: keepHistory ? prev.awayThrower : 0,
+        homeThrower: remote.homeThrower ?? (keepHistory ? prev.homeThrower : 0),
+        awayThrower: remote.awayThrower ?? (keepHistory ? prev.awayThrower : 0),
         undoStack: keepHistory ? prev.undoStack : [],
       }
       if (storageKey) saveX01Board(storageKey, merged)
@@ -731,6 +782,9 @@ export default function GameScoreScreen({
     frame?.x01?.active,
     frame?.x01?.legIndex,
     frame?.x01?.done,
+    frame?.x01?.rev,
+    frame?.x01?.homeThrower,
+    frame?.x01?.awayThrower,
     frame?.firstDart,
     frame?.visits,
     homeTeamId,
@@ -764,20 +818,48 @@ export default function GameScoreScreen({
     mode,
   ])
 
+  /** `shared` bumps the revision for boards sent another way (with a throw). */
   function persist(
-    next: X01Board,
-    opts?: {syncRemote?: boolean; clearVisits?: boolean},
-  ) {
+    value: X01Board,
+    opts?: {
+      syncRemote?: boolean
+      clearVisits?: boolean
+      shared?: boolean
+      audit?: X01Audit
+    },
+  ): X01Board {
+    const next =
+      opts?.syncRemote || opts?.shared
+        ? {
+            ...value,
+            rev:
+              Math.max(value.rev ?? 0, liveBoard?.rev ?? 0, frame?.x01?.rev ?? 0) + 1,
+          }
+        : value
     setBoard(next)
     if (storageKey) saveX01Board(storageKey, next)
     publish(next)
-    if (opts?.syncRemote) {
+    if (opts?.syncRemote && !readOnly) {
       const snap = toSnapshot(next)
-      if (snap) SyncX01Board?.(frameIndex, snap, {clearVisits: opts.clearVisits})
+      if (snap) {
+        SyncX01Board?.(frameIndex, snap, {
+          clearVisits: opts.clearVisits,
+          audit: opts.audit,
+        })
+      }
     }
+    return next
+  }
+
+  function throwerIdFor(value: X01Board, side: X01Side): number | undefined {
+    const playerIds =
+      side === 'home' ? frame?.homePlayerIds : frame?.awayPlayerIds
+    const id = Number(playerIds?.[x01ThrowerPlayerIdx(value, side, playerIds)] ?? 0)
+    return id > 0 ? id : undefined
   }
 
   function chooseSide(side: X01Side) {
+    if (readOnly) return
     if (!liveBoard || liveBoard.done || liveBoard.active === side) return
     Haptics.selectionAsync()
     persist(
@@ -793,12 +875,16 @@ export default function GameScoreScreen({
             }
           : liveBoard.cricket,
       },
-      {syncRemote: true},
+      {
+        syncRemote: true,
+        audit: {action: 'side', side, legIndex: liveBoard.legIndex},
+      },
     )
     setNote(null)
   }
 
   function setHitMultiplier(multiplier: CricketMultiplier) {
+    if (readOnly) return
     if (!liveBoard || mode !== 'score' || liveBoard.done) return
     const cricket = liveBoard.cricket ?? emptyCricketBoard()
     if (cricket.multiplier === multiplier) return
@@ -815,6 +901,7 @@ export default function GameScoreScreen({
   }
 
   function throwDart(targetId: CricketTargetId, multiplier?: CricketMultiplier) {
+    if (readOnly) return
     if (!liveBoard || !frame || lock.current || liveBoard.done || mode !== 'score') {
       return
     }
@@ -884,12 +971,21 @@ export default function GameScoreScreen({
         : x01RosterNames(
             playerNicknames(state.teams, awayTeamId, frame?.awayPlayerIds),
           ).length
+    const audit: X01Audit = {
+      action: 'dart',
+      side,
+      throwerId: throwerIdFor(liveBoard, side),
+      label: dartFace(target.id, multiplier ?? cricket.multiplier, t('score_bull')),
+      points: hit.points,
+      dart: thrown,
+      legIndex: liveBoard.legIndex,
+    }
     const totals = scoreTotalsFromHistory(afterHit.undoStack)
     const winner = cricketWinner(nextCricket, totals, side)
     if (winner) {
       persist(
         {...afterHit, home: totals.home, away: totals.away, active: side, done: true},
-        {syncRemote: true},
+        {syncRemote: true, audit},
       )
       if (hit.points > 0) {
         UpdateFrameStats(frameIndex, side, 'boardScore', hit.points)
@@ -915,7 +1011,7 @@ export default function GameScoreScreen({
     }
     persist(
       rotate ? advanceX01Thrower(afterHit, side, rosterLen) : afterHit,
-      {syncRemote: true},
+      {syncRemote: true, audit},
     )
     if (hit.points > 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
@@ -936,6 +1032,7 @@ export default function GameScoreScreen({
   }
 
   function throwMiss() {
+    if (readOnly) return
     if (!liveBoard || !frame || lock.current || liveBoard.done || mode !== 'score') {
       return
     }
@@ -984,13 +1081,23 @@ export default function GameScoreScreen({
           ).length
     persist(
       rotate ? advanceX01Thrower(afterHit, side, rosterLen) : afterHit,
-      {syncRemote: true},
+      {
+        syncRemote: true,
+        audit: {
+          action: 'miss',
+          side,
+          throwerId: throwerIdFor(liveBoard, side),
+          dart: thrown,
+          legIndex: liveBoard.legIndex,
+        },
+      },
     )
     Haptics.selectionAsync()
     setNote({text: t('score_miss'), tone: 'plain'})
   }
 
   function tapKey(key: string) {
+    if (readOnly) return
     if (!liveBoard || liveBoard.done) return
     clearValueTapStreak()
     Haptics.selectionAsync()
@@ -1012,6 +1119,7 @@ export default function GameScoreScreen({
   }
 
   function enter() {
+    if (readOnly) return
     if (!liveBoard || !frame || lock.current || liveBoard.done) return
     clearValueTapStreak()
     const points = Math.trunc(Number(digits || '0') || 0)
@@ -1065,7 +1173,7 @@ export default function GameScoreScreen({
           ]
         : stack,
     }
-    persist(board)
+    const saved = persist(board, {shared: true})
     setVisitLog(prev => [
       ...prev,
       {
@@ -1081,7 +1189,7 @@ export default function GameScoreScreen({
     ])
     RecordThrow?.(frameIndex, {
       ...visit,
-      x01: toSnapshot(board) ?? undefined,
+      x01: toSnapshot(saved) ?? undefined,
     })
     const isMaxVisit = points === MAX_X01_VISIT && !result.reflected
     const isClose = Boolean(result.closed && result.close)
@@ -1138,6 +1246,7 @@ export default function GameScoreScreen({
   }
 
   function undo() {
+    if (readOnly) return
     if (!liveBoard || lock.current) return
     const undone = undoX01Visit(liveBoard)
     if (!undone) return
@@ -1147,7 +1256,18 @@ export default function GameScoreScreen({
     setDigits('')
     setNote(null)
     setVisitLog(prev => (prev.length > 0 ? prev.slice(0, -1) : prev))
-    persist(undone.board)
+    const popped = liveBoard.undoStack[liveBoard.undoStack.length - 1]
+    const saved = persist(undone.board, {
+      shared: true,
+      syncRemote: !undone.reverseVisit,
+      audit: {
+        action: 'undo',
+        side: popped?.active ?? liveBoard.active,
+        label: popped?.label ?? undefined,
+        points: -(popped?.boardDelta?.points ?? 0),
+        legIndex: popped?.legIndex ?? liveBoard.legIndex,
+      },
+    })
     if (mode === 'score' && liveBoard.done && !undone.board.done) {
       ClearFrameWinner?.(frameIndex)
     }
@@ -1155,7 +1275,7 @@ export default function GameScoreScreen({
       RecordThrow?.(frameIndex, {
         ...undone.reverseVisit,
         undo: true,
-        x01: toSnapshot(undone.board) ?? undefined,
+        x01: toSnapshot(saved) ?? undefined,
       })
       return
     }
@@ -1267,6 +1387,7 @@ export default function GameScoreScreen({
       : ''
 
   function pressSideScore(side: X01Side) {
+    if (readOnly) return
     if (!liveBoard || liveBoard.done) return
     if (liveBoard.active !== side) {
       chooseSide(side)
@@ -1275,8 +1396,15 @@ export default function GameScoreScreen({
     const names = x01RosterNames(side === 'home' ? homeNames : awayNames)
     if (names.length <= 1) return
     Haptics.selectionAsync()
-    persist(advanceX01Thrower(liveBoard, side, names.length), {
+    const next = advanceX01Thrower(liveBoard, side, names.length)
+    persist(next, {
       syncRemote: true,
+      audit: {
+        action: 'thrower',
+        side,
+        throwerId: throwerIdFor(next, side),
+        legIndex: liveBoard.legIndex,
+      },
     })
   }
 
@@ -1284,36 +1412,47 @@ export default function GameScoreScreen({
     <View
       style={{
         flexGrow: landscape ? 1 : 0,
-        flexShrink: mode === 'score' ? 1 : 0,
-        minHeight: mode === 'score' ? 0 : undefined,
+        flexShrink: mode === 'score' && landscape ? 1 : 0,
+        minHeight: mode === 'score' && landscape ? 0 : undefined,
         gap: 8,
       }}>
-      <TrekText
-        style={{
-          color: theme.muted,
-          fontSize: 12,
-          fontWeight: '800',
-          letterSpacing: 0.4,
-          textAlign: 'center',
-        }}>
-        {mode === 'score'
-          ? t('score_running')
-          : `${t('x01_leg', {n: (liveBoard?.legIndex ?? 0) + 1})} · ${start}`}
-      </TrekText>
-      {activeThrower && !done ? (
+      {mode === 'score' ? null : (
         <TrekText
-          numberOfLines={1}
           style={{
-            color: active === 'home' ? theme.home.accent : theme.away.accent,
-            fontSize: 26,
+            color: theme.muted,
+            fontSize: 12,
             fontWeight: '800',
+            letterSpacing: 0.4,
             textAlign: 'center',
           }}>
-          {t(mode === 'score' ? 'score_thrower' : 'x01_thrower', {
-            name: activeThrower,
-          })}
+          {`${t('x01_leg', {n: (liveBoard?.legIndex ?? 0) + 1})} · ${start}`}
         </TrekText>
-      ) : null}
+      )}
+      <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+        <View style={{flex: 1, minWidth: 0}}>
+          {activeThrower && !done ? (
+            <TrekText
+              numberOfLines={1}
+              style={{
+                color: active === 'home' ? theme.home.accent : theme.away.accent,
+                fontSize: 26,
+                fontWeight: '800',
+              }}>
+              {t(mode === 'score' ? 'score_thrower' : 'x01_thrower', {
+                name: activeThrower,
+              })}
+            </TrekText>
+          ) : null}
+        </View>
+        <SyncStatus
+          status={socketStatus ?? 'offline'}
+          lastSyncAt={lastSyncAt ?? null}
+          viewOnly={readOnly}
+          serverOutdated={
+            (liveBoard?.rev ?? 0) > 0 && frame.x01 != null && frame.x01.rev == null
+          }
+        />
+      </View>
       <View
         style={{
           flexDirection: landscape ? 'column' : 'row',
@@ -1372,15 +1511,17 @@ export default function GameScoreScreen({
   )
   const controls = (
     <View
+      pointerEvents={readOnly ? 'none' : 'auto'}
       style={{
         flexGrow: 1,
-        flexShrink: mode === 'score' ? 0 : 1,
-        flexBasis: mode === 'score' ? 'auto' : 0,
-        minHeight: mode === 'score' ? scoreKeypadHeight : 0,
+        flexShrink: 1,
+        flexBasis: 0,
+        minHeight: 0,
         gap: 8,
+        opacity: readOnly ? 0.45 : 1,
       }}>
       {mode === 'score' ? (
-        <View style={{gap: 8}}>
+        <View style={{flex: 1, gap: 8}}>
           <VisitHistory
             visits={historyVisits}
             canUndoLatest={canUndoLatest}
@@ -1567,6 +1708,63 @@ export default function GameScoreScreen({
         name={badgeName}
         onDone={() => setCloseDoorKey(0)}
       />
+    </View>
+  )
+}
+
+const SYNC_COLOR = {
+  live: '#22C55E',
+  connecting: '#F59E0B',
+  offline: '#EF4444',
+} as const
+
+function SyncStatus({
+  status,
+  lastSyncAt,
+  serverOutdated,
+  viewOnly,
+}: {
+  status: SocketStatus
+  lastSyncAt: number | null
+  serverOutdated: boolean
+  viewOnly: boolean
+}) {
+  const {t} = useTranslation()
+  const theme = useScoresheetTheme()
+  const color = serverOutdated ? SYNC_COLOR.connecting : SYNC_COLOR[status]
+  const connection = serverOutdated
+    ? t('sync_server_outdated')
+    : status === 'live'
+      ? lastSyncAt
+        ? t('sync_live_at', {
+            time: new Date(lastSyncAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false,
+            }),
+          })
+        : t('sync_live')
+      : t(status === 'connecting' ? 'sync_connecting' : 'sync_offline')
+  const label = viewOnly ? `${t('sync_view_only')} · ${connection}` : connection
+  return (
+    <View
+      accessibilityRole="text"
+      accessibilityLabel={label}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexShrink: 0,
+        gap: 6,
+      }}>
+      <View
+        style={{width: 8, height: 8, borderRadius: 4, backgroundColor: color}}
+      />
+      <TrekText
+        numberOfLines={1}
+        style={{color: theme.muted, fontSize: 12, fontWeight: '700'}}>
+        {label}
+      </TrekText>
     </View>
   )
 }
@@ -1797,14 +1995,16 @@ function CricketHits({
 }) {
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
+  const [fitHeight, setFitHeight] = React.useState<number | null>(null)
   const numbers = CRICKET_TARGETS.filter(target => target.id !== '25')
   const rows = [numbers.slice(0, 3), numbers.slice(3, 6)]
   const rowCount = 4
-  const rowHeight = (keypadHeight - KEY_GAP * (rowCount - 1)) / rowCount
+  const padHeight = Math.min(keypadHeight, fitHeight ?? keypadHeight)
+  const rowHeight = (padHeight - KEY_GAP * (rowCount - 1)) / rowCount
   const digitSize = Math.max(12, Math.floor((rowHeight * 0.58) / KEY_CAP))
   const labelSize = Math.max(11, Math.floor(digitSize * 0.58))
   return (
-    <View style={{gap: 8}}>
+    <View style={{flex: 1, gap: 8, justifyContent: 'flex-end'}}>
       <TrekText
         style={{
           textAlign: 'center',
@@ -1818,9 +2018,14 @@ function CricketHits({
       </TrekText>
       {showMarks ? <CricketMarks board={board} layout="row" /> : null}
       <View
+        onLayout={e => {
+          const h = Math.round(e.nativeEvent.layout.height)
+          setFitHeight(prev => (prev === h ? prev : h))
+        }}
         style={{
-          height: keypadHeight,
-          flexShrink: 0,
+          flex: 1,
+          maxHeight: keypadHeight,
+          minHeight: 4 * 40 + KEY_GAP * 3,
           width: '100%',
           alignSelf: 'center',
           gap: KEY_GAP,
@@ -1927,14 +2132,7 @@ function SideScore({
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
   const palette = side === 'home' ? theme.home : theme.away
-  const status =
-    active && !done
-      ? thrower
-        ? t(scoreGame ? 'score_thrower' : 'x01_thrower', {name: thrower})
-        : t(scoreGame ? 'score_throwing' : 'x01_throwing')
-      : scoreGame
-        ? ''
-        : `${t('legs')} ${legs}`
+  const status = scoreGame ? '' : `${t('legs')} ${legs}`
   return (
     <Pressable
       accessibilityRole="button"
@@ -2019,8 +2217,8 @@ function SideScore({
         <TrekText
           numberOfLines={1}
           style={{
-            color: active && !done ? palette.accent : theme.muted,
-            fontSize: active && !done ? 20 : 11,
+            color: theme.muted,
+            fontSize: 11,
             fontWeight: '800',
             textAlign: 'center',
           }}>
@@ -2054,6 +2252,14 @@ function resolveInitialBoard(
 ): X01Board {
   const starter = x01Starter(frame.firstDart, homeTeamId, awayTeamId)
   const remote = frame.x01
+  if (
+    mode === 'score' &&
+    remote?.mode === 'score' &&
+    Array.isArray(remote.throws) &&
+    (remote.rev ?? 0) > (saved?.rev ?? 0)
+  ) {
+    return scoreBoardFromSync({...remote, throws: remote.throws}, 1)
+  }
   if (mode === 'score') {
     const savedScore = saved
     const history = scoreTotalsFromHistory(savedScore?.undoStack)
@@ -2114,11 +2320,12 @@ function resolveInitialBoard(
       away: remote.away,
       active: remote.active,
       done: remote.done,
-      homeThrower: kept?.homeThrower ?? 0,
-      awayThrower: kept?.awayThrower ?? 0,
+      homeThrower: remote.homeThrower ?? kept?.homeThrower ?? 0,
+      awayThrower: remote.awayThrower ?? kept?.awayThrower ?? 0,
       undoStack: kept?.undoStack ?? ([] as X01Board['undoStack']),
       cricket:
         kept?.cricket ?? (mode === 'score' ? emptyCricketBoard() : undefined),
+      rev: Math.max(remote.rev ?? 0, saved?.rev ?? 0),
     }
     if (hasNoRecordedThrows(draft, mode, frame.visits)) {
       draft.active = x01ActiveForLeg(starter, legIndex)

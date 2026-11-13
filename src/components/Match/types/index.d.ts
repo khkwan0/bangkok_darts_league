@@ -146,6 +146,11 @@ export type FrameType = {
       home: Record<string, number>
       away: Record<string, number>
     } | null
+    rev?: number
+    homeThrower?: number
+    awayThrower?: number
+    dartsThrown?: number
+    throws?: import('@/lib/x01Score').ScoreThrowSync[]
   }
   /** Keypad visits saved on the live frame in Redis (`match_{id}`). */
   visits?: Array<{

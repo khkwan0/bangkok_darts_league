@@ -144,12 +144,32 @@ function dartFromRecord(
   return dartFromLabel(String(entry.label ?? '').trim())
 }
 
+export type CricketSides = {home: CricketMarks; away: CricketMarks}
+
+/** Marks and points after one recorded score-game dart. */
+export function applyScoreThrow(
+  marks: CricketSides,
+  entry: ScoreThrowRecord,
+): {marks: CricketSides; side: 'home' | 'away'; points: number} {
+  const side = entry.active === 'away' ? 'away' : 'home'
+  const dart = dartFromRecord(entry)
+  if (!dart || dart.sector === 0) return {marks, side, points: 0}
+  const id = String(dart.sector) as CricketTargetId
+  if (!TARGET_IDS.includes(id)) return {marks, side, points: 0}
+  const other = side === 'home' ? 'away' : 'home'
+  const hit = scoreCricketHit(marks[side][id], marks[other][id], dart.multiplier, dart.sector)
+  return {
+    marks: {...marks, [side]: {...marks[side], [id]: hit.nextMarks}},
+    side,
+    points: hit.points,
+  }
+}
+
 /** Team totals for a score game, replayed from the throws in order. */
 export function pointsFromScoreThrows(
   entries: ScoreThrowRecord[] | null | undefined,
 ): {home: number; away: number} {
-  let homeMarks = emptyCricketMarks()
-  let awayMarks = emptyCricketMarks()
+  let marks: CricketSides = {home: emptyCricketMarks(), away: emptyCricketMarks()}
   let home = 0
   let away = 0
   let deltaHome = 0
@@ -160,21 +180,10 @@ export function pointsFromScoreThrows(
       if (entry.boardDelta?.side === 'away') deltaAway += delta
       else deltaHome += delta
     }
-    const dart = dartFromRecord(entry)
-    if (!dart || dart.sector === 0) continue
-    const id = String(dart.sector) as CricketTargetId
-    if (!TARGET_IDS.includes(id)) continue
-    const side = entry.active === 'away' ? 'away' : 'home'
-    const own = side === 'home' ? homeMarks : awayMarks
-    const opp = side === 'home' ? awayMarks : homeMarks
-    const hit = scoreCricketHit(own[id], opp[id], dart.multiplier, dart.sector)
-    if (side === 'home') {
-      homeMarks = {...homeMarks, [id]: hit.nextMarks}
-      home += hit.points
-    } else {
-      awayMarks = {...awayMarks, [id]: hit.nextMarks}
-      away += hit.points
-    }
+    const hit = applyScoreThrow(marks, entry)
+    marks = hit.marks
+    if (hit.side === 'home') home += hit.points
+    else away += hit.points
   }
   return {home: Math.max(home, deltaHome), away: Math.max(away, deltaAway)}
 }

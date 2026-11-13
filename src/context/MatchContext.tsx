@@ -2,7 +2,9 @@ import {FrameType, MatchInfoDataType} from '@/components/Match/types'
 import {useMatch, useTeams} from '@/hooks'
 import i18n from '@/i18n'
 import {hydrateFrameLegs} from '@/lib/hydrateFrameLegs'
+import {canEditScoresheet, canFinalizeForTeam} from '@/lib/scoresheetAccess'
 import {applyScoresheetThrow, reconcileFrameThrowTallies} from '@/lib/scoresheetThrow'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   saveShowScoresheetTips,
   showScoresheetGateDialog,
@@ -12,10 +14,13 @@ import React, {createContext, useContext, useReducer} from 'react'
 import {Alert} from 'react-native'
 import {io} from 'socket.io-client'
 import {useLeagueContext} from './LeagueContext'
+import type {X01Audit, X01BoardSnapshot} from './X01ScoreContext'
 
 type JoinStatusType = {
   status: string
 }
+
+export type SocketStatus = 'offline' | 'connecting' | 'live'
 
 type StatsType = {
   [key: string]: {
@@ -320,13 +325,45 @@ export const MatchProvider = (props: any) => {
   const teams = useTeams()
   const roomId = React.useRef('')
   const socket = React.useRef<ReturnType<typeof io> | null>(null)
+  const [socketStatus, setSocketStatus] = React.useState<SocketStatus>('offline')
+  const [lastSyncAt, setLastSyncAt] = React.useState<number | null>(null)
   const userIdRef = React.useRef<number>(0)
 
   const matchInfoRef = React.useRef({})
 
   React.useEffect(() => {
-    userIdRef.current = Number(leagueState.user?.id ?? 0)
+    const nextId = Number(leagueState.user?.id ?? 0)
+    const changed = userIdRef.current !== 0 && userIdRef.current !== nextId
+    userIdRef.current = nextId
+    // Reconnect so the socket carries the new login.
+    if (changed && socket.current?.connected) {
+      socket.current.disconnect()
+      socket.current.connect()
+    }
   }, [leagueState.user?.id])
+
+  const canEdit = canEditScoresheet(
+    leagueState.user,
+    Number(state.matchInfo?.home_team_id ?? 0),
+    Number(state.matchInfo?.away_team_id ?? 0),
+    state.teams,
+  )
+  const viewOnlyAlertAt = React.useRef(0)
+
+  function alertViewOnly() {
+    if (Date.now() - viewOnlyAlertAt.current < 3000) return
+    viewOnlyAlertAt.current = Date.now()
+    Alert.alert(
+      i18n.t('scoresheet_view_only_title'),
+      i18n.t('scoresheet_view_only_body'),
+    )
+  }
+
+  function guardEdit(): boolean {
+    if (canEdit) return true
+    alertViewOnly()
+    return false
+  }
 
   React.useEffect(() => {
     matchInfoRef.current = state.matchInfo
@@ -341,19 +378,40 @@ export const MatchProvider = (props: any) => {
       socket.current.disconnect()
     }
 
-    // Create new socket with updated domain
-    socket.current = io(webSocketUrl, {autoConnect: false})
+    // Create new socket with updated domain. The token is read on every
+    // (re)connect so the server knows who is scoring.
+    socket.current = io(webSocketUrl, {
+      autoConnect: false,
+      auth: cb => {
+        AsyncStorage.getItem('jwt')
+          .then(token =>
+            cb(token ? {authorization: `Bearer ${token}`, token} : {}),
+          )
+          .catch(() => cb({}))
+      },
+    })
 
     const currentSocket = socket.current
 
     // Set up event listeners
     const handleConnect = () => {
       console.log('connected: ', currentSocket.connected)
+      setSocketStatus('connecting')
       JoinRoom()
     }
 
     const handleDisconnect = () => {
       console.log('disconnect')
+      setSocketStatus('offline')
+    }
+
+    const handleConnectError = (error: Error) => {
+      console.log('socket connect_error', error?.message)
+      setSocketStatus('offline')
+    }
+
+    const handleReconnectAttempt = () => {
+      setSocketStatus('connecting')
     }
 
     const handleMatchUpdate = (data: any) => {
@@ -391,6 +449,8 @@ export const MatchProvider = (props: any) => {
             type: 'SET_FINALIZE_BUSY',
             payload: !!data?.data?.busy,
           })
+        } else if (data.type === 'update_rejected') {
+          alertViewOnly()
         } else if (data.type === 'finalize_error') {
           dispatch({
             type: 'SET_FINALIZE_REJECTED_AT',
@@ -422,6 +482,7 @@ export const MatchProvider = (props: any) => {
     }
 
     const handleFrameUpdate = (data: any) => {
+      setLastSyncAt(Date.now())
       if (typeof data.type !== 'undefined') {
         if (data.type === 'win') {
           if (
@@ -525,6 +586,8 @@ export const MatchProvider = (props: any) => {
 
     currentSocket.on('connect', handleConnect)
     currentSocket.on('disconnect', handleDisconnect)
+    currentSocket.on('connect_error', handleConnectError)
+    currentSocket.io.on('reconnect_attempt', handleReconnectAttempt)
     currentSocket.on('match_update', handleMatchUpdate)
     currentSocket.on('frame_update', handleFrameUpdate)
     currentSocket.on('historyupdate2', handleHistoryUpdate)
@@ -541,6 +604,7 @@ export const MatchProvider = (props: any) => {
       currentSocket.off('match_update', handleMatchUpdate)
       currentSocket.off('frame_update', handleFrameUpdate)
       currentSocket.off('historyupdate2', handleHistoryUpdate)
+      currentSocket.io.off('reconnect_attempt', handleReconnectAttempt)
       currentSocket.removeAllListeners()
       currentSocket.disconnect()
     }
@@ -621,6 +685,7 @@ export const MatchProvider = (props: any) => {
     frameType?: string,
     frameNumber?: number,
   ) {
+    if (!guardEdit()) return
     // Optimistic local update so the scoresheet shows the pick immediately.
     // Socket echo still reconciles; UpdateTeams refreshes full roster for new players.
     dispatch({
@@ -672,6 +737,7 @@ export const MatchProvider = (props: any) => {
   }
 
   function UpdateFirstBreak(teamId: number | string | null) {
+    if (!guardEdit()) return
     // Unused on darts (per-game first dart). Kept for API compatibility.
     const breakId =
       teamId == null || teamId === '' ? 0 : parseInt(String(teamId), 10)
@@ -683,6 +749,7 @@ export const MatchProvider = (props: any) => {
   }
 
   function UpdateFirstDart(frameIdx: number, teamId: number | string | null) {
+    if (!guardEdit()) return
     const dartId =
       teamId == null || teamId === '' ? 0 : parseInt(String(teamId), 10)
     const normalized = Number.isFinite(dartId) && dartId > 0 ? dartId : 0
@@ -713,6 +780,7 @@ export const MatchProvider = (props: any) => {
     winnerTeamId: string,
     goldenBreak: boolean,
   ) {
+    if (!guardEdit()) return
     const idx = parseInt(String(frameIdx), 10)
     const frame = state.frameData[idx]
     const initial = state.matchInfo.initialFrames?.[idx]
@@ -793,6 +861,7 @@ export const MatchProvider = (props: any) => {
     playerIdx: number = 0,
     legIndex?: number,
   ) {
+    if (!guardEdit()) return
     const frame = state.frameData[frameIdx]
     const initial = state.matchInfo.initialFrames?.[frameIdx]
     const data = {
@@ -834,17 +903,10 @@ export const MatchProvider = (props: any) => {
       board: boolean
       playerIdx?: number
       undo?: boolean
-      x01?: {
-        mode: 'close' | 'score'
-        start: number
-        home: number
-        away: number
-        active: 'home' | 'away'
-        legIndex: number
-        done: boolean
-      }
+      x01?: X01BoardSnapshot
     },
   ) {
+    if (!guardEdit()) return
     const frame = state.frameData[frameIdx]
     const initial = state.matchInfo.initialFrames?.[frameIdx]
     dispatch({
@@ -880,17 +942,10 @@ export const MatchProvider = (props: any) => {
 
   function SyncX01Board(
     frameIdx: number,
-    x01: {
-      mode: 'close' | 'score'
-      start: number
-      home: number
-      away: number
-      active: 'home' | 'away'
-      legIndex: number
-      done: boolean
-    },
-    opts?: {clearVisits?: boolean},
+    x01: X01BoardSnapshot,
+    opts?: {clearVisits?: boolean; audit?: X01Audit},
   ) {
+    if (!guardEdit()) return
     const frame = state.frameData[frameIdx]
     const initial = state.matchInfo.initialFrames?.[frameIdx]
     SocketSend('x01', {
@@ -899,6 +954,7 @@ export const MatchProvider = (props: any) => {
       frameNumber: frame?.frameNumber ?? 0,
       x01,
       clearVisits: Boolean(opts?.clearVisits),
+      ...(opts?.audit ? {audit: opts.audit} : {}),
       games: frame?.games ?? initial?.games ?? 1,
       seriesMode: frame?.seriesMode ?? initial?.seriesMode,
       frameType: frame?.type ?? initial?.type ?? '',
@@ -916,6 +972,7 @@ export const MatchProvider = (props: any) => {
   }
 
   function ClearFrameWinner(frameIdx: number) {
+    if (!guardEdit()) return
     const data = {
       frameIdx: frameIdx,
       matchId: state.matchInfo.match_id,
@@ -923,7 +980,14 @@ export const MatchProvider = (props: any) => {
     SocketSend('clearwin', data)
   }
 
+  function guardFinalize(teamId: number): boolean {
+    if (canFinalizeForTeam(leagueState.user, teamId)) return true
+    Alert.alert(i18n.t('error'), i18n.t('finalize_error_not_authorized'))
+    return false
+  }
+
   function FinalizeMatch(side: string, teamId: number) {
+    if (!guardFinalize(teamId)) return
     const data = {
       teamId: teamId,
       side: side,
@@ -933,6 +997,7 @@ export const MatchProvider = (props: any) => {
   }
 
   function UnfinalizeMatch(side: string, teamId: number) {
+    if (!guardFinalize(teamId)) return
     const data = {
       teamId: teamId,
       side: side,
@@ -974,6 +1039,7 @@ export const MatchProvider = (props: any) => {
   function SocketConnect(_room: string) {
     roomId.current = _room
     if (socket.current && !socket.current.connected) {
+      setSocketStatus('connecting')
       socket.current.connect()
     }
   }
@@ -982,12 +1048,14 @@ export const MatchProvider = (props: any) => {
     if (socket.current) {
       socket.current.disconnect()
     }
+    setSocketStatus('offline')
   }
 
   function JoinRoom() {
     if (socket.current) {
       socket.current.emit('join', roomId.current, (status: JoinStatusType) => {
         console.log(status)
+        setSocketStatus(status?.status === 'ok' ? 'live' : 'offline')
       })
     }
   }
@@ -1047,6 +1115,11 @@ export const MatchProvider = (props: any) => {
       value={{
         state,
         dispatch,
+        socketStatus,
+        lastSyncAt,
+        canEditScoresheet: canEdit,
+        canFinalizeTeam: (teamId: number) =>
+          canFinalizeForTeam(leagueState.user, teamId),
         ClearFrameWinner,
         FinalizeMatch,
         SocketConnect,

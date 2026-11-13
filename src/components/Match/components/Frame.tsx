@@ -107,6 +107,7 @@ export default function Frame({
     ClearFrameWinner,
     UpdateFrameStats,
     SyncX01Board,
+    canEditScoresheet,
   }: any = useMatchContext()
   const {t} = useTranslation()
   const theme = useScoresheetTheme()
@@ -591,7 +592,7 @@ export default function Frame({
               value={Number(!showClose ? liveTotal : (fromX01 ?? serverBoard ?? 0))}
               ink={palette.ink}
               accent={palette.button}
-              disabled={locked}
+              disabled={locked || canEditScoresheet === false}
               onChange={next => {
                 const current = Number(!showClose ? liveTotal : (fromX01 ?? serverBoard ?? 0))
                 UpdateFrameStats(index, side, 'boardScore', next - current)

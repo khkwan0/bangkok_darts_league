@@ -1,7 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type {FrameType} from '@/components/Match/types'
-import type {CricketBoard} from '@/lib/cricketScore'
-import {parseCricketBoard, pointsFromScoreThrows} from '@/lib/cricketScore'
+import type {CricketBoard, CricketMultiplier, CricketSides} from '@/lib/cricketScore'
+import {
+  applyScoreThrow,
+  emptyCricketMarks,
+  parseCricketBoard,
+  pointsFromScoreThrows,
+} from '@/lib/cricketScore'
 import {hydrateFrameLegs} from '@/lib/hydrateFrameLegs'
 import {seriesWinsNeeded} from '@/lib/matchFormat'
 
@@ -66,6 +71,98 @@ export type X01Board = {
   undoStack: X01Undo[]
   /** Present on Score games when hits are being tracked. */
   cricket?: CricketBoard | null
+  /** Shared-change counter; a device only takes remote boards with a higher one. */
+  rev?: number
+}
+
+/** One Score-game dart as shared between devices. */
+export type ScoreThrowSync = {
+  side: X01Side
+  sector: number | null
+  multiplier: number | null
+  label: string | null
+  points: number
+  homeThrower: number
+  awayThrower: number
+  dartsThrown: number
+}
+
+export function scoreThrowsForSync(board: X01Board): ScoreThrowSync[] {
+  return board.undoStack.map(entry => ({
+    side: entry.active,
+    sector: entry.sector ?? null,
+    multiplier: entry.multiplier ?? null,
+    label: entry.label ?? null,
+    points: entry.boardDelta?.points ?? 0,
+    homeThrower: entry.homeThrower,
+    awayThrower: entry.awayThrower,
+    dartsThrown: entry.cricket?.dartsThrown ?? 0,
+  }))
+}
+
+/** Rebuild a Score-game board, history included, from another device's state. */
+export function scoreBoardFromSync(
+  sync: {
+    legIndex: number
+    active: X01Side
+    done: boolean
+    rev?: number
+    homeThrower?: number
+    awayThrower?: number
+    dartsThrown?: number
+    throws: ScoreThrowSync[]
+  },
+  multiplier: CricketMultiplier,
+): X01Board {
+  let marks: CricketSides = {home: emptyCricketMarks(), away: emptyCricketMarks()}
+  const hits = {home: 0, away: 0}
+  const deltas = {home: 0, away: 0}
+  const undoStack: X01Undo[] = []
+  for (const dart of sync.throws) {
+    const entry: X01Undo = {
+      home: Math.max(hits.home, deltas.home),
+      away: Math.max(hits.away, deltas.away),
+      active: dart.side,
+      legIndex: sync.legIndex,
+      done: false,
+      homeThrower: dart.homeThrower,
+      awayThrower: dart.awayThrower,
+      close: null,
+      boardDelta: dart.points > 0 ? {side: dart.side, points: dart.points} : null,
+      cricket: {
+        home: {...marks.home},
+        away: {...marks.away},
+        dartsThrown: dart.dartsThrown,
+        multiplier: 1,
+      },
+      sector: dart.sector,
+      multiplier: dart.multiplier,
+      label: dart.label,
+    }
+    undoStack.push(entry)
+    const hit = applyScoreThrow(marks, entry)
+    marks = hit.marks
+    hits[hit.side] += hit.points
+    deltas[dart.side] += dart.points
+  }
+  return {
+    start: 0,
+    legIndex: sync.legIndex,
+    home: Math.max(hits.home, deltas.home),
+    away: Math.max(hits.away, deltas.away),
+    active: sync.active,
+    done: sync.done,
+    homeThrower: sync.homeThrower ?? 0,
+    awayThrower: sync.awayThrower ?? 0,
+    undoStack,
+    cricket: {
+      home: marks.home,
+      away: marks.away,
+      dartsThrown: Math.min(2, Math.max(0, Math.trunc(sync.dartsThrown ?? 0))),
+      multiplier,
+    },
+    rev: sync.rev ?? 0,
+  }
 }
 
 export function scoreTotalsFromHistory(
@@ -444,6 +541,7 @@ export function parseX01Board(raw: unknown): X01Board | null {
     ...('cricket' in row
       ? {cricket: parseCricketBoard(row.cricket) ?? null}
       : {}),
+    rev: Math.max(0, Math.trunc(Number(row.rev) || 0)),
   }
 }
 

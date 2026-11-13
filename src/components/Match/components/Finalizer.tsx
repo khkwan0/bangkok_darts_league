@@ -1,6 +1,6 @@
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useMatchContext} from '@/context/MatchContext'
-import {isLeagueAdmin} from '@/lib/isLeagueAdmin'
+import {canFinalizeForTeam} from '@/lib/scoresheetAccess'
 import {getFinalizeBlockReason} from '@/lib/matchFormat'
 import * as Haptics from 'expo-haptics'
 import React from 'react'
@@ -148,15 +148,7 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
   }, [localBusy])
 
   function canActForTeam(teamId: number): boolean {
-    const userId = state.user?.id
-    if (isLeagueAdmin(state.user)) return true
-    if (userId == null || !teamId) return false
-    const roster = matchState.teams?.[teamId]
-    if (!roster) return false
-    return (
-      Object.prototype.hasOwnProperty.call(roster, String(userId)) ||
-      Object.prototype.hasOwnProperty.call(roster, userId)
-    )
+    return canFinalizeForTeam(state.user, Number(teamId))
   }
 
   function CanFinalize(_side: string) {
@@ -199,7 +191,7 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
           setLocalBusy(true)
           FinalizeMatch(side, sideTeamId)
         } else {
-          Alert.alert(t('error'), t('not_on_team') + ' ' + side)
+          Alert.alert(t('error'), t('finalize_error_not_authorized'))
         }
       } else {
         Alert.alert(t('tip_finalize_blocked_title'), finalizeBlockMessage(), [
@@ -224,6 +216,8 @@ export default function Finalizer({matchInfo}: {matchInfo: any}) {
       if (canActForTeam(sideTeamId) && (side === 'home' || side === 'away')) {
         setLocalBusy(true)
         UnfinalizeMatch(side, sideTeamId)
+      } else {
+        Alert.alert(t('error'), t('finalize_error_not_authorized'))
       }
     } catch (e) {
       console.log(e)

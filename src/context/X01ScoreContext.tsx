@@ -1,4 +1,8 @@
-import type {ScoresheetScoringMode, X01Side} from '@/lib/x01Score'
+import type {
+  ScoreThrowSync,
+  ScoresheetScoringMode,
+  X01Side,
+} from '@/lib/x01Score'
 import React, {
   createContext,
   useCallback,
@@ -18,6 +22,22 @@ export type X01BoardSnapshot = {
   done: boolean
   /** Score games: marks per number (15–20, 25), 0–3 each. */
   cricket?: X01CricketMarks | null
+  rev?: number
+  homeThrower?: number
+  awayThrower?: number
+  dartsThrown?: number
+  throws?: ScoreThrowSync[]
+}
+
+/** What was pressed on the score screen; the server logs it in match history. */
+export type X01Audit = {
+  action: 'dart' | 'miss' | 'undo' | 'side' | 'thrower' | 'reset'
+  side: X01Side
+  throwerId?: number
+  label?: string
+  points?: number
+  dart?: number
+  legIndex?: number
 }
 
 export type X01CricketMarks = {
@@ -63,6 +83,9 @@ export function X01ScoreProvider({
           cur.active === board.active &&
           cur.legIndex === board.legIndex &&
           cur.done === board.done &&
+          cur.rev === board.rev &&
+          cur.homeThrower === board.homeThrower &&
+          cur.awayThrower === board.awayThrower &&
           sameMarks(cur.cricket, board.cricket)
         ) {
           return prev

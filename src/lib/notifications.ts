@@ -4,6 +4,7 @@ import {
   getMessaging,
   getToken,
   hasPermission,
+  isDeviceRegisteredForRemoteMessages,
   registerDeviceForRemoteMessages,
   requestPermission,
 } from '@react-native-firebase/messaging'
@@ -251,7 +252,9 @@ export async function getPushToken({
       authStatus === AuthorizationStatus.AUTHORIZED ||
       authStatus === AuthorizationStatus.PROVISIONAL
     if (!allowed) return null
-    await registerDeviceForRemoteMessages(messaging)
+    if (!isDeviceRegisteredForRemoteMessages(messaging)) {
+      await registerDeviceForRemoteMessages(messaging)
+    }
     let apnsToken = await getAPNSToken(messaging)
     for (let attempt = 0; attempt < 10 && !apnsToken; attempt++) {
       await new Promise(resolve => setTimeout(resolve, 300))
