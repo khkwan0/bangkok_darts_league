@@ -4,12 +4,16 @@ import i18n from '@/i18n'
 const GAME_LABELS: Record<string, {frame: string; frames: string}> = {
   en: {frame: 'Game', frames: 'Games'},
   th: {frame: 'เกม', frames: 'เกม'},
+  zh: {frame: '局', frames: '局'},
+  ja: {frame: 'ゲーム', frames: 'ゲーム'},
   cockney: {frame: 'Game', frames: 'Games'},
 }
 
 const FRAME_LABELS: Record<string, {frame: string; frames: string}> = {
   en: {frame: 'Frame', frames: 'Frames'},
   th: {frame: 'กระดาน', frames: 'เฟรม'},
+  zh: {frame: '局', frames: '局'},
+  ja: {frame: 'フレーム', frames: 'フレーム'},
   cockney: {frame: 'Frame', frames: 'Frames'},
 }
 
@@ -36,7 +40,9 @@ export function applyScoreUnitToI18n(scoreUnit: 'frame' | 'leg' | string) {
         if (lng === 'th') {
           // Remap pool frame wording only; keep เลก for series legs where intentional.
           next = next.replace(/เฟรม/g, 'เกม').replace(/กระดาน/g, 'เกม')
-        } else {
+        } else if (lng === 'ja') {
+          next = next.replace(/フレーム/g, 'ゲーム')
+        } else if (lng !== 'zh') {
           next = next
             .replace(/\bFrames\b/g, 'Games')
             .replace(/\bframes\b/g, 'games')

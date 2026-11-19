@@ -162,7 +162,13 @@ export default function MatchesCalendar({
   const {state} = useLeagueContext()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
-  const locale = i18n.language?.startsWith('th') ? 'th' : 'en'
+  const locale = i18n.language?.startsWith('th')
+    ? 'th'
+    : i18n.language?.startsWith('zh')
+      ? 'zh'
+      : i18n.language?.startsWith('ja')
+        ? 'ja'
+        : 'en'
   const screenBg = isDark ? '#1A1A1A' : '#F5F5F5'
   const cardBg = isDark ? '#1E1E1E' : '#FFFFFF'
   const textColor = isDark ? '#F8FAFC' : '#111827'

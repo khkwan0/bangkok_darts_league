@@ -62,6 +62,9 @@ function AchievementTile({
       />
       <Text style={[styles.tileName, {color: locked ? '#64748B' : '#E2E8F0'}]} numberOfLines={2}>
         {name}
+        {item.repeatable && item.count != null && item.count >= 1
+          ? ` ×${item.count}`
+          : ''}
       </Text>
       <Text style={styles.tileKind}>
         {item.kind === 'trophy' ? '🏆' : '🎖️'}
@@ -104,7 +107,7 @@ export default function PlayerAchievementsCard({
         <View style={styles.grid}>
           {unlocked.map(item => (
             <AchievementTile
-              key={item.code}
+              key={`${item.code}:${item.count ?? 1}:${item.awardedAt ?? ''}`}
               item={item}
               lang={lang}
               onPress={() => setSelected(item)}
@@ -152,6 +155,11 @@ export default function PlayerAchievementsCard({
                 </View>
                 <Text style={styles.modalTitle}>
                   {pickLocalized(selected.name, lang)}
+                  {selected.repeatable &&
+                  selected.count != null &&
+                  selected.count >= 1
+                    ? ` ×${selected.count}`
+                    : ''}
                 </Text>
                 <Text style={styles.modalDesc}>
                   {pickLocalized(selected.description, lang)}

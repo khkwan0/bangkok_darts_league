@@ -20,11 +20,11 @@ import {
 } from '@/lib/postponedProposal'
 import DateTimePicker from '@expo/ui/community/datetime-picker'
 import {Ionicons} from '@expo/vector-icons'
-import {useNavigation} from "expo-router/react-navigation"
+import {useNavigation} from 'expo-router/react-navigation'
 import {useRouter} from 'expo-router'
 import React, {useState} from 'react'
 import {useTranslation} from 'react-i18next'
-import {ActivityIndicator} from 'react-native'
+import {ActivityIndicator, Platform} from 'react-native'
 
 export default function Postpone({matchInfo}: {matchInfo: any}) {
   const router = useRouter()
@@ -51,7 +51,6 @@ export default function Postpone({matchInfo}: {matchInfo: any}) {
       ? isoToPickerDate(postponedProposal.newDate)
       : null,
   )
-  const [dateSelected, setDateSelected] = useState(false)
   const [showConfirmPostponeDate, setShowConfirmPostponeDate] = useState(false)
   const [showConfirmPostponeIndefinitely, setShowConfirmPostponeIndefinitely] =
     useState(false)
@@ -100,11 +99,9 @@ export default function Postpone({matchInfo}: {matchInfo: any}) {
         exitPostponeScreen()
       } else {
         setError('Failed to postpone to date')
-        setLoading(false)
       }
     } catch (error) {
       setError('Failed to postpone to date')
-      setLoading(false)
     } finally {
       setDialogSubmitting(false)
     }
@@ -138,13 +135,37 @@ export default function Postpone({matchInfo}: {matchInfo: any}) {
     setIsMounted(true)
   }, [])
 
-  function handleCancel() {
-    setLoading(false)
+  function applyPickedDate(date: Date) {
+    setNewDate(date)
+    setNewDateBangkokIso(pickerWallClockToBangkokIso(date))
+  }
+
+  function handleCancelDatePicker() {
     setShowDatePicker(false)
   }
 
   function handleOpenDatePicker() {
+    const initial = newDate ?? bangkokDefaultProposeTimeForPicker()
+    applyPickedDate(initial)
+    setError('')
     setShowDatePicker(true)
+  }
+
+  function handleAndroidDateChange(_event: unknown, date: Date) {
+    applyPickedDate(date)
+    setShowDatePicker(false)
+    setShowConfirmPostponeDate(true)
+  }
+
+  function handleIosDateChange(_event: unknown, date: Date) {
+    applyPickedDate(date)
+  }
+
+  function handleConfirmIosDate() {
+    const date = newDate ?? bangkokDefaultProposeTimeForPicker()
+    applyPickedDate(date)
+    setShowDatePicker(false)
+    setShowConfirmPostponeDate(true)
   }
 
   async function postponeIndefinitely() {
@@ -167,187 +188,191 @@ export default function Postpone({matchInfo}: {matchInfo: any}) {
         exitPostponeScreen()
       } else {
         setError(t('failed_to_postpone'))
-        setLoading(false)
       }
     } catch (e) {
       console.error('Failed to postpone indefinitely:', e)
       setError(t('failed_to_postpone'))
-      setLoading(false)
     } finally {
       setDialogSubmitting(false)
     }
   }
 
-  if (isMounted) {
-    return (
-      <View className="flex-1 p-6 bg-gray-50 dark:bg-gray-900">
-        <View className="flex-1 items-center justify-center">
-          <View className="w-full rounded-xl bg-white dark:bg-gray-800 p-6 shadow-md">
-            {hasValidProposal && postponedProposal && (
-              <View className="mb-6 p-4 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
-                <Text
-                  type="subtitle"
-                  className="text-center text-amber-800 dark:text-amber-200 mb-2 font-semibold">
-                  {t('latest_proposal')}
-                </Text>
-                <Text
-                  type="title"
-                  className="text-center font-bold text-lg text-gray-900 dark:text-gray-100">
-                  {getProposingTeamShortName(
-                    parsedMatchInfo,
-                    postponedProposal,
-                  )}
-                </Text>
-                <Text className="text-center text-gray-600 dark:text-gray-400 mt-2">
-                  {t('proposed_date')}:
-                </Text>
-                <Text
-                  type="subtitle"
-                  className="text-center font-semibold text-gray-800 dark:text-gray-200">
-                  {formatPostponedProposalDisplay(postponedProposal, {
-                    indefinite: t('indefinite'),
-                    noDate: t('no_date_selected'),
-                  })}
-                </Text>
-              </View>
-            )}
-
-            {/* Original Date Section */}
-            <View className="mb-8">
-              <Text
-                type="subtitle"
-                className="text-center text-gray-500 dark:text-gray-400 mb-1">
-                {t('original_date')}
-              </Text>
-              <Text type="title" className="text-center font-bold text-lg">
-                {formatBangkokWeekdayDate(
-                  parsedMatchInfo.original_date ?? parsedMatchInfo.date,
-                )}
-              </Text>
-            </View>
-
-            <Text className="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">
-              {t('times_in_bangkok')}
-            </Text>
-
-            {/* Action Buttons */}
-            <View className="mt-4">
-              {loading ? (
-                <View className="mt-4">
-                  <ActivityIndicator size="large" color="#0000ff" />
-                </View>
-              ) : (
-                <>
-                  <Button
-                    onPress={() => {
-                      setLoading(true)
-                      handleOpenDatePicker()
-                    }}>
-                    {postponedProposal?.newDate
-                      ? t('propose_a_new_date')
-                      : t('reschedule')}
-                  </Button>
-                  {!hasValidProposal && (
-                    <View className="mt-4">
-                      <Button
-                        onPress={() => {
-                          setLoading(true)
-                          setShowConfirmPostponeIndefinitely(true)
-                        }}>
-                        {t('postpone_indefinitely')}
-                      </Button>
-                    </View>
-                  )}
-                </>
-              )}
-
-              {canConfirmOpponentProposal && (
-                <View className="mt-4 w-full">
-                  <Button
-                    onPress={() => handleConfirmMatch()}
-                    disabled={loading || dialogSubmitting}
-                    style={{
-                      width: '100%',
-                      minHeight: 52,
-                      backgroundColor: '#16a34a',
-                    }}
-                    icon={
-                      <Ionicons
-                        name="checkmark-circle-outline"
-                        size={22}
-                        color="white"
-                      />
-                    }>
-                    confirm_proposed_date
-                  </Button>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {/* Error Message */}
-        {error ? (
-          <View className="my-4 bg-red-100 p-4 rounded-lg">
-            <Text className="text-red-600 text-center font-medium">
-              {t('failed_to_postpone')}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* Date Picker */}
-        {showDatePicker ? (
-          <DateTimePicker
-            value={newDate ?? bangkokDefaultProposeTimeForPicker()}
-            minimumDate={bangkokMinimumPickerDate()}
-            mode="datetime"
-            is24Hour={false}
-            presentation="dialog"
-            onDismiss={handleCancel}
-            onValueChange={(_event, date) => {
-              setNewDate(date)
-              setNewDateBangkokIso(pickerWallClockToBangkokIso(date))
-              setDateSelected(true)
-              setShowDatePicker(false)
-              setShowConfirmPostponeDate(true)
-            }}
-          />
-        ) : null}
-
-        {/* Confirmation Dialog */}
-        <ConfirmDialog
-          isVisible={showConfirmPostponeDate}
-          title={t('schedule_for_later')}
-          message={t('confirm_postpone_date', {
-            date: newDateBangkokIso
-              ? `${formatBangkok(newDateBangkokIso)} (${t('bangkok_timezone_abbr')})`
-              : t('no_date_selected'),
-          })}
-          onConfirm={handleConfirmDatePostpone}
-          onCancel={() => {
-            if (!dialogSubmitting) {
-              setShowConfirmPostponeDate(false)
-              setLoading(false)
-            }
-          }}
-          submitting={dialogSubmitting}
-        />
-        <ConfirmDialog
-          isVisible={showConfirmPostponeIndefinitely}
-          title={t('postpone_indefinitely')}
-          message={t('confirm_postpone_indefinitely')}
-          onConfirm={postponeIndefinitely}
-          onCancel={() => {
-            if (!dialogSubmitting) {
-              setShowConfirmPostponeIndefinitely(false)
-              setLoading(false)
-            }
-          }}
-          submitting={dialogSubmitting}
-        />
-      </View>
-    )
-  } else {
+  if (!isMounted) {
     return null
   }
+
+  return (
+    <View className="flex-1 p-6 bg-gray-50 dark:bg-gray-900">
+      <View className="flex-1 items-center justify-center">
+        <View className="w-full rounded-xl bg-white dark:bg-gray-800 p-6 shadow-md">
+          {hasValidProposal && postponedProposal && (
+            <View className="mb-6 p-4 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+              <Text
+                type="subtitle"
+                className="text-center text-amber-800 dark:text-amber-200 mb-2 font-semibold">
+                {t('latest_proposal')}
+              </Text>
+              <Text
+                type="title"
+                className="text-center font-bold text-lg text-gray-900 dark:text-gray-100">
+                {getProposingTeamShortName(
+                  parsedMatchInfo,
+                  postponedProposal,
+                )}
+              </Text>
+              <Text className="text-center text-gray-600 dark:text-gray-400 mt-2">
+                {t('proposed_date')}:
+              </Text>
+              <Text
+                type="subtitle"
+                className="text-center font-semibold text-gray-800 dark:text-gray-200">
+                {formatPostponedProposalDisplay(postponedProposal, {
+                  indefinite: t('indefinite'),
+                  noDate: t('no_date_selected'),
+                })}
+              </Text>
+            </View>
+          )}
+
+          <View className="mb-8">
+            <Text
+              type="subtitle"
+              className="text-center text-gray-500 dark:text-gray-400 mb-1">
+              {t('original_date')}
+            </Text>
+            <Text type="title" className="text-center font-bold text-lg">
+              {formatBangkokWeekdayDate(
+                parsedMatchInfo.original_date ?? parsedMatchInfo.date,
+              )}
+            </Text>
+          </View>
+
+          <Text className="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">
+            {t('times_in_bangkok')}
+          </Text>
+
+          <View className="mt-4">
+            {loading ? (
+              <View className="mt-4">
+                <ActivityIndicator size="large" color="#0000ff" />
+              </View>
+            ) : showDatePicker && Platform.OS === 'ios' ? (
+              <View className="w-full items-stretch">
+                <DateTimePicker
+                  value={newDate ?? bangkokDefaultProposeTimeForPicker()}
+                  minimumDate={bangkokMinimumPickerDate()}
+                  mode="datetime"
+                  display="spinner"
+                  onValueChange={handleIosDateChange}
+                  style={{alignSelf: 'stretch', minHeight: 180}}
+                />
+                <View className="mt-4 flex-row gap-3">
+                  <View className="flex-1">
+                    <Button onPress={handleCancelDatePicker}>
+                      {t('cancel')}
+                    </Button>
+                  </View>
+                  <View className="flex-1">
+                    <Button onPress={handleConfirmIosDate}>
+                      {t('confirm')}
+                    </Button>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <>
+                <Button onPress={handleOpenDatePicker}>
+                  {postponedProposal?.newDate
+                    ? t('propose_a_new_date')
+                    : t('reschedule')}
+                </Button>
+                {!hasValidProposal && (
+                  <View className="mt-4">
+                    <Button
+                      onPress={() =>
+                        setShowConfirmPostponeIndefinitely(true)
+                      }>
+                      {t('postpone_indefinitely')}
+                    </Button>
+                  </View>
+                )}
+              </>
+            )}
+
+            {canConfirmOpponentProposal && !showDatePicker && (
+              <View className="mt-4 w-full">
+                <Button
+                  onPress={() => handleConfirmMatch()}
+                  disabled={loading || dialogSubmitting}
+                  style={{
+                    width: '100%',
+                    minHeight: 52,
+                    backgroundColor: '#16a34a',
+                  }}
+                  icon={
+                    <Ionicons
+                      name="checkmark-circle-outline"
+                      size={22}
+                      color="white"
+                    />
+                  }>
+                  confirm_proposed_date
+                </Button>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {error ? (
+        <View className="my-4 bg-red-100 p-4 rounded-lg">
+          <Text className="text-red-600 text-center font-medium">
+            {t('failed_to_postpone')}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Android: dialog presentation mounts a modal; unmount on dismiss/confirm */}
+      {showDatePicker && Platform.OS === 'android' ? (
+        <DateTimePicker
+          value={newDate ?? bangkokDefaultProposeTimeForPicker()}
+          minimumDate={bangkokMinimumPickerDate()}
+          mode="datetime"
+          is24Hour={false}
+          presentation="dialog"
+          onDismiss={handleCancelDatePicker}
+          onValueChange={handleAndroidDateChange}
+        />
+      ) : null}
+
+      <ConfirmDialog
+        isVisible={showConfirmPostponeDate}
+        title={t('schedule_for_later')}
+        message={t('confirm_postpone_date', {
+          date: newDateBangkokIso
+            ? `${formatBangkok(newDateBangkokIso)} (${t('bangkok_timezone_abbr')})`
+            : t('no_date_selected'),
+        })}
+        onConfirm={handleConfirmDatePostpone}
+        onCancel={() => {
+          if (!dialogSubmitting) {
+            setShowConfirmPostponeDate(false)
+          }
+        }}
+        submitting={dialogSubmitting}
+      />
+      <ConfirmDialog
+        isVisible={showConfirmPostponeIndefinitely}
+        title={t('postpone_indefinitely')}
+        message={t('confirm_postpone_indefinitely')}
+        onConfirm={postponeIndefinitely}
+        onCancel={() => {
+          if (!dialogSubmitting) {
+            setShowConfirmPostponeIndefinitely(false)
+          }
+        }}
+        submitting={dialogSubmitting}
+      />
+    </View>
+  )
 }

@@ -1,23 +1,25 @@
-import {ThemedText as Text} from '@/components/ThemedText'
-import {ThemedView as View} from '@/components/ThemedView'
+import {useScoresheetTheme} from '@/components/Match/components/scoresheetTheme'
 import {useMatchContext} from '@/context/MatchContext'
 import {useMatch} from '@/hooks'
 import {formatBangkokFromMillis} from '@/lib/bangkokTime'
+import MCI from '@expo/vector-icons/MaterialCommunityIcons'
 import {useLocalSearchParams} from 'expo-router'
 import {useNavigation} from 'expo-router/react-navigation'
+import {DateTime} from 'luxon'
 import React from 'react'
 import {useTranslation} from 'react-i18next'
-import {FlatList} from 'react-native'
+import {FlatList, Text, View} from 'react-native'
 import {useSafeAreaInsets} from 'react-native-safe-area-context'
 
 type HistoryItem = {
   timestamp: number
-  msg: string[]
+  msg?: string | string[] | null
+  type?: string | null
 }
 
-function formatDate(timestamp: number) {
-  return formatBangkokFromMillis(timestamp)
-}
+type HistoryRow =
+  | {kind: 'day'; key: string; label: string}
+  | {kind: 'event'; key: string; item: HistoryItem}
 
 function resolveMatchId(
   params: unknown,
@@ -42,10 +44,170 @@ function resolveMatchId(
   return null
 }
 
+function normalizeMsg(msg: HistoryItem['msg']): string {
+  if (Array.isArray(msg)) return msg.filter(Boolean).join(' ').trim()
+  return String(msg ?? '').trim()
+}
+
+function dayKeyFromMillis(timestamp: number): string {
+  if (!timestamp) return 'unknown'
+  const dt = DateTime.fromMillis(timestamp).setZone('Asia/Bangkok')
+  return dt.isValid ? dt.toFormat('yyyy-LL-dd') : 'unknown'
+}
+
+function dayLabelFromMillis(timestamp: number): string {
+  return formatBangkokFromMillis(timestamp, DateTime.DATE_MED_WITH_WEEKDAY)
+}
+
+function timeLabelFromMillis(timestamp: number): string {
+  return formatBangkokFromMillis(timestamp, DateTime.TIME_SIMPLE)
+}
+
+function eventVisual(
+  item: HistoryItem,
+  theme: ReturnType<typeof useScoresheetTheme>,
+): {icon: React.ComponentProps<typeof MCI>['name']; color: string} {
+  const type = String(item.type ?? '')
+    .trim()
+    .toLowerCase()
+  const msg = normalizeMsg(item.msg).toLowerCase()
+  const golden = msg.includes('golden break')
+
+  if (type === 'win' || golden) {
+    return {
+      icon: golden ? 'star' : 'check-circle',
+      color: golden ? theme.gold : theme.win,
+    }
+  }
+  if (type === 'clearwin') {
+    return {icon: 'undo-variant', color: theme.muted}
+  }
+  if (type === 'players') {
+    return {icon: 'account', color: theme.home.accent}
+  }
+  if (type === 'firstbreak') {
+    return {icon: 'flag-variant', color: theme.away.accent}
+  }
+  if (type === 'firstdart') {
+    return {icon: 'target', color: theme.away.accent}
+  }
+  if (type === 'finalize') {
+    return {icon: 'check-decagram', color: theme.win}
+  }
+  if (type === 'framestats') {
+    return {icon: 'chart-bar', color: theme.home.accent}
+  }
+  if (type === 'visit' || type === 'x01') {
+    return {icon: 'numeric', color: theme.away.accent}
+  }
+  return {icon: 'history', color: theme.muted}
+}
+
+function buildRows(items: HistoryItem[]): HistoryRow[] {
+  const rows: HistoryRow[] = []
+  let lastDay = ''
+  items.forEach((item, index) => {
+    const day = dayKeyFromMillis(item.timestamp)
+    if (day !== lastDay) {
+      lastDay = day
+      rows.push({
+        kind: 'day',
+        key: `day-${day}`,
+        label: dayLabelFromMillis(item.timestamp),
+      })
+    }
+    rows.push({
+      kind: 'event',
+      key: `event-${item.timestamp}-${index}`,
+      item,
+    })
+  })
+  return rows
+}
+
+function DayHeader({label}: {label: string}) {
+  const theme = useScoresheetTheme()
+  return (
+    <Text
+      style={{
+        marginTop: 8,
+        marginBottom: 6,
+        marginHorizontal: 4,
+        color: theme.muted,
+        fontSize: 12,
+        fontWeight: '800',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+      }}>
+      {label}
+    </Text>
+  )
+}
+
+function EventCard({item}: {item: HistoryItem}) {
+  const theme = useScoresheetTheme()
+  const message = normalizeMsg(item.msg)
+  const {icon, color} = eventVisual(item, theme)
+  const time = timeLabelFromMillis(item.timestamp)
+
+  return (
+    <View
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: 12,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: theme.cardBorder,
+          backgroundColor: theme.card,
+          paddingHorizontal: 12,
+          paddingVertical: 12,
+          marginBottom: 8,
+        },
+        theme.shadow,
+      ]}>
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: theme.faint,
+        }}>
+        <MCI name={icon} size={18} color={color} />
+      </View>
+      <View style={{flex: 1, gap: 4}}>
+        <Text
+          style={{
+            color: theme.text,
+            fontSize: 15,
+            fontWeight: '600',
+            lineHeight: 20,
+          }}>
+          {message || '—'}
+        </Text>
+        <Text
+          style={{
+            color: theme.muted,
+            fontSize: 12,
+            fontWeight: '700',
+            fontVariant: ['tabular-nums'],
+          }}>
+          {time}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
 export default function History() {
   const navigation = useNavigation()
   const {t} = useTranslation()
+  const theme = useScoresheetTheme()
   const [history, setHistory] = React.useState<HistoryItem[]>([])
+  const [loading, setLoading] = React.useState(true)
   const {params} = useLocalSearchParams()
   const {GetMatchInfo} = useMatch()
   const insets = useSafeAreaInsets()
@@ -59,10 +221,19 @@ export default function History() {
     navigation.setOptions({title: t('history')})
   }, [navigation, t])
 
+  const sortHistory = React.useCallback((items: HistoryItem[]) => {
+    return [...items].sort((a, b) => {
+      const at = Number(a?.timestamp ?? 0)
+      const bt = Number(b?.timestamp ?? 0)
+      return bt - at
+    })
+  }, [])
+
   const loadHistory = React.useCallback(
     async (showRefreshSpinner: boolean) => {
       if (!matchId) {
         setHistory([])
+        setLoading(false)
         return
       }
       try {
@@ -70,25 +241,18 @@ export default function History() {
           setRefreshing(true)
         }
         const res = await getMatchInfoRef.current(matchId)
-        const _history = res?.data?.history ?? []
-        const _historySorted = [..._history].sort(
-          (a: HistoryItem, b: HistoryItem) => {
-            if (a?.timestamp && b?.timestamp) {
-              return b.timestamp - a.timestamp
-            }
-            return 0
-          },
-        )
-        setHistory(_historySorted)
+        const raw = Array.isArray(res?.data?.history) ? res.data.history : []
+        setHistory(sortHistory(raw))
       } catch (error) {
         console.error('Error fetching match by ID:', error)
       } finally {
+        setLoading(false)
         if (showRefreshSpinner) {
           setRefreshing(false)
         }
       }
     },
-    [matchId],
+    [matchId, sortHistory],
   )
 
   React.useEffect(() => {
@@ -96,26 +260,24 @@ export default function History() {
 
     async function load() {
       if (!matchId) {
-        setHistory([])
+        if (!cancelled) {
+          setHistory([])
+          setLoading(false)
+        }
         return
       }
       try {
+        if (!cancelled) setLoading(true)
         const res = await getMatchInfoRef.current(matchId)
         if (cancelled) return
-        const _history = res?.data?.history ?? []
-        const _historySorted = [..._history].sort(
-          (a: HistoryItem, b: HistoryItem) => {
-            if (a?.timestamp && b?.timestamp) {
-              return b.timestamp - a.timestamp
-            }
-            return 0
-          },
-        )
-        setHistory(_historySorted)
+        const raw = Array.isArray(res?.data?.history) ? res.data.history : []
+        setHistory(sortHistory(raw))
       } catch (error) {
         if (!cancelled) {
           console.error('Error fetching match by ID:', error)
         }
+      } finally {
+        if (!cancelled) setLoading(false)
       }
     }
 
@@ -123,25 +285,75 @@ export default function History() {
     return () => {
       cancelled = true
     }
-  }, [matchId])
+  }, [matchId, sortHistory])
+
+  const rows = React.useMemo(() => buildRows(history), [history])
+
+  if (loading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: theme.canvas,
+        }}>
+        <Text style={{color: theme.muted}}>{t('loading')}</Text>
+      </View>
+    )
+  }
 
   return (
     <FlatList
-      contentContainerStyle={{paddingBottom: insets.bottom}}
-      data={history}
+      style={{flex: 1, backgroundColor: theme.canvas}}
+      contentContainerStyle={{
+        paddingTop: 12,
+        paddingHorizontal: 12,
+        paddingBottom: Math.max(insets.bottom, 16) + 8,
+        flexGrow: 1,
+      }}
+      data={rows}
       refreshing={refreshing}
       onRefresh={() => loadHistory(true)}
+      keyExtractor={item => item.key}
       renderItem={({item}) => {
-        if (item !== null) {
-          return (
-            <View className="my-2 p-2">
-              <Text>{formatDate(item.timestamp)}</Text>
-              <Text>{item.msg}</Text>
-            </View>
-          )
+        if (item.kind === 'day') {
+          return <DayHeader label={item.label} />
         }
-        return null
+        return <EventCard item={item.item} />
       }}
+      ListEmptyComponent={
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 24,
+            paddingTop: 64,
+            gap: 12,
+          }}>
+          <View
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.faint,
+            }}>
+            <MCI name="history" size={28} color={theme.muted} />
+          </View>
+          <Text
+            style={{
+              color: theme.text,
+              fontSize: 16,
+              fontWeight: '700',
+              textAlign: 'center',
+            }}>
+            {t('history_empty')}
+          </Text>
+        </View>
+      }
     />
   )
 }

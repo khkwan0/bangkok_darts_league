@@ -66,6 +66,11 @@ export default function AdminLeagueHub() {
           text={t('admin_league_teams')}
           url="/Settings/Admin/League/Teams"
         />
+        <NavDest
+          icon="calendar-clock"
+          text={t('admin_league_postponed')}
+          url="/Settings/Admin/League/Postponed"
+        />
       </View>
     </ScrollView>
   )

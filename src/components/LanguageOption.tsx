@@ -1,12 +1,37 @@
 import {View, Pressable} from 'react-native'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView} from '@/components/ThemedView'
-import {useTheme} from "expo-router/react-navigation"
+import {useTheme} from 'expo-router/react-navigation'
 import {useTranslation} from 'react-i18next'
-import i18n from '@/i18n'
 import MCI from '@expo/vector-icons/MaterialCommunityIcons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import React, {useEffect, useState} from 'react'
+import React from 'react'
+
+const LANGUAGES = [
+  {
+    code: 'en',
+    flag: '🇬🇧',
+    primaryKey: 'english_in_english',
+    secondaryKey: 'english_in_thai',
+  },
+  {
+    code: 'th',
+    flag: '🇹🇭',
+    primaryKey: 'thai_in_thai',
+    secondaryKey: 'thai_in_english',
+  },
+  {
+    code: 'zh',
+    flag: '🇨🇳',
+    primaryKey: 'chinese_in_chinese',
+    secondaryKey: 'chinese_in_english',
+  },
+  {
+    code: 'ja',
+    flag: '🇯🇵',
+    primaryKey: 'japanese_in_japanese',
+    secondaryKey: 'japanese_in_english',
+  },
+] as const
 
 export default function LanguageOption({
   handleLanguageOption,
@@ -23,54 +48,33 @@ export default function LanguageOption({
       <Text className="text-lg font-semibold mb-4">{t('language')}</Text>
       <View className="bg-gray-800/20 rounded-xl p-4">
         <View className="space-y-2">
-          <Pressable onPress={() => handleLanguageOption('en')} className="p-3">
-            <View className="flex-row items-center justify-between">
-              <View>
-                <Text
-                  style={{
-                    color:
-                      currentLanguage === 'en' ? colors.primary : colors.text,
-                  }}>
-                  {t('english_in_english')}
-                </Text>
-                <Text
-                  className="text-sm opacity-60"
-                  style={{
-                    color:
-                      currentLanguage === 'en' ? colors.primary : colors.text,
-                  }}>
-                  {t('english_in_thai')}
-                </Text>
-              </View>
-              {currentLanguage === 'en' && (
-                <MCI name="check" size={20} color={colors.primary} />
-              )}
-            </View>
-          </Pressable>
-          <Pressable onPress={() => handleLanguageOption('th')} className="p-3">
-            <View className="flex-row items-center justify-between">
-              <View>
-                <Text
-                  style={{
-                    color:
-                      currentLanguage === 'th' ? colors.primary : colors.text,
-                  }}>
-                  {t('thai_in_thai')}
-                </Text>
-                <Text
-                  className="text-sm opacity-60"
-                  style={{
-                    color:
-                      currentLanguage === 'th' ? colors.primary : colors.text,
-                  }}>
-                  {t('thai_in_english')}
-                </Text>
-              </View>
-              {currentLanguage === 'th' && (
-                <MCI name="check" size={20} color={colors.primary} />
-              )}
-            </View>
-          </Pressable>
+          {LANGUAGES.map(lang => {
+            const selected = currentLanguage === lang.code
+            const color = selected ? colors.primary : colors.text
+            return (
+              <Pressable
+                key={lang.code}
+                onPress={() => handleLanguageOption(lang.code)}
+                className="p-3">
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-3 flex-1 pr-3">
+                    <Text style={{fontSize: 28, lineHeight: 34}}>
+                      {lang.flag}
+                    </Text>
+                    <View className="flex-1">
+                      <Text style={{color}}>{t(lang.primaryKey)}</Text>
+                      <Text className="text-sm opacity-60" style={{color}}>
+                        {t(lang.secondaryKey)}
+                      </Text>
+                    </View>
+                  </View>
+                  {selected && (
+                    <MCI name="check" size={20} color={colors.primary} />
+                  )}
+                </View>
+              </Pressable>
+            )
+          })}
         </View>
       </View>
     </ThemedView>

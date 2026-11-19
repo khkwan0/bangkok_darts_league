@@ -128,6 +128,9 @@ function AchievementRow({
         <RNView className="flex-1 min-w-0">
           <Text className="font-bold" numberOfLines={1}>
             {name}
+            {item.repeatable && item.count != null && item.count >= 1
+              ? ` ×${item.count}`
+              : ''}
           </Text>
           <Text className="mt-0.5 text-xs opacity-60 capitalize">
             {item.kind === 'trophy'
@@ -231,7 +234,7 @@ export default function AchievementsScreen() {
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [expandedCode, setExpandedCode] = React.useState<string | null>(null)
+  const [expandedKey, setExpandedKey] = React.useState<string | null>(null)
   const [sortMode, setSortMode] = React.useState<'default' | 'newest'>(
     'newest',
   )
@@ -299,8 +302,11 @@ export default function AchievementsScreen() {
     }
   }, [viewMode, loadMine, loadLeague])
 
-  const toggle = (code: string) => {
-    setExpandedCode(prev => (prev === code ? null : code))
+  const rowKey = (item: AchievementItem) =>
+    `${item.code}:${item.count ?? 1}:${item.awardedAt ?? ''}`
+
+  const toggle = (key: string) => {
+    setExpandedKey(prev => (prev === key ? null : key))
   }
 
   const onRefresh = () => {
@@ -435,16 +441,19 @@ export default function AchievementsScreen() {
                   })}
                 </RNView>
               </RNView>
-              {unlockedSorted.map(item => (
-                <AchievementRow
-                  key={item.code}
-                  item={item}
-                  lang={lang}
-                  locked={false}
-                  expanded={expandedCode === item.code}
-                  onPress={() => toggle(item.code)}
-                />
-              ))}
+              {unlockedSorted.map(item => {
+                const key = rowKey(item)
+                return (
+                  <AchievementRow
+                    key={key}
+                    item={item}
+                    lang={lang}
+                    locked={false}
+                    expanded={expandedKey === key}
+                    onPress={() => toggle(key)}
+                  />
+                )
+              })}
             </>
           ) : (
             <Text className="mb-4 text-sm opacity-60">
@@ -457,16 +466,19 @@ export default function AchievementsScreen() {
               <Text className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide opacity-50">
                 {t('achievements_locked')}
               </Text>
-              {data!.locked.map(item => (
-                <AchievementRow
-                  key={item.code}
-                  item={item}
-                  lang={lang}
-                  locked
-                  expanded={expandedCode === item.code}
-                  onPress={() => toggle(item.code)}
-                />
-              ))}
+              {data!.locked.map(item => {
+                const key = rowKey(item)
+                return (
+                  <AchievementRow
+                    key={key}
+                    item={item}
+                    lang={lang}
+                    locked
+                    expanded={expandedKey === key}
+                    onPress={() => toggle(key)}
+                  />
+                )
+              })}
             </>
           ) : null}
         </ScrollView>

@@ -15,6 +15,10 @@ export type AchievementItem = {
   name: LocalizedText
   description: LocalizedText
   silly: boolean
+  /** True when this code can be earned more than once. */
+  repeatable?: boolean
+  /** 1-based occurrence for this unlock row. */
+  count?: number
   awardedAt?: string
   meta?: Record<string, unknown> | null
 }

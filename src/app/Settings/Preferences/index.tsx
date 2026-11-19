@@ -87,7 +87,7 @@ export default function Preferences() {
           style={{backgroundColor: colors.card}}>
           <PreferenceRow
             icon="translate"
-            label={`${t('language_in_english')}/${t('language_in_thai')}`}
+            label={`${t('language_in_english')}/${t('language_in_thai')}/${t('language_in_chinese')}/${t('language_in_japanese')}`}
             route="/Settings/Preferences/Language"
             iconColor="#2196F3"
             iconBackground="rgba(33, 150, 243, 0.15)"

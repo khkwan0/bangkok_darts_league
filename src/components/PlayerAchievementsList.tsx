@@ -83,6 +83,9 @@ function AchievementRow({
             style={text ? {color: text, fontWeight: '700'} : {fontWeight: '700'}}
             numberOfLines={1}>
             {name}
+            {item.repeatable && item.count != null && item.count >= 1
+              ? ` ×${item.count}`
+              : ''}
           </Text>
           <Text
             style={{
@@ -136,7 +139,7 @@ export default function PlayerAchievementsList({
   showHeader?: boolean
 }) {
   const {t, i18n} = useTranslation()
-  const [expandedCode, setExpandedCode] = React.useState<string | null>(null)
+  const [expandedKey, setExpandedKey] = React.useState<string | null>(null)
   const [sortMode, setSortMode] = React.useState<'default' | 'newest'>(
     'newest',
   )
@@ -154,8 +157,11 @@ export default function PlayerAchievementsList({
 
   if (!data) return null
 
-  const toggle = (code: string) => {
-    setExpandedCode(prev => (prev === code ? null : code))
+  const rowKey = (item: AchievementItem) =>
+    `${item.code}:${item.count ?? 1}:${item.awardedAt ?? ''}`
+
+  const toggle = (key: string) => {
+    setExpandedKey(prev => (prev === key ? null : key))
   }
 
   return (
@@ -260,18 +266,21 @@ export default function PlayerAchievementsList({
               })}
             </RNView>
           </RNView>
-          {unlockedSorted.map(item => (
-            <AchievementRow
-              key={item.code}
-              item={item}
-              lang={lang}
-              locked={false}
-              expanded={expandedCode === item.code}
-              onPress={() => toggle(item.code)}
-              mutedColor={mutedColor}
-              textColor={textColor}
-            />
-          ))}
+          {unlockedSorted.map(item => {
+            const key = rowKey(item)
+            return (
+              <AchievementRow
+                key={key}
+                item={item}
+                lang={lang}
+                locked={false}
+                expanded={expandedKey === key}
+                onPress={() => toggle(key)}
+                mutedColor={mutedColor}
+                textColor={textColor}
+              />
+            )
+          })}
         </>
       ) : (
         <Text
@@ -298,18 +307,21 @@ export default function PlayerAchievementsList({
             }}>
             {t('achievements_locked')}
           </Text>
-          {data.locked.map(item => (
-            <AchievementRow
-              key={item.code}
-              item={item}
-              lang={lang}
-              locked
-              expanded={expandedCode === item.code}
-              onPress={() => toggle(item.code)}
-              mutedColor={mutedColor}
-              textColor={textColor}
-            />
-          ))}
+          {data.locked.map(item => {
+            const key = rowKey(item)
+            return (
+              <AchievementRow
+                key={key}
+                item={item}
+                lang={lang}
+                locked
+                expanded={expandedKey === key}
+                onPress={() => toggle(key)}
+                mutedColor={mutedColor}
+                textColor={textColor}
+              />
+            )
+          })}
         </>
       ) : null}
     </RNView>

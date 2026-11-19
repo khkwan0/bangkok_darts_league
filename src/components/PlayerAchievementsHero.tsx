@@ -94,7 +94,10 @@ export default function PlayerAchievementsHero({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.medalsRow}>
           {preview.map(item => (
-            <BadgeImage key={item.code} item={item} />
+            <BadgeImage
+              key={`${item.code}:${item.count ?? 1}:${item.awardedAt ?? ''}`}
+              item={item}
+            />
           ))}
           {unlocked.length > preview.length ? (
             <View style={styles.moreMedal}>
