@@ -1492,5 +1492,8 @@
   "japanese_in_english": "Japanese",
   "japanese_in_thai": "ญี่ปุ่น",
   "japanese_in_chinese": "日语",
-  "japanese_name": "日本語"
+  "japanese_name": "日本語",
+  "maintenance_title": "メンテナンス中",
+  "maintenance_body": "リーグはただいまメンテナンス中です。しばらくしてからもう一度お試しください。",
+  "maintenance_retry": "もう一度試す"
 }

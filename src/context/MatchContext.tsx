@@ -54,6 +54,8 @@ type StateType = {
   finalizeBusy: boolean
   /** Timestamp of last server finalize/unfinalize reject (clears local spinner). */
   finalizeRejectedAt: number
+  /** Bumped when an admin clear/restore tells this sheet to reload. */
+  sheetReload: number
 }
 
 const MatchContext = createContext({})
@@ -69,6 +71,7 @@ const initialState: StateType = {
   finalizedAway: false,
   finalizeBusy: false,
   finalizeRejectedAt: 0,
+  sheetReload: 0,
 }
 
 const MatchReducer = (state: StateType, action: any) => {
@@ -85,6 +88,7 @@ const MatchReducer = (state: StateType, action: any) => {
         finalizedAway: false,
         finalizeBusy: false,
         finalizeRejectedAt: 0,
+        sheetReload: 0,
       }
     }
     case 'SET_MATCHINFO': {
@@ -293,6 +297,12 @@ const MatchReducer = (state: StateType, action: any) => {
         finalizeRejectedAt: Number(action.payload) || Date.now(),
       }
     }
+    case 'BUMP_SHEET_RELOAD': {
+      return {
+        ...state,
+        sheetReload: (state.sheetReload ?? 0) + 1,
+      }
+    }
     case 'APPLY_THROW': {
       const {frameIndex, visit} = action.payload
       const current = state.frameData?.[frameIndex]
@@ -328,6 +338,7 @@ export const MatchProvider = (props: any) => {
   const [socketStatus, setSocketStatus] = React.useState<SocketStatus>('offline')
   const [lastSyncAt, setLastSyncAt] = React.useState<number | null>(null)
   const userIdRef = React.useRef<number>(0)
+  const sheetGenRef = React.useRef(0)
 
   const matchInfoRef = React.useRef({})
 
@@ -450,7 +461,21 @@ export const MatchProvider = (props: any) => {
             payload: !!data?.data?.busy,
           })
         } else if (data.type === 'update_rejected') {
-          alertViewOnly()
+          if (data?.data?.reason === 'sheet_reset') {
+            const n = Number(data?.data?.sheetGen)
+            sheetGenRef.current =
+              Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0
+            dispatch({type: 'BUMP_SHEET_RELOAD'})
+          } else {
+            alertViewOnly()
+          }
+        } else if (
+          data.type === 'cleared' ||
+          data.type === 'restored'
+        ) {
+          const n = Number(data?.data?.sheetGen)
+          sheetGenRef.current = Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0
+          dispatch({type: 'BUMP_SHEET_RELOAD'})
         } else if (data.type === 'finalize_error') {
           dispatch({
             type: 'SET_FINALIZE_REJECTED_AT',
@@ -1074,6 +1099,7 @@ export const MatchProvider = (props: any) => {
       playerId: leagueState.user.id ?? 0,
       nickname: leagueState.user.nickname ?? '',
       dest: dest,
+      sheetGen: sheetGenRef.current,
       data: {...data},
     }
     if (socket.current) {
@@ -1133,6 +1159,10 @@ export const MatchProvider = (props: any) => {
         SyncX01Board,
         UpdateFrameWin,
         UpdateTeams,
+        adoptSheetGen: (gen: unknown) => {
+          const n = Number(gen)
+          sheetGenRef.current = Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0
+        },
       }}>
       {props.children}
     </MatchContext.Provider>

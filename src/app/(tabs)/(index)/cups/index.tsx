@@ -47,6 +47,7 @@ export default function CupsListScreen() {
   const isMini = isMiniCompetition(competition)
   const miniId = isMini ? competition.id : 0
   const isSiteAdmin = isLeagueAdmin(state.user)
+  const isLoggedIn = Boolean(state.user?.id)
 
   const load = React.useCallback(async () => {
     const opts = isMini ? {mini_league_id: miniId} : undefined
@@ -60,9 +61,10 @@ export default function CupsListScreen() {
       const m = await miniApiRef.current.get(miniId)
       setCanManage(Boolean(m?.data?.is_admin))
     } else {
-      setCanManage(false)
+      // Regular players can create/manage their own standalone opens.
+      setCanManage(isLoggedIn)
     }
-  }, [isMini, isSiteAdmin, miniId])
+  }, [isLoggedIn, isMini, isSiteAdmin, miniId])
 
   React.useEffect(() => {
     let cancelled = false

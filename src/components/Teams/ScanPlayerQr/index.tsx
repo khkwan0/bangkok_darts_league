@@ -12,6 +12,7 @@ import {CameraView, useCameraPermissions} from 'expo-camera'
 import {useNavigation, useTheme} from 'expo-router/react-navigation'
 import {useTranslation} from 'react-i18next'
 import {MaterialCommunityIcons} from '@expo/vector-icons'
+import {ExpandablePlayerPhoto} from '@/components/ExpandablePlayerPhoto'
 import {ThemedText as Text} from '@/components/ThemedText'
 import {ThemedView} from '@/components/ThemedView'
 import Button from '@/components/Button'
@@ -231,11 +232,15 @@ export default function ScanPlayerQr({
             )}
             <View className="items-center mb-4">
               {picUri ? (
-                <Image
-                  source={{uri: picUri}}
-                  className="h-20 w-20 rounded-full"
-                  resizeMode="cover"
-                />
+                <ExpandablePlayerPhoto
+                  uri={picUri}
+                  accessibilityLabel={player?.nickname}>
+                  <Image
+                    source={{uri: picUri}}
+                    className="h-20 w-20 rounded-full"
+                    resizeMode="cover"
+                  />
+                </ExpandablePlayerPhoto>
               ) : (
                 <View className="h-20 w-20 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700">
                   <Text className="text-2xl font-semibold">

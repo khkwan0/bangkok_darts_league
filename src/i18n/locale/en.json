@@ -1492,5 +1492,8 @@
   "japanese_in_english": "Japanese",
   "japanese_in_thai": "ญี่ปุ่น",
   "japanese_in_chinese": "日语",
-  "japanese_name": "Japanese"
+  "japanese_name": "Japanese",
+  "maintenance_title": "Down for maintenance",
+  "maintenance_body": "The league is offline while we do some work. Please try again in a few minutes.",
+  "maintenance_retry": "Try again"
 }

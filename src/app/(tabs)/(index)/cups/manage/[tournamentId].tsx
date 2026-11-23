@@ -166,6 +166,7 @@ export default function CupsManageDetailScreen() {
 
   const miniId = scope.type === 'mini' ? scope.id : 0
   const scopeType = scope.type
+  const isLoggedIn = Boolean(state.user?.id)
 
   const load = React.useCallback(async () => {
     if (!tournamentId) return
@@ -179,24 +180,29 @@ export default function CupsManageDetailScreen() {
         const t = await miniApiRef.current.listTeams(miniId)
         if (t?.status === 'ok') setTeams(t.data || [])
       }
+    } else if (!canManage && isLoggedIn) {
+      // Creator / tournament admin: backend authorizes adminGet.
+      canManage = true
     }
     if (!canManage) {
       setAllowed(false)
       return
     }
-    setAllowed(true)
     const [res, playersRes, draftRes] = await Promise.all([
       apiRef.current.adminGet(currentScope, tournamentId),
       apiRef.current.listAllPlayers().catch(() => null),
       apiRef.current.adminGetBracketDraft(currentScope, tournamentId).catch(() => null),
     ])
-    let tournamentStatus = ''
-    if (res?.status === 'ok') {
-      const t = res.tournament || res
-      setTournament(t)
-      setEntries(Array.isArray(res.entries) ? res.entries : [])
-      tournamentStatus = String(t?.status || '')
+    if (res?.status !== 'ok') {
+      setAllowed(false)
+      return
     }
+    setAllowed(true)
+    let tournamentStatus = ''
+    const t = res.tournament || res
+    setTournament(t)
+    setEntries(Array.isArray(res.entries) ? res.entries : [])
+    tournamentStatus = String(t?.status || '')
     if (
       draftRes?.status === 'ok' &&
       draftRes.draft &&
@@ -242,7 +248,7 @@ export default function CupsManageDetailScreen() {
         })),
     )
     setPlayersLoaded(true)
-  }, [isSiteAdmin, miniId, scopeType, tournamentId])
+  }, [isLoggedIn, isSiteAdmin, miniId, scopeType, tournamentId])
 
   const hasHydrated = React.useRef(false)
 

@@ -1487,5 +1487,8 @@
   "japanese_in_english": "Japanese",
   "japanese_in_thai": "ญี่ปุ่น",
   "japanese_in_chinese": "日语",
-  "japanese_name": "ญี่ปุ่น"
+  "japanese_name": "ญี่ปุ่น",
+  "maintenance_title": "ปิดปรับปรุงชั่วคราว",
+  "maintenance_body": "ลีกกำลังปิดปรับปรุง กรุณาลองใหม่อีกครั้งในอีกสักครู่",
+  "maintenance_retry": "ลองอีกครั้ง"
 }

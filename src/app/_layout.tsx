@@ -2,6 +2,7 @@ import {LeagueProvider} from '@/context/LeagueContext'
 import {LiveCardScoresProvider} from '@/context/LiveCardScoresContext'
 import {LayoutModeProvider} from '@/context/LayoutModeContext'
 import {MatchProvider} from '@/context/MatchContext'
+import MaintenanceScreen from '@/components/MaintenanceScreen'
 import OTAUpdatePrompt from '@/components/OTAUpdatePrompt'
 import StoreUpdatePrompt from '@/components/StoreUpdatePrompt'
 import WelcomeGate from '@/components/WelcomeGate'
@@ -422,6 +423,7 @@ function RootLayout() {
                 </MatchProvider>
               </LayoutModeProvider>
               </LiveCardScoresProvider>
+              <MaintenanceScreen />
             </LeagueProvider>
           </ThemeProvider>
         </BottomSheetModalProvider>

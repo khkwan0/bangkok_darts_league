@@ -41,6 +41,16 @@ function deMain(): StructureStage {
   }
 }
 
+function hybridDeMain(knockoutSize: number): StructureStage {
+  return {
+    stage_key: 'main',
+    label: 'Main bracket',
+    stage_order: 0,
+    kind: 'hybrid_double_elimination',
+    config: {knockout_size: knockoutSize},
+  }
+}
+
 const PRESETS: PresetDefinition[] = [
   {
     key: 'blank',
@@ -76,6 +86,33 @@ const PRESETS: PresetDefinition[] = [
       stages: [deMain()],
       edges: [],
     }),
+  },
+  {
+    key: 'hybrid_double_elimination',
+    label: 'Hybrid double elimination',
+    description:
+      'Double-elim qualify, then merge into a single-elim knockout.',
+    explanation:
+      'Winners and losers brackets run until enough players are eliminated, then survivors merge into a Last 16 / 32 / 64 single-elimination knockout. Good for large player opens with race-to-N matches.',
+    configFields: [
+      {
+        key: 'knockout_size',
+        label: 'Knockout size (Last N)',
+        type: 'number',
+        default: 16,
+        min: 16,
+        max: 64,
+      },
+    ],
+    build: cfg => {
+      const raw = num(cfg, 'knockout_size', 16)
+      const knockoutSize = raw === 32 || raw === 64 ? raw : 16
+      return {
+        version: 1,
+        stages: [hybridDeMain(knockoutSize)],
+        edges: [],
+      }
+    },
   },
   {
     key: 'regional_single_elimination',

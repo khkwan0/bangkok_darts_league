@@ -6,6 +6,7 @@ import {ThemedText as Text} from '@/components/ThemedText'
 import PlayerAchievementsCard from '@/components/PlayerAchievementsCard'
 import PlayerAchievementsHero from '@/components/PlayerAchievementsHero'
 import Row from '@/components/Row'
+import {ExpandablePlayerPhoto} from '@/components/ExpandablePlayerPhoto'
 import config from '@/config'
 import {useRouter} from 'expo-router'
 import Button from '@/components/Button'
@@ -145,22 +146,33 @@ export default function PlayerDetails({playerId}: PlayerDetailsProps) {
           </Row>
         </View>
         <View style={{flex: 1, alignItems: 'center'}}>
-          <Image
-            source={{
-              uri: `${config.profileUrl}${
-                playerInfo.pic ||
-                (playerInfo.gender === 'Female'
-                  ? 'default_female.png'
-                  : 'default_male.png')
-              }`,
-            }}
-            style={{
-              width: 100,
-              height: 100,
-              borderRadius: 50,
-            }}
-            resizeMode="contain"
-          />
+          <ExpandablePlayerPhoto
+            uri={`${config.profileUrl}${
+              playerInfo.pic ||
+              (playerInfo.gender === 'Female'
+                ? 'default_female.png'
+                : 'default_male.png')
+            }`}
+            accessibilityLabel={
+              playerInfo.name || playerInfo.nickname || undefined
+            }>
+            <Image
+              source={{
+                uri: `${config.profileUrl}${
+                  playerInfo.pic ||
+                  (playerInfo.gender === 'Female'
+                    ? 'default_female.png'
+                    : 'default_male.png')
+                }`,
+              }}
+              style={{
+                width: 100,
+                height: 100,
+                borderRadius: 50,
+              }}
+              resizeMode="contain"
+            />
+          </ExpandablePlayerPhoto>
         </View>
       </Row>
 

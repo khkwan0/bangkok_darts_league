@@ -59,16 +59,20 @@ export default function CupsManageScreen() {
     (isMiniCompetition(competition) ? competition.id : null)
   const scope = scopeFromParams(miniLeagueId)
   const isSiteAdmin = isLeagueAdmin(state.user)
+  const isLoggedIn = Boolean(state.user?.id)
   const miniId = scope.type === 'mini' ? scope.id : 0
   const scopeType = scope.type
 
   const load = React.useCallback(async () => {
     const currentScope =
       scopeType === 'mini' ? {type: 'mini' as const, id: miniId} : {type: 'site' as const}
-    let canManage = isSiteAdmin
+    let canManage = false
     if (currentScope.type === 'mini') {
       const m = await miniApiRef.current.get(miniId)
       canManage = isSiteAdmin || Boolean(m?.data?.is_admin)
+    } else {
+      // League admins see all; any signed-in player can manage their own opens.
+      canManage = isSiteAdmin || isLoggedIn
     }
     if (!canManage) {
       setAllowed(false)
@@ -84,7 +88,7 @@ export default function CupsManageScreen() {
     } else {
       setRows([])
     }
-  }, [isSiteAdmin, miniId, scopeType])
+  }, [isLoggedIn, isSiteAdmin, miniId, scopeType])
 
   const hasHydrated = React.useRef(false)
 
@@ -121,7 +125,9 @@ export default function CupsManageScreen() {
     return (
       <View style={{flex: 1, padding: 24, justifyContent: 'center'}}>
         <Text style={{textAlign: 'center', opacity: 0.7}}>
-          Only league or mini-league admins can manage tournaments.
+          {scope.type === 'mini'
+            ? 'Only league or mini-league admins can manage tournaments here.'
+            : 'Sign in to create and manage your player tournaments.'}
         </Text>
       </View>
     )
@@ -165,7 +171,9 @@ export default function CupsManageScreen() {
         <Text style={{marginTop: 8, fontSize: 12, opacity: 0.55}}>
           {scope.type === 'mini'
             ? 'Managing tournaments for this mini league (includes drafts).'
-            : 'Managing canonical league tournaments (includes drafts).'}
+            : isSiteAdmin
+              ? 'Managing league tournaments (includes drafts).'
+              : 'Tournaments you created or were assigned to manage.'}
         </Text>
       </View>
       <FlatList

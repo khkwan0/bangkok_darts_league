@@ -1,3 +1,4 @@
+import {ExpandablePlayerPhoto} from '@/components/ExpandablePlayerPhoto'
 import config from '@/config'
 import {useWeeklyHighlights} from '@/hooks/useWeeklyHighlights'
 import {ThemedText as Text} from '@/components/ThemedText'
@@ -133,7 +134,7 @@ function Avatar({
   isDark: boolean
 }) {
   const uri = player.pic ? config.profileUrl + player.pic : null
-  return (
+  const face = (
     <View
       style={{
         width: size,
@@ -161,6 +162,12 @@ function Avatar({
         </Text>
       )}
     </View>
+  )
+  if (!uri) return face
+  return (
+    <ExpandablePlayerPhoto uri={uri} accessibilityLabel={player.nickname}>
+      {face}
+    </ExpandablePlayerPhoto>
   )
 }
 

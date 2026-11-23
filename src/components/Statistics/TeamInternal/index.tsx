@@ -13,6 +13,7 @@ import {Colors} from '@/constants/Colors'
 import {useStatsScope} from '@/context/StatsScopeContext'
 import {useTeams} from '@/hooks'
 import {useTabListContentContainerStyle} from '@/hooks/useTabListContentContainerStyle'
+import {ExpandablePlayerPhoto} from '@/components/ExpandablePlayerPhoto'
 import config from '@/config'
 import {Image} from 'expo-image'
 import {LinearGradient} from 'expo-linear-gradient'
@@ -124,7 +125,7 @@ function Avatar({
 }) {
   const colors = useStatColors()
   const uri = profilePicture ? config.profileUrl + profilePicture : null
-  return (
+  const face = (
     <View
       style={{
         width: 40,
@@ -149,6 +150,12 @@ function Avatar({
         </Text>
       )}
     </View>
+  )
+  if (!uri) return face
+  return (
+    <ExpandablePlayerPhoto uri={uri} accessibilityLabel={nickname}>
+      {face}
+    </ExpandablePlayerPhoto>
   )
 }
 

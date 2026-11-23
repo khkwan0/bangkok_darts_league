@@ -11,6 +11,7 @@ import {
   loadCachedLeagueName,
   saveCachedLeagueName,
 } from '@/lib/leagueName'
+import {rememberApiBase} from '@/lib/maintenanceGate'
 import {configuredLeagueId, leagueRequestHeaders} from '@/lib/leagueRequest'
 import {applyScoreUnitToI18n} from '@/lib/matchUnitI18n'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -435,6 +436,7 @@ const LeagueReducer = (state: any, action: any) => {
 export const LeagueProvider = ({children}: any) => {
   const [state, dispatch] = useReducer(LeagueReducer, initialState)
   const [apiUrl, setApiUrlState] = useState<string>(config.apiUrl)
+  rememberApiBase(apiUrl)
   const [webSocketUrl, setWebSocketUrlState] = useState<string>(
     config.webSocketUrl,
   )

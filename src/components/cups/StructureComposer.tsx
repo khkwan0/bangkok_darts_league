@@ -21,6 +21,10 @@ const STAGE_GRAPH_HELP =
 const STAGE_KINDS: {value: StageKind; label: string}[] = [
   {value: 'single_elimination', label: 'Single elimination'},
   {value: 'double_elimination', label: 'Double elimination'},
+  {
+    value: 'hybrid_double_elimination',
+    label: 'Hybrid double elimination',
+  },
   {value: 'round_robin', label: 'Round robin groups'},
   {value: 'consolation', label: 'Consolation (Plate/Spoon/…)'},
   {value: 'final', label: 'Final / championship'},

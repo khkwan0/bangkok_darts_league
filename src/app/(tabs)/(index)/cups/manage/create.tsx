@@ -42,6 +42,12 @@ const REGIONAL_TWO_REGION = new Set([
   'regional_double_elimination',
 ])
 
+/** Formats regular players may create (standalone player opens). */
+const PLAYER_CREATE_PRESETS = new Set([
+  'single_elimination',
+  'hybrid_double_elimination',
+])
+
 const PARTICIPANT_HELP: Record<'team' | 'player' | 'mixed', string> = {
   team: 'Bracket sides are league/mini teams. Season teams can be auto-imported.',
   player:
@@ -142,9 +148,11 @@ export default function CupsCreateScreen() {
     (isMiniCompetition(competition) ? competition.id : null)
   const isMiniRoute = routeMiniId != null && routeMiniId > 0
   const isSiteAdmin = isLeagueAdmin(state.user)
+  const isLoggedIn = Boolean(state.user?.id)
 
   const [loading, setLoading] = React.useState(true)
   const [allowed, setAllowed] = React.useState(false)
+  const [isMiniAdmin, setIsMiniAdmin] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
   const [presets, setPresets] = React.useState<Preset[]>(PRESET_FALLBACK)
   const [formats, setFormats] = React.useState<MatchFormat[]>([])
@@ -166,7 +174,11 @@ export default function CupsCreateScreen() {
     isMiniRoute ? routeMiniId : null,
   )
   const [raceTo, setRaceTo] = React.useState('5')
-  const [openSignup, setOpenSignup] = React.useState(false)
+  const [breakRule, setBreakRule] = React.useState<
+    'alternate' | 'winner_breaks'
+  >('alternate')
+  const [knockoutSize, setKnockoutSize] = React.useState('16')
+  const [openSignup, setOpenSignup] = React.useState(true)
   const [tablesAvailable, setTablesAvailable] = React.useState('')
   const [regionCount, setRegionCount] = React.useState('4')
   const [teamsPerRegion, setTeamsPerRegion] = React.useState('4')
@@ -177,6 +189,10 @@ export default function CupsCreateScreen() {
   const [structure, setStructure] = React.useState<TournamentStructure>(() =>
     buildStructureFromPreset('single_elimination', {}),
   )
+
+  const isFullAdmin = isSiteAdmin || (isMiniRoute && isMiniAdmin)
+  /** Logged-in players creating a standalone open (not league/mini admin tools). */
+  const isPlayerCreate = !isFullAdmin
 
   const selectedFormat = formats.find(f => f.id === matchFormatId)
   const showRaceTo = needsRaceTarget(selectedFormat?.format)
@@ -211,6 +227,9 @@ export default function CupsCreateScreen() {
         teams_per_group: parseInt(teamsPerGroup, 10) || 4,
         advance_per_group: parseInt(advancePerGroup, 10) || 2,
       }
+    } else if (formatKey === 'hybrid_double_elimination') {
+      const raw = parseInt(knockoutSize, 10)
+      base = {knockout_size: raw === 32 || raw === 64 ? raw : 16}
     }
     return {...base, ...overrides}
   }
@@ -220,8 +239,16 @@ export default function CupsCreateScreen() {
     if (showRaceTo && parseInt(raceTo, 10) > 0) {
       base.race_to = parseInt(raceTo, 10)
     }
+    if (showRaceTo) {
+      base.break_rule = breakRule
+    }
     return {...base, ...presetConfigFor(preset)}
   }
+
+  const visiblePresets = React.useMemo(() => {
+    if (!isPlayerCreate) return presets
+    return presets.filter(p => PLAYER_CREATE_PRESETS.has(p.key))
+  }, [isPlayerCreate, presets])
 
   function applyPreset(
     formatKey: string,
@@ -246,18 +273,33 @@ export default function CupsCreateScreen() {
   React.useEffect(() => {
     let cancelled = false
     ;(async () => {
-      let canManage = isSiteAdmin
+      let miniAdmin = false
       if (isMiniRoute && routeMiniId) {
         const m = await miniApi.get(routeMiniId)
-        canManage = isSiteAdmin || Boolean(m?.data?.is_admin)
+        miniAdmin = Boolean(m?.data?.is_admin)
       }
       if (cancelled) return
+      setIsMiniAdmin(miniAdmin)
+
+      // Mini route: mini/site admin only. Site route: any logged-in player
+      // (standalone player opens) or league admin (full tools).
+      const canManage = isMiniRoute
+        ? isSiteAdmin || miniAdmin
+        : isSiteAdmin || isLoggedIn
       if (!canManage) {
         setAllowed(false)
         setLoading(false)
         return
       }
       setAllowed(true)
+
+      const playerOnly = !(isSiteAdmin || (isMiniRoute && miniAdmin))
+      if (playerOnly) {
+        setParticipantMode('player')
+        setOpenSignup(true)
+        setPreset('single_elimination')
+        setStructure(buildStructureFromPreset('single_elimination', {}))
+      }
 
       const adminScope = isMiniRoute
         ? {type: 'mini' as const, id: routeMiniId!}
@@ -269,7 +311,9 @@ export default function CupsCreateScreen() {
           api.adminMatchFormats(adminScope),
           // Same source as web tournament admin (8-ball / 9-ball), not /gametypes frame types.
           Get('/league-game-types'),
-          !isMiniRoute ? league.GetSeasons() : Promise.resolve(null),
+          !isMiniRoute && !playerOnly
+            ? league.GetSeasons()
+            : Promise.resolve(null),
           !isMiniRoute && isSiteAdmin
             ? miniApi.list()
             : Promise.resolve(null),
@@ -279,19 +323,33 @@ export default function CupsCreateScreen() {
       if (presetRes?.status === 'ok') {
         const list = presetRes.formats || presetRes.presets || []
         if (Array.isArray(list) && list.length) {
-          setPresets(
-            list.map((p: any) => {
-              const local = getTournamentPreset(String(p.key))
-              const key = String(p.key)
-              const fallback = String(p.label || local?.label || key)
-              return {
-                key,
-                label: formatLabel(key, fallback),
-                description: p.description || local?.description,
-                explanation: p.explanation || local?.explanation,
-              }
-            }),
-          )
+          const mapped = list.map((p: any) => {
+            const local = getTournamentPreset(String(p.key))
+            const key = String(p.key)
+            const fallback = String(p.label || local?.label || key)
+            return {
+              key,
+              label: formatLabel(key, fallback),
+              description: p.description || local?.description,
+              explanation: p.explanation || local?.explanation,
+            }
+          })
+          // Ensure hybrid is available even if an older API omits it.
+          const keys = new Set(mapped.map((p: Preset) => p.key))
+          for (const local of listTournamentPresets()) {
+            if (
+              PLAYER_CREATE_PRESETS.has(local.key) &&
+              !keys.has(local.key)
+            ) {
+              mapped.push({
+                key: local.key,
+                label: formatLabel(local.key, local.label),
+                description: local.description,
+                explanation: local.explanation,
+              })
+            }
+          }
+          setPresets(mapped)
         }
       }
       if (formatRes?.status === 'ok' && Array.isArray(formatRes.data)) {
@@ -371,7 +429,19 @@ export default function CupsCreateScreen() {
       Alert.alert('Missing fields', 'Select a game type and match format.')
       return
     }
-    if (!isMiniRoute && !seasonId && !selectedMiniId) {
+    if (isPlayerCreate && !PLAYER_CREATE_PRESETS.has(preset)) {
+      Alert.alert(
+        'Format not allowed',
+        'Player tournaments can be single elimination or hybrid double elimination.',
+      )
+      return
+    }
+    if (
+      !isPlayerCreate &&
+      !isMiniRoute &&
+      !seasonId &&
+      !selectedMiniId
+    ) {
       Alert.alert(
         'Scope required',
         'Choose a league season or a mini league for this tournament.',
@@ -384,25 +454,28 @@ export default function CupsCreateScreen() {
     }
     setSaving(true)
     try {
+      const mode = isPlayerCreate ? 'player' : participantMode
       const payload: Record<string, unknown> = {
         name: name.trim(),
         format: preset,
         preset_key: preset,
-        participant_mode: participantMode,
+        participant_mode: mode,
         game_type_id: gameTypeId,
         match_format_id: matchFormatId,
         format_config: buildFormatConfig(),
         structure,
         open_signup:
-          participantMode === 'player' || participantMode === 'mixed'
-            ? openSignup
-            : false,
+          mode === 'player' || mode === 'mixed' ? openSignup : false,
         tables_available: (() => {
           const n = parseInt(tablesAvailable, 10)
           return Number.isFinite(n) && n >= 1 ? n : null
         })(),
       }
-      if (isMiniRoute || selectedMiniId) {
+      if (isPlayerCreate) {
+        // Standalone: creator owns it; no season/mini shell.
+        payload.season_id = null
+        payload.mini_league_id = null
+      } else if (isMiniRoute || selectedMiniId) {
         payload.mini_league_id = effectiveMiniId
         payload.season_id = null
       } else {
@@ -443,7 +516,9 @@ export default function CupsCreateScreen() {
     return (
       <View style={{flex: 1, padding: 24, justifyContent: 'center'}}>
         <Text style={{textAlign: 'center', opacity: 0.7}}>
-          Only league or mini-league admins can create tournaments.
+          {isMiniRoute
+            ? 'Only league or mini-league admins can create tournaments here.'
+            : 'Sign in to create a player tournament.'}
         </Text>
       </View>
     )
@@ -482,7 +557,9 @@ export default function CupsCreateScreen() {
       <Text style={{fontSize: 13, opacity: 0.6, marginBottom: 12}}>
         {isMiniRoute
           ? 'Tournament will belong to this mini league.'
-          : 'Team tournaments must belong to a canonical season or a mini league (not both).'}
+          : isPlayerCreate
+            ? 'Create a player tournament you own. Choose open signup or invite-only, then pick single or hybrid double elimination.'
+            : 'Team tournaments must belong to a canonical season or a mini league (not both). Leave both empty for a standalone player open.'}
       </Text>
 
       <Text style={{fontWeight: '600', marginBottom: 6}}>Name</Text>
@@ -503,7 +580,7 @@ export default function CupsCreateScreen() {
         }}
       />
 
-      {!isMiniRoute ? (
+      {!isMiniRoute && !isPlayerCreate ? (
         <>
           <Text style={{fontWeight: '600', marginBottom: 6}}>Season</Text>
           <RNView style={{flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8}}>
@@ -590,55 +667,74 @@ export default function CupsCreateScreen() {
         </>
       ) : null}
 
-      <Text style={{fontWeight: '600', marginBottom: 6}}>Match type</Text>
-      <RNView style={{flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8}}>
-        {(
-          [
-            ['team', 'Teams'],
-            ['player', 'Players'],
-            ['mixed', 'Mixed'],
-          ] as const
-        ).map(([value, label]) => (
-          <Pressable
-            key={value}
-            onPress={() => setParticipantMode(value)}
-            style={chip(participantMode === value)}>
-            <Text
-              style={{
-                color: participantMode === value ? '#fff' : undefined,
-              }}>
-              {label}
-            </Text>
-          </Pressable>
-        ))}
-      </RNView>
-      <RNView style={helpBox}>
-        <Text style={{fontSize: 13, opacity: 0.75}}>
-          {PARTICIPANT_HELP[participantMode]}
-        </Text>
-      </RNView>
-
-      {(participantMode === 'player' || participantMode === 'mixed') && (
-        <RNView
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 16,
-            gap: 12,
-          }}>
-          <RNView style={{flex: 1}}>
-            <Text style={{fontWeight: '600'}}>Allow player self-signup</Text>
-            <Text style={{fontSize: 12, opacity: 0.6, marginTop: 4}}>
-              When on, logged-in players can enter themselves. When off, you
-              add every entry.
+      {!isPlayerCreate ? (
+        <>
+          <Text style={{fontWeight: '600', marginBottom: 6}}>Match type</Text>
+          <RNView style={{flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8}}>
+            {(
+              [
+                ['team', 'Teams'],
+                ['player', 'Players'],
+                ['mixed', 'Mixed'],
+              ] as const
+            ).map(([value, label]) => (
+              <Pressable
+                key={value}
+                onPress={() => setParticipantMode(value)}
+                style={chip(participantMode === value)}>
+                <Text
+                  style={{
+                    color: participantMode === value ? '#fff' : undefined,
+                  }}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </RNView>
+          <RNView style={helpBox}>
+            <Text style={{fontSize: 13, opacity: 0.75}}>
+              {PARTICIPANT_HELP[participantMode]}
             </Text>
           </RNView>
-          <Switch value={openSignup} onValueChange={setOpenSignup} />
+        </>
+      ) : (
+        <RNView style={helpBox}>
+          <Text style={{fontSize: 13, opacity: 0.75}}>
+            {PARTICIPANT_HELP.player}
+          </Text>
         </RNView>
       )}
 
-      <Text style={{fontWeight: '600', marginBottom: 6}}>Tables available</Text>
+      {(isPlayerCreate ||
+        participantMode === 'player' ||
+        participantMode === 'mixed') && (
+        <RNView style={{marginBottom: 16}}>
+          <Text style={{fontWeight: '600', marginBottom: 6}}>Signup</Text>
+          <RNView style={{flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8}}>
+            <Pressable
+              onPress={() => setOpenSignup(true)}
+              style={chip(openSignup)}>
+              <Text style={{color: openSignup ? '#fff' : undefined}}>
+                Open signup
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setOpenSignup(false)}
+              style={chip(!openSignup)}>
+              <Text style={{color: !openSignup ? '#fff' : undefined}}>
+                Invite only
+              </Text>
+            </Pressable>
+          </RNView>
+          <Text style={{fontSize: 12, opacity: 0.6}}>
+            {openSignup
+              ? 'Logged-in players can enter themselves.'
+              : 'Only you add entries (invite players from the manage screen).'}
+          </Text>
+        </RNView>
+      )}
+
+      <Text style={{fontWeight: '600', marginBottom: 6}}>Boards available</Text>
       <TextInput
         value={tablesAvailable}
         onChangeText={setTablesAvailable}
@@ -658,14 +754,14 @@ export default function CupsCreateScreen() {
         }}
       />
       <Text style={{fontSize: 12, opacity: 0.55, marginBottom: 16}}>
-        How many dartboards can run matches at once. Bracket slots will be
-        assigned board numbers when you generate the draft (you can retap to
+        How many boards can run matches at once. Bracket slots will be
+        assigned table numbers when you generate the draft (you can retap to
         change them).
       </Text>
 
       <Text style={{fontWeight: '600', marginBottom: 6}}>Preset</Text>
       <RNView style={{flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8}}>
-        {presets.map(p => (
+        {visiblePresets.map(p => (
           <Pressable
             key={p.key}
             onPress={() => applyPreset(p.key)}
@@ -787,6 +883,34 @@ export default function CupsCreateScreen() {
         </RNView>
       ) : null}
 
+      {preset === 'hybrid_double_elimination' ? (
+        <RNView style={{marginBottom: 16}}>
+          <Text style={{fontWeight: '600', marginBottom: 6}}>
+            Knockout size (Last N)
+          </Text>
+          <RNView style={{flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8}}>
+            {(['16', '32', '64'] as const).map(size => (
+              <Pressable
+                key={size}
+                onPress={() => {
+                  setKnockoutSize(size)
+                  applyPreset('hybrid_double_elimination', {
+                    knockout_size: Number(size),
+                  })
+                }}
+                style={chip(knockoutSize === size)}>
+                <Text style={{color: knockoutSize === size ? '#fff' : undefined}}>
+                  Last {size}
+                </Text>
+              </Pressable>
+            ))}
+          </RNView>
+          <Text style={{fontSize: 12, opacity: 0.6}}>
+            Double-elim qualify until this many remain, then single-elim knockout.
+          </Text>
+        </RNView>
+      ) : null}
+
       <Text style={{fontWeight: '600', marginBottom: 6}}>Game type</Text>
       <RNView style={{flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16}}>
         {gameTypes.map(g => (
@@ -847,13 +971,38 @@ export default function CupsCreateScreen() {
               width: 120,
             }}
           />
-          <Text style={{fontSize: 12, opacity: 0.55, marginBottom: 16}}>
+          <Text style={{fontSize: 12, opacity: 0.55, marginBottom: 12}}>
             Applied to every tournament match scoresheet when the bracket is generated.
           </Text>
+          <Text style={{fontWeight: '600', marginBottom: 6}}>Break rule</Text>
+          <RNView style={{flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16}}>
+            <Pressable
+              onPress={() => setBreakRule('alternate')}
+              style={chip(breakRule === 'alternate')}>
+              <Text
+                style={{
+                  color: breakRule === 'alternate' ? '#fff' : undefined,
+                }}>
+                Alternate break
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setBreakRule('winner_breaks')}
+              style={chip(breakRule === 'winner_breaks')}>
+              <Text
+                style={{
+                  color: breakRule === 'winner_breaks' ? '#fff' : undefined,
+                }}>
+                Winner breaks
+              </Text>
+            </Pressable>
+          </RNView>
         </>
       ) : null}
 
-      <StructureComposer value={structure} onChange={setStructure} />
+      {!isPlayerCreate ? (
+        <StructureComposer value={structure} onChange={setStructure} />
+      ) : null}
 
       <Button onPress={onCreate} disabled={saving}>
         <Text style={{color: '#fff', fontWeight: '700'}}>

@@ -1,5 +1,6 @@
 import config from '@/config'
 import {leagueRequestHeaders} from '@/lib/leagueRequest'
+import {rememberApiBase} from '@/lib/maintenanceGate'
 import {useLeagueContext} from '@/context/LeagueContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 // import {socket} from '~/socket'
@@ -9,12 +10,16 @@ async function resolveApiDomain(contextApiUrl) {
     // Prefer persisted URL so cold start does not hit prod while stage is saved.
     const saved = await AsyncStorage.getItem('api_url')
     if (saved && saved.trim()) {
-      return saved.replace(/\/$/, '')
+      const domain = saved.replace(/\/$/, '')
+      rememberApiBase(domain)
+      return domain
     }
   } catch {
     // ignore
   }
-  return (contextApiUrl ?? config.apiUrl ?? 'localhost').replace(/\/$/, '')
+  const domain = (contextApiUrl ?? config.apiUrl ?? 'localhost').replace(/\/$/, '')
+  rememberApiBase(domain)
+  return domain
 }
 
 export const useNetwork = () => {

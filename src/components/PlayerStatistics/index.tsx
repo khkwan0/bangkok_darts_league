@@ -14,6 +14,7 @@ import {
 import PlayerAchievementsList from '@/components/PlayerAchievementsList'
 import StatsScopeChips from '@/components/Statistics/StatsScopeChips'
 import {MiniSeasonChips} from '@/components/mini-leagues/MiniSeasonChips'
+import {ExpandablePlayerPhoto} from '@/components/ExpandablePlayerPhoto'
 import config from '@/config'
 import {useLeagueContext} from '@/context/LeagueContext'
 import {useStatsScope} from '@/context/StatsScopeContext'
@@ -280,6 +281,12 @@ export default function PlayerStatistics({
     playerInfo.nationality?.en ||
     ''
   const nationLine = [playerInfo.flag, nationalityName].filter(Boolean).join(' ')
+  const avatarUri = `${config.profileUrl}${
+    playerInfo.pic ||
+    (playerInfo.gender === 'Female'
+      ? 'default_female.png'
+      : 'default_male.png')
+  }`
 
   const seasonRows = useMemo(() => {
     if (!stats) return []
@@ -320,23 +327,20 @@ export default function PlayerStatistics({
               backgroundColor: colors.accent,
               marginRight: 14,
             }}>
-            <Image
-              source={{
-                uri: `${config.profileUrl}${
-                  playerInfo.pic ||
-                  (playerInfo.gender === 'Female'
-                    ? 'default_female.png'
-                    : 'default_male.png')
-                }`,
-              }}
-              style={{
-                width: 78,
-                height: 78,
-                borderRadius: 39,
-                backgroundColor: colors.track,
-              }}
-              resizeMode="cover"
-            />
+            <ExpandablePlayerPhoto
+              uri={avatarUri}
+              accessibilityLabel={playerInfo.name}>
+              <Image
+                source={{uri: avatarUri}}
+                style={{
+                  width: 78,
+                  height: 78,
+                  borderRadius: 39,
+                  backgroundColor: colors.track,
+                }}
+                resizeMode="cover"
+              />
+            </ExpandablePlayerPhoto>
           </RNView>
           <RNView style={{flex: 1}}>
             <RNText

@@ -4,6 +4,7 @@ export type StageKind =
   | 'round_robin'
   | 'single_elimination'
   | 'double_elimination'
+  | 'hybrid_double_elimination'
   | 'consolation'
   | 'final'
   | 'redraw_elimination'
@@ -50,6 +51,7 @@ export type TournamentStructure = {
 export type TournamentPresetKey =
   | 'single_elimination'
   | 'double_elimination'
+  | 'hybrid_double_elimination'
   | 'regional_single_elimination'
   | 'regional_double_elimination'
   | 'regional_final_four'
