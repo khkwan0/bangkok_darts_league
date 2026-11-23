@@ -422,10 +422,15 @@ export default function GameScoreScreen({
   const insets = useSafeAreaInsets()
   const {width, height} = useWindowDimensions()
   const landscape = width > height
-  const keypadHeight = Math.round(height * 0.4)
+  // Phones with a header and tab bar cannot spare a 240px keypad plus the
+  // score cards. Below this, cards and the typed total get tighter so the
+  // pad can shrink into the space that is left.
+  const short = !landscape && height < 740
+  const keyGap = short ? 6 : KEY_GAP
+  const keypadHeight = Math.round(height * (short ? 0.34 : 0.4))
   const [closePadFit, setClosePadFit] = React.useState<number | null>(null)
   const closePadHeight = Math.min(keypadHeight, closePadFit ?? keypadHeight)
-  const closeRowHeight = (closePadHeight - KEY_GAP * 4) / 5
+  const closeRowHeight = (closePadHeight - keyGap * 4) / 5
   const keyDigitSize = Math.max(
     12,
     Math.floor((closeRowHeight * 0.58) / KEY_CAP),
@@ -1421,7 +1426,7 @@ export default function GameScoreScreen({
         flexGrow: landscape ? 1 : 0,
         flexShrink: mode === 'score' && landscape ? 1 : 0,
         minHeight: mode === 'score' && landscape ? 0 : undefined,
-        gap: 8,
+        gap: short ? 4 : 8,
       }}>
       {mode === 'score' ? null : (
         <TrekText
@@ -1442,7 +1447,7 @@ export default function GameScoreScreen({
               numberOfLines={1}
               style={{
                 color: active === 'home' ? theme.home.accent : theme.away.accent,
-                fontSize: 26,
+                fontSize: short ? 22 : 26,
                 fontWeight: '800',
               }}>
               {t(mode === 'score' ? 'score_thrower' : 'x01_thrower', {
@@ -1486,6 +1491,7 @@ export default function GameScoreScreen({
           done={done}
           markZero={mode === 'close'}
           scoreGame={mode === 'score'}
+          compact={short}
           onPress={() => pressSideScore('home')}
         />
         <SideScore
@@ -1508,6 +1514,7 @@ export default function GameScoreScreen({
           done={done}
           markZero={mode === 'close'}
           scoreGame={mode === 'score'}
+          compact={short}
           onPress={() => pressSideScore('away')}
         />
       </View>
@@ -1524,7 +1531,7 @@ export default function GameScoreScreen({
         flexShrink: 1,
         flexBasis: 0,
         minHeight: 0,
-        gap: 8,
+        gap: short ? 4 : 8,
         opacity: readOnly ? 0.45 : 1,
       }}>
       {mode === 'score' ? (
@@ -1545,6 +1552,7 @@ export default function GameScoreScreen({
           note={note?.text ?? (done ? wonText : '')}
           noteTone={note?.tone ?? (done ? 'close' : 'plain')}
           keypadHeight={keypadHeight}
+          compact={short}
           onMultiplier={setHitMultiplier}
           onTarget={throwDart}
           onZero={throwMiss}
@@ -1558,20 +1566,21 @@ export default function GameScoreScreen({
             canUndoLatest={canUndoLatest}
             onUndoLatest={undo}
           />
-          <View style={{flex: 1, gap: 8, justifyContent: 'flex-end'}}>
+          <View style={{flex: 1, minHeight: 0, gap: short ? 4 : 8, justifyContent: 'flex-end'}}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('x01_input_total')}
               onPress={onValueDisplayPress}
               style={{
                 alignItems: 'center',
-                minHeight: 64,
+                flexShrink: 1,
+                minHeight: short ? 36 : 64,
                 justifyContent: 'center',
               }}>
               <TrekText
                 style={{
                   color: theme.text,
-                  fontSize: 40,
+                  fontSize: short ? 28 : 40,
                   fontWeight: '800',
                   fontVariant: ['tabular-nums'],
                 }}>
@@ -1585,9 +1594,9 @@ export default function GameScoreScreen({
                       : preview?.reflected || note?.tone === 'bust'
                         ? theme.gold
                         : theme.muted,
-                  fontSize: 13,
+                  fontSize: short ? 12 : 13,
                   fontWeight: '700',
-                  minHeight: 18,
+                  minHeight: short ? 14 : 18,
                 }}>
                 {done
                   ? t('x01_finished')
@@ -1609,17 +1618,18 @@ export default function GameScoreScreen({
               }}
               style={{
                 flex: 1,
+                flexShrink: 1,
                 maxHeight: keypadHeight,
-                minHeight: 5 * 40 + KEY_GAP * 4,
+                minHeight: 0,
                 width: '100%',
                 alignSelf: 'center',
-                gap: KEY_GAP,
+                gap: keyGap,
                 opacity: done || !ready ? 0.4 : 1,
               }}>
               {KEY_ROWS.map(row => (
                 <View
                   key={row.join('-')}
-                  style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
+                  style={{flex: 1, flexDirection: 'row', gap: keyGap}}>
                   {row.map(key => (
                     <KeyCell
                       key={key}
@@ -1650,7 +1660,7 @@ export default function GameScoreScreen({
                   ))}
                 </View>
               ))}
-              <View style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
+              <View style={{flex: 1, flexDirection: 'row', gap: keyGap}}>
                 <KeyCell
                   label={t('x01_undo')}
                   accessibilityLabel={t('x01_undo')}
@@ -1685,7 +1695,7 @@ export default function GameScoreScreen({
         paddingBottom: bottomInset,
         paddingLeft: Math.max(12, insets.left),
         paddingRight: Math.max(12, insets.right),
-        gap: 8,
+        gap: short ? 4 : 8,
       }}>
       {embedded ? (
         <Pressable
@@ -1998,6 +2008,7 @@ function CricketHits({
   note,
   noteTone,
   keypadHeight,
+  compact = false,
   onMultiplier,
   onTarget,
   onZero,
@@ -2011,6 +2022,7 @@ function CricketHits({
   note: string
   noteTone: 'bust' | 'close' | 'plain'
   keypadHeight: number
+  compact?: boolean
   onMultiplier: (multiplier: CricketMultiplier) => void
   onTarget: (target: CricketTargetId, multiplier?: CricketMultiplier) => void
   onZero: () => void
@@ -2022,12 +2034,13 @@ function CricketHits({
   const numbers = CRICKET_TARGETS.filter(target => target.id !== '25')
   const rows = [numbers.slice(0, 3), numbers.slice(3, 6)]
   const rowCount = 4
+  const keyGap = compact ? 6 : KEY_GAP
   const padHeight = Math.min(keypadHeight, fitHeight ?? keypadHeight)
-  const rowHeight = (padHeight - KEY_GAP * (rowCount - 1)) / rowCount
+  const rowHeight = (padHeight - keyGap * (rowCount - 1)) / rowCount
   const digitSize = Math.max(12, Math.floor((rowHeight * 0.58) / KEY_CAP))
   const labelSize = Math.max(11, Math.floor(digitSize * 0.58))
   return (
-    <View style={{flex: 1, gap: 8, justifyContent: 'flex-end'}}>
+    <View style={{flex: 1, minHeight: 0, gap: compact ? 4 : 8, justifyContent: 'flex-end'}}>
       <TrekText
         style={{
           textAlign: 'center',
@@ -2047,13 +2060,14 @@ function CricketHits({
         }}
         style={{
           flex: 1,
+          flexShrink: 1,
           maxHeight: keypadHeight,
-          minHeight: 4 * 40 + KEY_GAP * 3,
+          minHeight: 0,
           width: '100%',
           alignSelf: 'center',
-          gap: KEY_GAP,
+          gap: keyGap,
         }}>
-        <View style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
+        <View style={{flex: 1, flexDirection: 'row', gap: keyGap}}>
           {([1, 2, 3] as const).map(multiplier => (
             <KeyCell
               key={multiplier}
@@ -2080,7 +2094,7 @@ function CricketHits({
           ))}
         </View>
         {rows.map(row => (
-          <View key={row[0].id} style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
+          <View key={row[0].id} style={{flex: 1, flexDirection: 'row', gap: keyGap}}>
             {row.map(target => (
               <KeyCell
                 key={target.id}
@@ -2094,7 +2108,7 @@ function CricketHits({
             ))}
           </View>
         ))}
-        <View style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
+        <View style={{flex: 1, flexDirection: 'row', gap: keyGap}}>
           <KeyCell
             label={t('score_undo')}
             accessibilityLabel={t('score_undo')}
@@ -2137,6 +2151,7 @@ function SideScore({
   done,
   markZero,
   scoreGame,
+  compact = false,
   onPress,
 }: {
   side: X01Side
@@ -2150,6 +2165,7 @@ function SideScore({
   done: boolean
   markZero?: boolean
   scoreGame?: boolean
+  compact?: boolean
   onPress: () => void
 }) {
   const {t} = useTranslation()
@@ -2169,8 +2185,8 @@ function SideScore({
         flex: 1,
         borderRadius: 16,
         borderCurve: 'continuous',
-        paddingVertical: 10,
-        paddingHorizontal: 10,
+        paddingVertical: compact ? 6 : 10,
+        paddingHorizontal: compact ? 8 : 10,
         backgroundColor: active ? palette.panel : theme.card,
         borderWidth: active ? 2 : 1,
         borderColor: active ? palette.accent : theme.cardBorder,
@@ -2217,7 +2233,7 @@ function SideScore({
                 <TrekText
                   style={{
                     color: throwing ? palette.onButton : theme.muted,
-                    fontSize: throwing ? 16 : 11,
+                    fontSize: throwing ? (compact ? 14 : 16) : 11,
                     fontWeight: throwing ? '800' : '600',
                   }}>
                   {player}
@@ -2230,7 +2246,7 @@ function SideScore({
       <TrekText
         style={{
           color: markZero && score === 0 ? theme.win : palette.ink,
-          fontSize: 36,
+          fontSize: compact ? 28 : 36,
           fontWeight: '800',
           fontVariant: ['tabular-nums'],
         }}>
