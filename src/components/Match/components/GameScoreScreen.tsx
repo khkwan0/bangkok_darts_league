@@ -1478,28 +1478,30 @@ export default function GameScoreScreen({
             accessibilityRole="button"
             accessibilityLabel={t('x01_input_total')}
             onPress={onValueDisplayPress}
-            style={{alignItems: 'center', minWidth: 44}}>
+            style={{width: 108, alignItems: 'center'}}>
             <TrekText
               style={{
                 color: theme.text,
                 fontSize: short ? 28 : 32,
+                lineHeight: short ? 32 : 36,
                 fontWeight: '800',
                 fontVariant: ['tabular-nums'],
+                textAlign: 'center',
               }}>
               {digits === '' ? '0' : digits}
             </TrekText>
-            {valueHint ? (
-              <TrekText
-                numberOfLines={1}
-                style={{
-                  color: valueHintColor,
-                  fontSize: 11,
-                  fontWeight: '700',
-                  maxWidth: 120,
-                }}>
-                {valueHint}
-              </TrekText>
-            ) : null}
+            <TrekText
+              numberOfLines={1}
+              style={{
+                color: valueHintColor,
+                fontSize: 11,
+                lineHeight: 14,
+                fontWeight: '700',
+                height: 14,
+                opacity: valueHint ? 1 : 0,
+              }}>
+              {valueHint || ' '}
+            </TrekText>
           </Pressable>
         )}
         <View style={{flex: 1, minWidth: 0, alignItems: 'flex-end'}}>
@@ -1607,13 +1609,13 @@ export default function GameScoreScreen({
         />
         </View>
       ) : (
-        <View style={{flex: 1, gap: 8}}>
+        <View style={{flex: 1, minHeight: 0}}>
           <VisitHistory
             visits={historyVisits}
             canUndoLatest={canUndoLatest}
             onUndoLatest={undo}
           />
-          <View style={{flex: 1, gap: 8, justifyContent: 'flex-end'}}>
+          <View style={{flex: 1, minHeight: 0, marginTop: 16, justifyContent: 'flex-end'}}>
             <View
               onLayout={e => {
                 const h = Math.round(e.nativeEvent.layout.height)
@@ -1622,7 +1624,7 @@ export default function GameScoreScreen({
               style={{
                 flex: 1,
                 maxHeight: keypadHeight,
-                minHeight: 5 * 40 + KEY_GAP * 4,
+                minHeight: 0,
                 width: '100%',
                 alignSelf: 'center',
                 gap: KEY_GAP,
