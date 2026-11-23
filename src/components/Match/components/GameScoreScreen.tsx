@@ -422,15 +422,12 @@ export default function GameScoreScreen({
   const insets = useSafeAreaInsets()
   const {width, height} = useWindowDimensions()
   const landscape = width > height
-  // Phones with a header and tab bar cannot spare a 240px keypad plus the
-  // score cards. Below this, cards and the typed total get tighter so the
-  // pad can shrink into the space that is left.
+  // Score cards tighten on a short phone. The keypad keeps its own height.
   const short = !landscape && height < 740
-  const keyGap = short ? 6 : KEY_GAP
-  const keypadHeight = Math.round(height * (short ? 0.34 : 0.4))
+  const keypadHeight = Math.round(height * 0.4)
   const [closePadFit, setClosePadFit] = React.useState<number | null>(null)
   const closePadHeight = Math.min(keypadHeight, closePadFit ?? keypadHeight)
-  const closeRowHeight = (closePadHeight - keyGap * 4) / 5
+  const closeRowHeight = (closePadHeight - KEY_GAP * 4) / 5
   const keyDigitSize = Math.max(
     12,
     Math.floor((closeRowHeight * 0.58) / KEY_CAP),
@@ -1397,6 +1394,26 @@ export default function GameScoreScreen({
             t(liveBoard.active === 'home' ? 'home' : 'away'),
         })
       : ''
+  const valueHint =
+    mode === 'score'
+      ? ''
+      : done
+        ? t('x01_finished')
+        : countTotal != null
+          ? t('x01_adds', {score: countTotal})
+          : preview?.closed
+            ? t('x01_will_close')
+            : preview?.reflected
+              ? t('x01_bust', {score: preview.remaining})
+              : preview
+                ? t('x01_leaves', {score: preview.remaining})
+                : (note?.text ?? '')
+  const valueHintColor =
+    done || preview?.closed || note?.tone === 'close'
+      ? theme.win
+      : preview?.reflected || note?.tone === 'bust'
+        ? theme.gold
+        : theme.muted
 
   function pressSideScore(side: X01Side) {
     if (readOnly) return
@@ -1456,14 +1473,45 @@ export default function GameScoreScreen({
             </TrekText>
           ) : null}
         </View>
-        <SyncStatus
-          status={socketStatus ?? 'offline'}
-          lastSyncAt={lastSyncAt ?? null}
-          viewOnly={readOnly}
-          serverOutdated={
-            (liveBoard?.rev ?? 0) > 0 && frame.x01 != null && frame.x01.rev == null
-          }
-        />
+        {mode === 'score' ? null : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('x01_input_total')}
+            onPress={onValueDisplayPress}
+            style={{alignItems: 'center', minWidth: 44}}>
+            <TrekText
+              style={{
+                color: theme.text,
+                fontSize: short ? 28 : 32,
+                fontWeight: '800',
+                fontVariant: ['tabular-nums'],
+              }}>
+              {digits === '' ? '0' : digits}
+            </TrekText>
+            {valueHint ? (
+              <TrekText
+                numberOfLines={1}
+                style={{
+                  color: valueHintColor,
+                  fontSize: 11,
+                  fontWeight: '700',
+                  maxWidth: 120,
+                }}>
+                {valueHint}
+              </TrekText>
+            ) : null}
+          </Pressable>
+        )}
+        <View style={{flex: 1, minWidth: 0, alignItems: 'flex-end'}}>
+          <SyncStatus
+            status={socketStatus ?? 'offline'}
+            lastSyncAt={lastSyncAt ?? null}
+            viewOnly={readOnly}
+            serverOutdated={
+              (liveBoard?.rev ?? 0) > 0 && frame.x01 != null && frame.x01.rev == null
+            }
+          />
+        </View>
       </View>
       <View
         style={{
@@ -1552,7 +1600,6 @@ export default function GameScoreScreen({
           note={note?.text ?? (done ? wonText : '')}
           noteTone={note?.tone ?? (done ? 'close' : 'plain')}
           keypadHeight={keypadHeight}
-          compact={short}
           onMultiplier={setHitMultiplier}
           onTarget={throwDart}
           onZero={throwMiss}
@@ -1566,51 +1613,7 @@ export default function GameScoreScreen({
             canUndoLatest={canUndoLatest}
             onUndoLatest={undo}
           />
-          <View style={{flex: 1, minHeight: 0, gap: short ? 4 : 8, justifyContent: 'flex-end'}}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('x01_input_total')}
-              onPress={onValueDisplayPress}
-              style={{
-                alignItems: 'center',
-                flexShrink: 1,
-                minHeight: short ? 36 : 64,
-                justifyContent: 'center',
-              }}>
-              <TrekText
-                style={{
-                  color: theme.text,
-                  fontSize: short ? 28 : 40,
-                  fontWeight: '800',
-                  fontVariant: ['tabular-nums'],
-                }}>
-                {digits === '' ? '0' : digits}
-              </TrekText>
-              <TrekText
-                style={{
-                  color:
-                    done || preview?.closed || note?.tone === 'close'
-                      ? theme.win
-                      : preview?.reflected || note?.tone === 'bust'
-                        ? theme.gold
-                        : theme.muted,
-                  fontSize: short ? 12 : 13,
-                  fontWeight: '700',
-                  minHeight: short ? 14 : 18,
-                }}>
-                {done
-                  ? t('x01_finished')
-                  : countTotal != null
-                    ? t('x01_adds', {score: countTotal})
-                    : preview?.closed
-                      ? t('x01_will_close')
-                      : preview?.reflected
-                        ? t('x01_bust', {score: preview.remaining})
-                        : preview
-                          ? t('x01_leaves', {score: preview.remaining})
-                          : (note?.text ?? '')}
-              </TrekText>
-            </Pressable>
+          <View style={{flex: 1, gap: 8, justifyContent: 'flex-end'}}>
             <View
               onLayout={e => {
                 const h = Math.round(e.nativeEvent.layout.height)
@@ -1618,18 +1621,17 @@ export default function GameScoreScreen({
               }}
               style={{
                 flex: 1,
-                flexShrink: 1,
                 maxHeight: keypadHeight,
-                minHeight: 0,
+                minHeight: 5 * 40 + KEY_GAP * 4,
                 width: '100%',
                 alignSelf: 'center',
-                gap: keyGap,
+                gap: KEY_GAP,
                 opacity: done || !ready ? 0.4 : 1,
               }}>
               {KEY_ROWS.map(row => (
                 <View
                   key={row.join('-')}
-                  style={{flex: 1, flexDirection: 'row', gap: keyGap}}>
+                  style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
                   {row.map(key => (
                     <KeyCell
                       key={key}
@@ -1660,7 +1662,7 @@ export default function GameScoreScreen({
                   ))}
                 </View>
               ))}
-              <View style={{flex: 1, flexDirection: 'row', gap: keyGap}}>
+              <View style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
                 <KeyCell
                   label={t('x01_undo')}
                   accessibilityLabel={t('x01_undo')}
@@ -1787,7 +1789,8 @@ function SyncStatus({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        flexShrink: 0,
+        flexShrink: 1,
+        minWidth: 0,
         gap: 6,
       }}>
       <View
@@ -1795,7 +1798,12 @@ function SyncStatus({
       />
       <TrekText
         numberOfLines={1}
-        style={{color: theme.muted, fontSize: 12, fontWeight: '700'}}>
+        style={{
+          color: theme.muted,
+          fontSize: 12,
+          fontWeight: '700',
+          flexShrink: 1,
+        }}>
         {label}
       </TrekText>
     </View>
@@ -2008,7 +2016,6 @@ function CricketHits({
   note,
   noteTone,
   keypadHeight,
-  compact = false,
   onMultiplier,
   onTarget,
   onZero,
@@ -2022,7 +2029,6 @@ function CricketHits({
   note: string
   noteTone: 'bust' | 'close' | 'plain'
   keypadHeight: number
-  compact?: boolean
   onMultiplier: (multiplier: CricketMultiplier) => void
   onTarget: (target: CricketTargetId, multiplier?: CricketMultiplier) => void
   onZero: () => void
@@ -2034,13 +2040,12 @@ function CricketHits({
   const numbers = CRICKET_TARGETS.filter(target => target.id !== '25')
   const rows = [numbers.slice(0, 3), numbers.slice(3, 6)]
   const rowCount = 4
-  const keyGap = compact ? 6 : KEY_GAP
   const padHeight = Math.min(keypadHeight, fitHeight ?? keypadHeight)
-  const rowHeight = (padHeight - keyGap * (rowCount - 1)) / rowCount
+  const rowHeight = (padHeight - KEY_GAP * (rowCount - 1)) / rowCount
   const digitSize = Math.max(12, Math.floor((rowHeight * 0.58) / KEY_CAP))
   const labelSize = Math.max(11, Math.floor(digitSize * 0.58))
   return (
-    <View style={{flex: 1, minHeight: 0, gap: compact ? 4 : 8, justifyContent: 'flex-end'}}>
+    <View style={{flex: 1, gap: 8, justifyContent: 'flex-end'}}>
       <TrekText
         style={{
           textAlign: 'center',
@@ -2060,14 +2065,13 @@ function CricketHits({
         }}
         style={{
           flex: 1,
-          flexShrink: 1,
           maxHeight: keypadHeight,
-          minHeight: 0,
+          minHeight: 4 * 40 + KEY_GAP * 3,
           width: '100%',
           alignSelf: 'center',
-          gap: keyGap,
+          gap: KEY_GAP,
         }}>
-        <View style={{flex: 1, flexDirection: 'row', gap: keyGap}}>
+        <View style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
           {([1, 2, 3] as const).map(multiplier => (
             <KeyCell
               key={multiplier}
@@ -2094,7 +2098,7 @@ function CricketHits({
           ))}
         </View>
         {rows.map(row => (
-          <View key={row[0].id} style={{flex: 1, flexDirection: 'row', gap: keyGap}}>
+          <View key={row[0].id} style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
             {row.map(target => (
               <KeyCell
                 key={target.id}
@@ -2108,7 +2112,7 @@ function CricketHits({
             ))}
           </View>
         ))}
-        <View style={{flex: 1, flexDirection: 'row', gap: keyGap}}>
+        <View style={{flex: 1, flexDirection: 'row', gap: KEY_GAP}}>
           <KeyCell
             label={t('score_undo')}
             accessibilityLabel={t('score_undo')}
