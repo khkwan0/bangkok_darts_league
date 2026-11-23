@@ -1381,7 +1381,6 @@ export default function GameScoreScreen({
   const awayThrower = liveBoard
     ? x01ThrowerName(awayNames, liveBoard, 'away')
     : null
-  const activeThrower = active === 'home' ? homeThrower : awayThrower
   const canUndoLatest =
     canUndoX01(liveBoard) && ready && (!done || mode === 'score')
   const wonText =
@@ -1445,33 +1444,20 @@ export default function GameScoreScreen({
         minHeight: mode === 'score' && landscape ? 0 : undefined,
         gap: short ? 4 : 8,
       }}>
-      {mode === 'score' ? null : (
-        <TrekText
-          style={{
-            color: theme.muted,
-            fontSize: 12,
-            fontWeight: '800',
-            letterSpacing: 0.4,
-            textAlign: 'center',
-          }}>
-          {`${t('x01_leg', {n: (liveBoard?.legIndex ?? 0) + 1})} · ${start}`}
-        </TrekText>
-      )}
       <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
         <View style={{flex: 1, minWidth: 0}}>
-          {activeThrower && !done ? (
+          {mode === 'score' ? null : (
             <TrekText
               numberOfLines={1}
               style={{
-                color: active === 'home' ? theme.home.accent : theme.away.accent,
-                fontSize: short ? 22 : 26,
+                color: theme.muted,
+                fontSize: 12,
                 fontWeight: '800',
+                letterSpacing: 0.4,
               }}>
-              {t(mode === 'score' ? 'score_thrower' : 'x01_thrower', {
-                name: activeThrower,
-              })}
+              {`${t('x01_leg', {n: (liveBoard?.legIndex ?? 0) + 1})} · ${start}`}
             </TrekText>
-          ) : null}
+          )}
         </View>
         {mode === 'score' ? null : (
           <Pressable
