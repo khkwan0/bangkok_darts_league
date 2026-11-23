@@ -1254,7 +1254,7 @@ export default function GameScoreScreen({
     setNote(null)
   }
 
-  function undo() {
+  function performUndo() {
     if (readOnly) return
     if (!liveBoard || lock.current) return
     const undone = undoX01Visit(liveBoard)
@@ -1306,6 +1306,28 @@ export default function GameScoreScreen({
         undone.reverseClose.legIndex,
       )
     }
+  }
+
+  function undo() {
+    if (readOnly) return
+    if (!liveBoard || lock.current) return
+    if (!canUndoX01(liveBoard)) return
+    const latest = liveBoard.undoStack[liveBoard.undoStack.length - 1]
+    const score =
+      latest?.label?.trim() ||
+      (latest?.visit != null ? String(latest.visit.points) : '') ||
+      (latest?.boardDelta != null ? String(latest.boardDelta.points) : '') ||
+      (latest?.close != null ? String(latest.close.points) : '')
+    Alert.alert(
+      t('x01_undo_confirm_title'),
+      score
+        ? t('x01_undo_confirm_body', {score})
+        : t('x01_undo_confirm_plain'),
+      [
+        {text: t('cancel'), style: 'cancel'},
+        {text: t('x01_undo'), style: 'destructive', onPress: performUndo},
+      ],
+    )
   }
 
   if (!frame || frame.type === 'section' || mode == null) {
