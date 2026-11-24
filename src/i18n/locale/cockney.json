@@ -1025,7 +1025,7 @@
   "admin_player_merges_accept_failed": "Couldn't accept merge request.",
   "admin_player_merges_deny_failed": "Couldn't deny merge request.",
   "admin_player_merges_merge": "Merge players",
-  "admin_player_merges_merge_help": "Absorb an alt into a master. Frame stats stay on the alt unless you transfer them.",
+  "admin_player_merges_merge_help": "Absorb an alt into a master. Achievements move to the master and come back on unmerge. Frame stats stay on the alt unless you transfer them.",
   "admin_player_merges_alt_id": "Alt player ID",
   "admin_player_merges_master_id": "Master player ID",
   "admin_player_merges_transfer": "Transfer frame stats",

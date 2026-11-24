@@ -1149,7 +1149,7 @@
   "admin_player_merges_accept_failed": "統合申請を承認できませんでした。",
   "admin_player_merges_deny_failed": "統合申請を却下できませんでした。",
   "admin_player_merges_merge": "選手を統合",
-  "admin_player_merges_merge_help": "サブアカウントをメインに取り込みます。ゲーム統計は移行しない限りサブに残ります。",
+  "admin_player_merges_merge_help": "サブアカウントをメインに取り込みます。実績はメインへ移り、解除すると戻ります。ゲーム統計は移行しない限りサブに残ります。",
   "admin_player_merges_alt_id": "サブの選手ID",
   "admin_player_merges_master_id": "メインの選手ID",
   "admin_player_merges_transfer": "ゲーム統計を移行",

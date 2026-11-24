@@ -213,12 +213,12 @@ export default function ScanPlayerQr({
         transparent
         animationType="fade"
         onRequestClose={handleCancelConfirm}>
-        <Pressable
-          className="flex-1 items-center justify-center bg-black/60 px-6"
-          onPress={handleCancelConfirm}>
+        <View className="flex-1 items-center justify-center px-6">
           <Pressable
-            className="w-full max-w-sm rounded-2xl bg-white p-6 dark:bg-slate-800"
-            onPress={e => e.stopPropagation()}>
+            className="absolute inset-0 bg-black/60"
+            onPress={handleCancelConfirm}
+          />
+          <View className="w-full max-w-sm rounded-2xl bg-white p-6 dark:bg-slate-800">
             {player && confirmTitle ? (
               <RNText
                 className="mb-4 text-center text-lg font-semibold"
@@ -262,9 +262,14 @@ export default function ScanPlayerQr({
                 ID: {player?.id}
               </Text>
             </View>
-            <Button onPress={() => void handleConfirm()} disabled={confirming}>
-              {confirming ? t('loading') : t(confirmButtonKey)}
-            </Button>
+            <Pressable
+              disabled={confirming}
+              onPress={() => void handleConfirm()}
+              className="rounded-lg bg-blue-600 px-4 py-3 items-center disabled:opacity-50">
+              <RNText className="text-center text-base font-medium text-white">
+                {confirming ? t('loading') : t(confirmButtonKey)}
+              </RNText>
+            </Pressable>
             <View className="mt-3">
               <Button
                 type="outline"
@@ -273,8 +278,8 @@ export default function ScanPlayerQr({
                 {t('cancel')}
               </Button>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </ThemedView>
   )

@@ -1144,7 +1144,7 @@
   "admin_player_merges_accept_failed": "ยอมรับคำขอรวมไม่สำเร็จ",
   "admin_player_merges_deny_failed": "ปฏิเสธคำขอรวมไม่สำเร็จ",
   "admin_player_merges_merge": "รวมผู้เล่น",
-  "admin_player_merges_merge_help": "รวมบัญชีสำรองเข้าบัญชีหลัก สถิติเฟรมอยู่ที่ alt จนกว่าจะโอน",
+  "admin_player_merges_merge_help": "รวมบัญชีสำรองเข้าบัญชีหลัก ความสำเร็จย้ายไปบัญชีหลัก และกลับเมื่อยกเลิกการรวม สถิติเฟรมอยู่ที่ alt จนกว่าจะโอน",
   "admin_player_merges_alt_id": "รหัสผู้เล่น Alt",
   "admin_player_merges_master_id": "รหัสผู้เล่น Master",
   "admin_player_merges_transfer": "โอนสถิติเฟรม",

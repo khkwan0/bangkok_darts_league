@@ -1149,7 +1149,7 @@
   "admin_player_merges_accept_failed": "无法接受合并申请。",
   "admin_player_merges_deny_failed": "无法拒绝合并申请。",
   "admin_player_merges_merge": "合并选手",
-  "admin_player_merges_merge_help": "将副账号并入主账号。除非勾选转移，否则局统计仍留在副账号。",
+  "admin_player_merges_merge_help": "将副账号并入主账号。成就会转到主账号，取消合并时再转回。除非勾选转移，否则局统计仍留在副账号。",
   "admin_player_merges_alt_id": "副账号选手 ID",
   "admin_player_merges_master_id": "主账号选手 ID",
   "admin_player_merges_transfer": "转移局统计",

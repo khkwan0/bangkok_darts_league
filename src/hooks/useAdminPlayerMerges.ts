@@ -98,7 +98,7 @@ export function useAdminPlayerMerges() {
       masterPlayerId: number
       transferStats?: boolean
     }): Promise<MergePlayersResult> => {
-      const res = await networkRef.current.Put('/admin/player/merge', {
+      const res = await networkRef.current.Post('/admin/player/merge', {
         altPlayerId: options.altPlayerId,
         masterPlayerId: options.masterPlayerId,
         transferStats: Boolean(options.transferStats),

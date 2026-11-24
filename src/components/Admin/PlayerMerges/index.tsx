@@ -18,6 +18,8 @@ import {
   Alert,
   Pressable,
   RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   Switch,
   TextInput,
@@ -181,7 +183,9 @@ export default function AdminPlayerMerges() {
       transferStats,
     })
     if (result.status !== 'ok') {
-      setError(t('admin_player_merges_merge_failed'))
+      const detail =
+        result.error && result.error !== 'failed' ? ` (${result.error})` : ''
+      setError(`${t('admin_player_merges_merge_failed')}${detail}`)
     } else {
       const frames = result.transferred_frames ?? 0
       const darts = result.transferred_darts_stats ?? 0
@@ -249,13 +253,17 @@ export default function AdminPlayerMerges() {
   }
 
   return (
+    <KeyboardAvoidingView
+      className="flex-1"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
     <ScrollView
       className="flex-1"
-      contentContainerClassName="p-4 pb-10"
+      contentContainerClassName="p-4 pb-24"
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
-      keyboardShouldPersistTaps="handled">
+      keyboardShouldPersistTaps="always">
       {error ? (
         <View className="mb-3 rounded-lg bg-red-50 dark:bg-red-950/40 p-3">
           <Text className="text-sm text-red-800 dark:text-red-300">{error}</Text>
@@ -380,15 +388,18 @@ export default function AdminPlayerMerges() {
                 disabled={merging}
               />
             </View>
-            <Button
+            <Pressable
               disabled={
                 merging || !altPlayerId.trim() || !masterPlayerId.trim()
               }
-              onPress={() => void handleMerge()}>
-              {merging
-                ? t('admin_player_merges_working')
-                : t('admin_player_merges_merge')}
-            </Button>
+              onPress={() => void handleMerge()}
+              className="rounded-lg bg-blue-600 px-4 py-3 items-center disabled:opacity-50">
+              <Text className="text-white font-medium">
+                {merging
+                  ? t('admin_player_merges_working')
+                  : t('admin_player_merges_merge')}
+              </Text>
+            </Pressable>
           </View>
 
           <View className={cardClass}>
@@ -520,5 +531,6 @@ export default function AdminPlayerMerges() {
         </>
       )}
     </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
