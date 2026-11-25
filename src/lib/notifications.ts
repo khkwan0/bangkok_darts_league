@@ -175,6 +175,21 @@ export async function applyBadgeFromRemoteMessage(remoteMessage: {
   return setAppBadgeCount(badge)
 }
 
+function foregroundInterruptionLevel(
+  data: Record<string, unknown> | null | undefined,
+): 'active' | 'timeSensitive' {
+  const level = data?.interruptionLevel
+  const channelId = data?.channelId
+  if (
+    level === 'time-sensitive' ||
+    level === 'timeSensitive' ||
+    channelId === 'match_confirmation'
+  ) {
+    return 'timeSensitive'
+  }
+  return 'active'
+}
+
 /**
  * FCM does not show a system banner while the app is in the foreground.
  * Present a local notification so the user still sees the message.
@@ -227,7 +242,7 @@ export async function presentRemoteNotification(remoteMessage: {
       body: body || undefined,
       data,
       sound: 'default',
-      interruptionLevel: 'active',
+      interruptionLevel: foregroundInterruptionLevel(remoteMessage.data),
       priority: Notifications.AndroidNotificationPriority.MAX,
       ...(badge != null ? {badge} : {}),
     },
